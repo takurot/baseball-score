@@ -1,46 +1,77 @@
-# Getting Started with Create React App
+# 野球スコアアプリ
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React と Material UI を使用した野球のスコア記録アプリケーションです。
 
-## Available Scripts
+## 機能
 
-In the project directory, you can run:
+- 2 つのチーム（ホームとアウェイ）の管理
+- 選手の追加・編集・状態管理（出場中/控え）
+- 打席結果の記録（ヒット、ホームラン、三振など詳細な結果）
+- イニングごとの打席結果表示
+- スコアボード表示
+- タブによるチーム切り替え
 
-### `npm start`
+## 使い方
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+1. まず、各チームの選手を「選手を追加」ボタンから登録します。
+2. 選手を登録したら、出場中の選手リストから「打席登録」ボタンをクリックして選手を選択します。
+3. 控えの選手は「出場させる」ボタンをクリックすると出場中の選手に切り替わります。
+4. 選択した選手の打席結果を入力フォームから登録します。
+5. イニングは「前の回」「次の回」ボタンで切り替えられます。
+6. チームはタブで切り替えられます。
+7. スコアボードは自動的に更新されます。
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## 打席結果の種類
 
-### `npm test`
+### ヒット系
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- IH: 内野安打 (Infield Hit)
+- LH: レフトヒット (Left Hit)
+- CH: センターヒット (Center Hit)
+- RH: ライトヒット (Right Hit)
+- 2B: 二塁打 (Double)
+- 3B: 三塁打 (Triple)
+- HR: ホームラン (Home Run)
 
-### `npm run build`
+### アウト系
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- GO_P: ピッチャーゴロ (Ground Out to Pitcher)
+- GO_C: キャッチャーゴロ (Ground Out to Catcher)
+- GO_1B: ファーストゴロ (Ground Out to 1st)
+- GO_2B: セカンドゴロ (Ground Out to 2nd)
+- GO_3B: サードゴロ (Ground Out to 3rd)
+- GO_SS: ショートゴロ (Ground Out to Shortstop)
+- FO_LF: レフトフライ (Fly Out to Left)
+- FO_CF: センターフライ (Fly Out to Center)
+- FO_RF: ライトフライ (Fly Out to Right)
+- FO_IF: 内野フライ (Infield Fly)
+- LO: ライナーアウト (Line Out)
+- DP: 併殺打 (Double Play)
+- SO: 三振 (Strike Out)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### その他
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- SAC: 犠打 (Sacrifice Bunt)
+- SF: 犠飛 (Sacrifice Fly)
+- BB: 四球 (Base on Balls)
+- HBP: 死球 (Hit By Pitch)
+- E: エラー (Error)
+- FC: フィールダーチョイス (Fielder's Choice)
+- OTH: その他 (Other)
 
-### `npm run eject`
+## 開発環境のセットアップ
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+```bash
+# 依存関係のインストール
+npm install
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+# 開発サーバーの起動
+npm start
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+## 技術スタック
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+- React
+- TypeScript
+- Material UI
+- UUID
