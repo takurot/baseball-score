@@ -21,7 +21,8 @@ import {
   Alert,
   IconButton,
   Menu,
-  MenuItem
+  MenuItem,
+  CircularProgress
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -34,6 +35,9 @@ import ScoreBoard from './components/ScoreBoard';
 import AtBatSummaryTable from './components/AtBatSummaryTable';
 import GameList from './components/GameList';
 import { saveGame, getGameById } from './firebase/gameService';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Login from './components/Login';
+import UserProfile from './components/UserProfile';
 
 // テーマの作成
 const theme = createTheme({
@@ -70,7 +74,9 @@ const initialGame: Game = {
   currentInning: 1
 };
 
-function App() {
+// アプリのメインコンテンツコンポーネント
+const MainApp: React.FC = () => {
+  const { currentUser, isLoading } = useAuth();
   const [game, setGame] = useState<Game>(initialGame);
   const [tabIndex, setTabIndex] = useState(0);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -92,6 +98,20 @@ function App() {
   
   // 打席結果の編集関連の状態
   const [editingAtBat, setEditingAtBat] = useState<AtBat | null>(null);
+
+  // ローディング中表示
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // 未ログイン時はログイン画面を表示
+  if (!currentUser) {
+    return <Login />;
+  }
 
   // タブ変更ハンドラー
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
@@ -322,8 +342,7 @@ function App() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <>
       <AppBar position="static">
         <Toolbar>
           <IconButton
@@ -366,9 +385,11 @@ function App() {
             color="inherit" 
             startIcon={<SaveIcon />}
             onClick={handleOpenSaveDialog}
+            sx={{ mr: 2 }}
           >
             保存
           </Button>
+          <UserProfile />
         </Toolbar>
       </AppBar>
       
@@ -502,6 +523,18 @@ function App() {
           {snackbarMessage}
         </Alert>
       </Snackbar>
+    </>
+  );
+};
+
+// アプリケーションのルートコンポーネント
+function App() {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <MainApp />
+      </AuthProvider>
     </ThemeProvider>
   );
 }
