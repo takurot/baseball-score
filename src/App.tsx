@@ -349,7 +349,10 @@ function App() {
               mr: 2, 
               bgcolor: 'white', 
               borderRadius: 1,
-              width: '150px'
+              width: '180px',
+              '& .MuiInputBase-input': {
+                paddingRight: '30px' // カレンダーアイコンのスペースを確保
+              }
             }}
           />
           <Button 

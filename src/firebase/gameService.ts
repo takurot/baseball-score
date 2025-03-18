@@ -7,22 +7,31 @@ import {
   query, 
   orderBy,
   serverTimestamp,
-  deleteDoc
+  deleteDoc,
+  where
 } from 'firebase/firestore';
 import { db } from './config';
 import { Game } from '../types';
+import { getCurrentUser } from './authService';
 
 const GAMES_COLLECTION = 'games';
 
 // 試合データを保存
 export const saveGame = async (game: Game): Promise<string> => {
   try {
+    const user = getCurrentUser();
+    if (!user) {
+      throw new Error('ログインが必要です');
+    }
+
     // 保存前にデータを整形（循環参照を避けるため、JSONに変換してから再度パースする）
     const gameClone = JSON.parse(JSON.stringify(game));
     
     // タイムスタンプを追加
     const gameToSave = {
       ...gameClone,
+      userId: user.uid, // ユーザーIDを追加
+      userEmail: user.email, // ユーザーのメールアドレスを追加
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -49,7 +58,18 @@ export const saveGame = async (game: Game): Promise<string> => {
 // 全ての試合データを取得（日付順）
 export const getAllGames = async (): Promise<Game[]> => {
   try {
-    const q = query(collection(db, GAMES_COLLECTION), orderBy('date', 'desc'));
+    const user = getCurrentUser();
+    if (!user) {
+      throw new Error('ログインが必要です');
+    }
+
+    // ユーザーIDでフィルタリングしたクエリを作成
+    const q = query(
+      collection(db, GAMES_COLLECTION), 
+      where('userId', '==', user.uid),
+      orderBy('date', 'desc')
+    );
+    
     const querySnapshot = await getDocs(q);
     
     return querySnapshot.docs.map(doc => {
@@ -70,6 +90,13 @@ export const getGameById = async (gameId: string): Promise<Game | null> => {
     
     if (docSnap.exists()) {
       const data = docSnap.data() as Game;
+      
+      // 自分のデータかチェック
+      const user = getCurrentUser();
+      if (!user || data.userId !== user.uid) {
+        throw new Error('このデータにアクセスする権限がありません');
+      }
+      
       return { ...data, id: docSnap.id };
     } else {
       return null;
@@ -83,6 +110,12 @@ export const getGameById = async (gameId: string): Promise<Game | null> => {
 // 試合データを削除
 export const deleteGame = async (gameId: string): Promise<void> => {
   try {
+    // 権限チェック
+    const game = await getGameById(gameId);
+    if (!game) {
+      throw new Error('データが見つかりません');
+    }
+    
     const docRef = doc(db, GAMES_COLLECTION, gameId);
     await deleteDoc(docRef);
     console.log('Game deleted successfully with ID:', gameId);
