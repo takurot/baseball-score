@@ -24,4 +24,4 @@ if (window.location.hostname === 'localhost') {
   console.log('Using Firestore emulator');
 }
 
-export { db }; 
+export { db, app }; 

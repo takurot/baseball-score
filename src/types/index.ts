@@ -69,4 +69,6 @@ export interface Game {
   homeTeam: Team;
   awayTeam: Team;
   currentInning: number;
+  userId?: string; // ユーザーID（オプショナル）
+  userEmail?: string; // ユーザーのメールアドレス（オプショナル）
 } 
