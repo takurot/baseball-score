@@ -350,12 +350,6 @@ const MainApp: React.FC = () => {
     setTeamSelectionDialogOpen(false);
   };
 
-  // チーム選択モードを設定（ホームかアウェイか）
-  const setTeamSelection = (mode: 'home' | 'away') => {
-    setTeamSelectionMode(mode);
-    showTeamSelectionDialog();
-  };
-
   // 選択したチームをゲームに設定
   const handleSelectTeamForGame = async (teamSettingId: string) => {
     try {
@@ -604,12 +598,6 @@ const MainApp: React.FC = () => {
         onClose={handleMenuClose}
       >
         <MenuItem onClick={handleNewGame}>新しい試合</MenuItem>
-        <MenuItem onClick={() => { setTeamSelection('home'); handleMenuClose(); }}>
-          後攻チームを選択
-        </MenuItem>
-        <MenuItem onClick={() => { setTeamSelection('away'); handleMenuClose(); }}>
-          先攻チームを選択
-        </MenuItem>
         <Divider />
         <MenuItem onClick={() => { toggleGameList(); handleMenuClose(); }}>
           試合一覧を{showGameList ? '非表示' : '表示'}
