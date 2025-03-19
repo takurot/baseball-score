@@ -17,7 +17,7 @@ import { Player } from '../types';
 
 interface PlayerListProps {
   players: Player[];
-  onRegisterAtBat?: (playerId: string) => void;
+  onRegisterAtBat?: (player: Player) => void;
   onToggleStatus?: (playerId: string) => void;
   onEditPlayer?: (playerId: string) => void;
 }
@@ -69,7 +69,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                   <Button 
                     variant="outlined" 
                     size="small" 
-                    onClick={() => onRegisterAtBat && onRegisterAtBat(player.id)}
+                    onClick={() => onRegisterAtBat && onRegisterAtBat(player)}
                     color="primary"
                   >
                     打席登録

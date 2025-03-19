@@ -71,4 +71,24 @@ export interface Game {
   currentInning: number;
   userId?: string; // ユーザーID（オプショナル）
   userEmail?: string; // ユーザーのメールアドレス（オプショナル）
+}
+
+// 保存用の選手情報
+export interface PlayerSetting {
+  id: string;
+  name: string;
+  number: string;
+  position: string;
+  createdAt?: any; // Firestore timestamp
+}
+
+// 保存用のチーム情報
+export interface TeamSetting {
+  id: string;
+  name: string;
+  players: PlayerSetting[];
+  userId: string;
+  userEmail?: string;
+  createdAt?: any; // Firestore timestamp
+  updatedAt?: any; // Firestore timestamp
 } 
