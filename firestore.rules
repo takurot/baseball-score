@@ -9,5 +9,13 @@ service cloud.firestore {
       // 新規作成時はユーザーIDが自分のものである必要がある
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
+    
+    // チームと選手データのルール
+    match /teams/{teamId} {
+      // 自分のデータだけ読み書き可能
+      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      // 新規作成時はユーザーIDが自分のものである必要がある
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
   }
 }

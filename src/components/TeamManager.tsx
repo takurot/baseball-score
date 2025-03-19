@@ -22,7 +22,7 @@ import PlayerList from './PlayerList';
 interface TeamManagerProps {
   team: Team;
   onTeamUpdate: (updatedTeam: Team) => void;
-  onRegisterAtBat?: (playerId: string) => void;
+  onRegisterAtBat?: (player: Player) => void;
 }
 
 const TeamManager: React.FC<TeamManagerProps> = ({ 

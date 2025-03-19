@@ -22,19 +22,24 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  CircularProgress
+  CircularProgress,
+  Divider
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import MenuIcon from '@mui/icons-material/Menu';
+import SportsBaseballIcon from '@mui/icons-material/SportsBaseball';
+import GroupsIcon from '@mui/icons-material/Groups';
 import { v4 as uuidv4 } from 'uuid';
-import { Team, Player, AtBat, Game } from './types';
+import { Team, Player, AtBat, Game, TeamSetting } from './types';
 import TeamManager from './components/TeamManager';
 import AtBatForm from './components/AtBatForm';
 import AtBatHistory from './components/AtBatHistory';
 import ScoreBoard from './components/ScoreBoard';
 import AtBatSummaryTable from './components/AtBatSummaryTable';
 import GameList from './components/GameList';
+import TeamList from './components/TeamList';
 import { saveGame, getGameById } from './firebase/gameService';
+import { getUserTeams, getTeamById } from './firebase/teamService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import UserProfile from './components/UserProfile';
@@ -88,6 +93,13 @@ const MainApp: React.FC = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+  
+  // チーム管理関連の状態
+  const [showTeamManagement, setShowTeamManagement] = useState(false);
+  const [teamSelectionDialogOpen, setTeamSelectionDialogOpen] = useState(false);
+  const [teamSelectionMode, setTeamSelectionMode] = useState<'home' | 'away'>('home');
+  const [availableTeams, setAvailableTeams] = useState<TeamSetting[]>([]);
+  const [loadingTeams, setLoadingTeams] = useState(false);
   
   // メニュー関連の状態
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
@@ -163,120 +175,18 @@ const MainApp: React.FC = () => {
         }
       });
     }
-    
-    // 選手選択をリセット
     setSelectedPlayer(null);
   };
 
-  // 打席登録用に選手を選択
-  const handleRegisterAtBat = (playerId: string) => {
-    const player = currentTeam.players.find(p => p.id === playerId);
-    if (player && player.isActive) {
-      setSelectedPlayer(player);
-    }
-  };
-
-  // 表示モード切り替え
-  const toggleViewMode = () => {
-    setViewMode(viewMode === 'edit' ? 'summary' : 'edit');
-  };
-  
-  // 日付変更ハンドラー
-  const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setGame({ ...game, date: event.target.value });
-  };
-  
-  // 試合保存ダイアログを開く
-  const handleOpenSaveDialog = () => {
-    setSaveDialogOpen(true);
-  };
-  
-  // 試合保存ダイアログを閉じる
-  const handleCloseSaveDialog = () => {
-    setSaveDialogOpen(false);
-  };
-  
-  // 試合を保存
-  const handleSaveGame = async () => {
-    try {
-      // Firebaseに保存
-      const gameId = await saveGame(game);
-      console.log('Game saved with ID:', gameId);
-      
-      // 成功メッセージを表示
-      setSnackbarMessage('試合データを保存しました');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-      
-      // ダイアログを閉じる
-      setSaveDialogOpen(false);
-    } catch (error) {
-      console.error('Failed to save game:', error);
-      const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
-      setSnackbarMessage(`試合データの保存に失敗しました: ${errorMessage}`);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    }
-  };
-  
-  // 試合一覧の表示/非表示を切り替え
-  const toggleGameList = () => {
-    setShowGameList(!showGameList);
-  };
-  
-  // 試合を選択して読み込む
-  const handleSelectGame = async (gameId: string) => {
-    try {
-      const loadedGame = await getGameById(gameId);
-      if (loadedGame) {
-        setGame(loadedGame);
-        setShowGameList(false);
-        setSnackbarMessage('試合データを読み込みました');
-        setSnackbarSeverity('success');
-        setSnackbarOpen(true);
-      }
-    } catch (error) {
-      console.error('Failed to load game:', error);
-      setSnackbarMessage('試合データの読み込みに失敗しました');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    }
-  };
-  
-  // 新しい試合を開始
-  const handleNewGame = () => {
-    setGame({
-      ...initialGame,
-      id: uuidv4(),
-      date: new Date().toISOString().split('T')[0]
-    });
-    setMenuAnchorEl(null);
-  };
-  
-  // メニューを開く
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setMenuAnchorEl(event.currentTarget);
-  };
-  
-  // メニューを閉じる
-  const handleMenuClose = () => {
-    setMenuAnchorEl(null);
-  };
-
-  // 打席結果編集ハンドラー
+  // 打席結果の編集ハンドラー
   const handleEditAtBat = (atBat: AtBat) => {
     setEditingAtBat(atBat);
-    // 編集対象の選手を選択状態にする
-    const player = currentTeam.players.find(p => p.id === atBat.playerId);
-    if (player) {
-      setSelectedPlayer(player);
-    }
   };
-  
-  // 打席結果更新ハンドラー
+
+  // 打席結果の更新ハンドラー
   const handleUpdateAtBat = (updatedAtBat: AtBat) => {
-    const updatedAtBats = currentTeam.atBats.map(atBat => 
-      atBat.id === updatedAtBat.id ? updatedAtBat : atBat
+    const updatedAtBats = currentTeam.atBats.map(ab => 
+      ab.id === updatedAtBat.id ? updatedAtBat : ab
     );
     
     if (tabIndex === 0) {
@@ -297,19 +207,17 @@ const MainApp: React.FC = () => {
       });
     }
     
-    // 編集状態をリセット
     setEditingAtBat(null);
-    setSelectedPlayer(null);
-    
-    // 成功メッセージを表示
-    setSnackbarMessage('打席結果を更新しました');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
   };
-  
-  // 打席結果削除ハンドラー
+
+  // 打席結果の編集キャンセルハンドラー
+  const handleCancelEdit = () => {
+    setEditingAtBat(null);
+  };
+
+  // 打席結果の削除ハンドラー
   const handleDeleteAtBat = (atBatId: string) => {
-    const updatedAtBats = currentTeam.atBats.filter(atBat => atBat.id !== atBatId);
+    const updatedAtBats = currentTeam.atBats.filter(ab => ab.id !== atBatId);
     
     if (tabIndex === 0) {
       setGame({
@@ -328,147 +236,290 @@ const MainApp: React.FC = () => {
         }
       });
     }
-    
-    // 成功メッセージを表示
-    setSnackbarMessage('打席結果を削除しました');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
   };
-  
-  // 編集キャンセルハンドラー
-  const handleCancelEdit = () => {
-    setEditingAtBat(null);
-    setSelectedPlayer(null);
+
+  // 選手を打席登録するハンドラー
+  const handleRegisterAtBat = (player: Player) => {
+    setSelectedPlayer(player);
+  };
+
+  // 試合一覧の表示/非表示切り替え
+  const toggleGameList = () => {
+    setShowGameList(!showGameList);
+  };
+
+  // チーム管理画面の表示/非表示切り替え
+  const toggleTeamManagement = () => {
+    setShowTeamManagement(!showTeamManagement);
+  };
+
+  // メニューを開く
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setMenuAnchorEl(event.currentTarget);
+  };
+
+  // メニューを閉じる
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+  };
+
+  // 新しい試合を作成
+  const handleNewGame = () => {
+    setGame(initialGame);
+    handleMenuClose();
+    showTeamSelectionDialog();
+  };
+
+  // 表示モードの切り替え
+  const toggleViewMode = () => {
+    setViewMode(viewMode === 'edit' ? 'summary' : 'edit');
+  };
+
+  // 保存ダイアログを開く
+  const handleOpenSaveDialog = () => {
+    setSaveDialogOpen(true);
+  };
+
+  // 保存ダイアログを閉じる
+  const handleCloseSaveDialog = () => {
+    setSaveDialogOpen(false);
+  };
+
+  // 試合データを保存
+  const handleSaveGame = async () => {
+    try {
+      const gameId = await saveGame(game);
+      setSaveDialogOpen(false);
+      setSnackbarMessage('試合データを保存しました');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+
+      // IDを更新
+      setGame({
+        ...game,
+        id: gameId
+      });
+    } catch (error: any) {
+      console.error('Error saving game:', error);
+      setSnackbarMessage(`保存に失敗しました: ${error.message}`);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+
+  // 既存の試合データを選択
+  const handleSelectGame = async (gameId: string) => {
+    try {
+      const loadedGame = await getGameById(gameId);
+      if (loadedGame) {
+        setGame(loadedGame);
+        setSnackbarMessage('試合データを読み込みました');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+        setShowGameList(false);
+      }
+    } catch (error: any) {
+      console.error('Error loading game:', error);
+      setSnackbarMessage(`読み込みに失敗しました: ${error.message}`);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+
+  // チーム選択ダイアログを表示
+  const showTeamSelectionDialog = async () => {
+    try {
+      setLoadingTeams(true);
+      const teams = await getUserTeams();
+      setAvailableTeams(teams);
+      setTeamSelectionDialogOpen(true);
+    } catch (error) {
+      console.error('Failed to load teams:', error);
+    } finally {
+      setLoadingTeams(false);
+    }
+  };
+
+  // チーム選択ダイアログを閉じる
+  const closeTeamSelectionDialog = () => {
+    setTeamSelectionDialogOpen(false);
+  };
+
+  // チーム選択モードを設定（ホームかアウェイか）
+  const setTeamSelection = (mode: 'home' | 'away') => {
+    setTeamSelectionMode(mode);
+    showTeamSelectionDialog();
+  };
+
+  // 選択したチームをゲームに設定
+  const handleSelectTeamForGame = async (teamSettingId: string) => {
+    try {
+      const teamSetting = await getTeamById(teamSettingId);
+      if (!teamSetting) {
+        throw new Error('チームデータの取得に失敗しました');
+      }
+      
+      // 保存済みのチーム情報からゲーム用のチームデータを作成
+      const gameTeam: Team = {
+        id: teamSetting.id,
+        name: teamSetting.name,
+        players: teamSetting.players.map(player => ({
+          id: player.id,
+          name: player.name,
+          number: player.number,
+          position: player.position,
+          isActive: true,
+          order: 0 // 初期値は0に設定
+        })),
+        atBats: []
+      };
+      
+      // ホームチームかアウェイチームのどちらを更新するか
+      if (teamSelectionMode === 'home') {
+        setGame(prevGame => ({
+          ...prevGame,
+          homeTeam: gameTeam
+        }));
+      } else {
+        setGame(prevGame => ({
+          ...prevGame,
+          awayTeam: gameTeam
+        }));
+      }
+      
+      closeTeamSelectionDialog();
+      setSnackbarMessage(`${teamSetting.name}を${teamSelectionMode === 'home' ? 'ホーム' : 'アウェイ'}チームに設定しました`);
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (error: any) {
+      console.error('Failed to set team:', error);
+      setSnackbarMessage(`チーム設定に失敗しました: ${error.message}`);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
   };
 
   return (
     <>
-      <AppBar position="static">
+      <AppBar position="sticky">
         <Toolbar>
           <IconButton
-            size="large"
             edge="start"
             color="inherit"
             aria-label="menu"
-            sx={{ mr: 2 }}
             onClick={handleMenuOpen}
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            野球スコアアプリ
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            <SportsBaseballIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+            野球スコア
           </Typography>
-          <TextField
-            type="date"
-            value={game.date}
-            onChange={handleDateChange}
-            variant="outlined"
-            size="small"
-            sx={{ 
-              mr: 2, 
-              bgcolor: 'white', 
-              borderRadius: 1,
-              width: '180px',
-              '& .MuiInputBase-input': {
-                paddingRight: '30px' // カレンダーアイコンのスペースを確保
-              }
-            }}
-          />
-          <Button 
-            color="inherit" 
-            onClick={toggleViewMode}
-            sx={{ mr: 1 }}
-          >
-            {viewMode === 'edit' ? '一覧表示' : '編集モード'}
-          </Button>
           <Button 
             color="inherit" 
             startIcon={<SaveIcon />}
             onClick={handleOpenSaveDialog}
-            sx={{ mr: 2 }}
           >
             保存
+          </Button>
+          <Button 
+            color="inherit" 
+            onClick={toggleViewMode}
+          >
+            {viewMode === 'edit' ? '一覧表示' : '編集に戻る'}
           </Button>
           <UserProfile />
         </Toolbar>
       </AppBar>
       
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        {/* 試合一覧 */}
-        {showGameList && (
-          <GameList 
-            onSelectGame={handleSelectGame} 
-            onGameDeleted={() => {
-              setSnackbarMessage('試合データを削除しました');
-              setSnackbarSeverity('success');
-              setSnackbarOpen(true);
+      <Container>
+        {/* チーム管理画面 */}
+        {showTeamManagement ? (
+          <TeamList 
+            onSelectTeam={(teamId) => {
+              handleSelectTeamForGame(teamId);
+              toggleTeamManagement(); // チーム選択後はチーム管理画面を閉じる
             }}
           />
-        )}
-        
-        <ScoreBoard 
-          homeTeam={game.homeTeam} 
-          awayTeam={game.awayTeam} 
-          currentInning={game.currentInning} 
-        />
-        
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-          <Tabs value={tabIndex} onChange={handleTabChange}>
-            <Tab label={game.homeTeam.name} />
-            <Tab label={game.awayTeam.name} />
-          </Tabs>
-        </Box>
-
-        {viewMode === 'summary' ? (
-          // 打席結果一覧表示モード
-          <AtBatSummaryTable 
-            team={currentTeam} 
-            maxInning={game.currentInning}
-          />
         ) : (
-          // 編集モード
           <>
-            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">
-                {game.currentInning}回
-              </Typography>
-              <ButtonGroup>
-                <Button 
-                  onClick={() => handleInningChange(-1)}
-                  disabled={game.currentInning <= 1}
-                >
-                  前の回
-                </Button>
-                <Button 
-                  onClick={() => handleInningChange(1)}
-                >
-                  次の回
-                </Button>
-              </ButtonGroup>
+            {/* ゲーム一覧 */}
+            {showGameList && (
+              <GameList 
+                onSelectGame={handleSelectGame} 
+                onGameDeleted={() => {
+                  setSnackbarMessage('試合データを削除しました');
+                  setSnackbarSeverity('success');
+                  setSnackbarOpen(true);
+                }}
+              />
+            )}
+            
+            <ScoreBoard 
+              homeTeam={game.homeTeam} 
+              awayTeam={game.awayTeam} 
+              currentInning={game.currentInning} 
+            />
+            
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+              <Tabs value={tabIndex} onChange={handleTabChange}>
+                <Tab label={game.homeTeam.name} />
+                <Tab label={game.awayTeam.name} />
+              </Tabs>
             </Box>
-            
-            <TeamManager 
-              team={currentTeam} 
-              onTeamUpdate={handleTeamUpdate} 
-              onRegisterAtBat={handleRegisterAtBat}
-            />
-            
-            <AtBatForm 
-              player={selectedPlayer} 
-              inning={game.currentInning}
-              onAddAtBat={handleAddAtBat}
-              editingAtBat={editingAtBat}
-              onUpdateAtBat={handleUpdateAtBat}
-              onCancelEdit={handleCancelEdit}
-            />
-            
-            <AtBatHistory 
-              atBats={currentTeam.atBats} 
-              players={currentTeam.players}
-              inning={game.currentInning}
-              onEditAtBat={handleEditAtBat}
-              onDeleteAtBat={handleDeleteAtBat}
-            />
+
+            {viewMode === 'summary' ? (
+              // 打席結果一覧表示モード
+              <AtBatSummaryTable 
+                team={currentTeam} 
+                maxInning={game.currentInning}
+              />
+            ) : (
+              // 編集モード
+              <>
+                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h6">
+                    {game.currentInning}回
+                  </Typography>
+                  <ButtonGroup>
+                    <Button 
+                      onClick={() => handleInningChange(-1)}
+                      disabled={game.currentInning <= 1}
+                    >
+                      前の回
+                    </Button>
+                    <Button 
+                      onClick={() => handleInningChange(1)}
+                    >
+                      次の回
+                    </Button>
+                  </ButtonGroup>
+                </Box>
+                
+                <TeamManager 
+                  team={currentTeam} 
+                  onTeamUpdate={handleTeamUpdate} 
+                  onRegisterAtBat={handleRegisterAtBat}
+                />
+                
+                <AtBatForm 
+                  player={selectedPlayer} 
+                  inning={game.currentInning}
+                  onAddAtBat={handleAddAtBat}
+                  editingAtBat={editingAtBat}
+                  onUpdateAtBat={handleUpdateAtBat}
+                  onCancelEdit={handleCancelEdit}
+                />
+                
+                <AtBatHistory 
+                  atBats={currentTeam.atBats} 
+                  players={currentTeam.players}
+                  inning={game.currentInning}
+                  onEditAtBat={handleEditAtBat}
+                  onDeleteAtBat={handleDeleteAtBat}
+                />
+              </>
+            )}
           </>
         )}
       </Container>
@@ -497,6 +548,50 @@ const MainApp: React.FC = () => {
         </DialogActions>
       </Dialog>
       
+      {/* チーム選択ダイアログ */}
+      <Dialog 
+        open={teamSelectionDialogOpen} 
+        onClose={closeTeamSelectionDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          {teamSelectionMode === 'home' ? 'ホーム' : 'アウェイ'}チームを選択
+        </DialogTitle>
+        <DialogContent>
+          {loadingTeams ? (
+            <Box display="flex" justifyContent="center" padding={3}>
+              <CircularProgress />
+            </Box>
+          ) : availableTeams.length === 0 ? (
+            <Typography>
+              登録済みのチームがありません。先に「チーム・選手管理」からチームを作成してください。
+            </Typography>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+              {availableTeams.map(team => (
+                <Button 
+                  key={team.id}
+                  variant="outlined"
+                  onClick={() => handleSelectTeamForGame(team.id)}
+                  sx={{ justifyContent: 'flex-start', textAlign: 'left' }}
+                >
+                  <Box>
+                    <Typography variant="subtitle1">{team.name}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      選手数: {team.players?.length || 0}人
+                    </Typography>
+                  </Box>
+                </Button>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeTeamSelectionDialog}>キャンセル</Button>
+        </DialogActions>
+      </Dialog>
+      
       {/* メニュー */}
       <Menu
         anchorEl={menuAnchorEl}
@@ -504,8 +599,19 @@ const MainApp: React.FC = () => {
         onClose={handleMenuClose}
       >
         <MenuItem onClick={handleNewGame}>新しい試合</MenuItem>
+        <MenuItem onClick={() => { setTeamSelection('home'); handleMenuClose(); }}>
+          ホームチームを選択
+        </MenuItem>
+        <MenuItem onClick={() => { setTeamSelection('away'); handleMenuClose(); }}>
+          アウェイチームを選択
+        </MenuItem>
+        <Divider />
         <MenuItem onClick={() => { toggleGameList(); handleMenuClose(); }}>
           試合一覧を{showGameList ? '非表示' : '表示'}
+        </MenuItem>
+        <MenuItem onClick={() => { toggleTeamManagement(); handleMenuClose(); }}>
+          <GroupsIcon sx={{ mr: 1, fontSize: '1.25rem' }} />
+          チーム・選手管理
         </MenuItem>
       </Menu>
       
