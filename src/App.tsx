@@ -267,6 +267,10 @@ const MainApp: React.FC = () => {
   const handleNewGame = () => {
     setGame(initialGame);
     handleMenuClose();
+    // チーム管理画面が表示されている場合は閉じる
+    if (showTeamManagement) {
+      setShowTeamManagement(false);
+    }
     showTeamSelectionDialog();
   };
 
