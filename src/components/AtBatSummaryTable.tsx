@@ -208,8 +208,32 @@ const formatOPS = (value: number): string => {
 };
 
 const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning }) => {
-  // 打順でソートした選手リスト
-  const sortedPlayers = [...team.players].sort((a, b) => a.order - b.order);
+  // 打順でソートした選手リストを修正
+  // 1. 控えかつ打順0の選手を下に表示
+  // 2. それ以外は打順でソート
+  const sortedPlayers = [...team.players].sort((a, b) => {
+    // 控えかつ打順0の選手を下に表示するための条件
+    const aIsBenchWithNoOrder = !a.isActive && a.order === 0;
+    const bIsBenchWithNoOrder = !b.isActive && b.order === 0;
+    
+    // 両方とも控え選手で打順0の場合は名前でソート
+    if (aIsBenchWithNoOrder && bIsBenchWithNoOrder) {
+      return a.name.localeCompare(b.name);
+    }
+    
+    // aのみが控え選手で打順0なら下に
+    if (aIsBenchWithNoOrder) {
+      return 1;
+    }
+    
+    // bのみが控え選手で打順0なら下に
+    if (bIsBenchWithNoOrder) {
+      return -1;
+    }
+    
+    // それ以外は通常通り打順でソート
+    return a.order - b.order;
+  });
   
   // 少年野球なので最大7回まで
   const limitedMaxInning = Math.min(maxInning, 7);
