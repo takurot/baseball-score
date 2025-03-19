@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Container, 
   CssBaseline, 
@@ -38,7 +38,7 @@ import ScoreBoard from './components/ScoreBoard';
 import AtBatSummaryTable from './components/AtBatSummaryTable';
 import GameList from './components/GameList';
 import TeamList from './components/TeamList';
-import { saveGame, getGameById } from './firebase/gameService';
+import { saveGame, getGameById, getSharedGameById } from './firebase/gameService';
 import { getUserTeams, getTeamById } from './firebase/teamService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
@@ -119,8 +119,43 @@ const MainApp: React.FC = () => {
   // 打席結果の編集関連の状態
   const [editingAtBat, setEditingAtBat] = useState<AtBat | null>(null);
 
+  // 共有された試合関連の状態
+  const [isSharedMode, setIsSharedMode] = useState(false);
+  const [sharedGameLoading, setSharedGameLoading] = useState(false);
+  const [sharedGameError, setSharedGameError] = useState<string | null>(null);
+
+  // URLから共有されたゲームIDを取得
+  useEffect(() => {
+    const checkSharedGame = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const sharedGameId = urlParams.get('gameId');
+      
+      if (sharedGameId) {
+        try {
+          setSharedGameLoading(true);
+          const sharedGame = await getSharedGameById(sharedGameId);
+          if (sharedGame) {
+            setGame(sharedGame);
+            setIsSharedMode(true);
+            setViewMode('summary'); // 共有リンクでは自動的に一覧表示モードに
+            setSharedGameError(null);
+          } else {
+            setSharedGameError('指定された試合データが見つかりませんでした。');
+          }
+        } catch (error: any) {
+          console.error('Error loading shared game:', error);
+          setSharedGameError(error.message || '試合データの読み込みに失敗しました。');
+        } finally {
+          setSharedGameLoading(false);
+        }
+      }
+    };
+    
+    checkSharedGame();
+  }, []);
+
   // ローディング中表示
-  if (isLoading) {
+  if (sharedGameLoading || isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <CircularProgress />
@@ -128,8 +163,27 @@ const MainApp: React.FC = () => {
     );
   }
 
-  // 未ログイン時はログイン画面を表示
-  if (!currentUser) {
+  // 共有リンクのエラー表示
+  if (sharedGameError) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', p: 3 }}>
+        <Typography variant="h5" color="error" gutterBottom>
+          エラー
+        </Typography>
+        <Typography>{sharedGameError}</Typography>
+        <Button 
+          variant="contained" 
+          sx={{ mt: 3 }}
+          onClick={() => window.location.href = window.location.origin}
+        >
+          トップページに戻る
+        </Button>
+      </Box>
+    );
+  }
+
+  // 共有モードでは認証不要
+  if (!currentUser && !isSharedMode) {
     return <Login />;
   }
 
@@ -449,49 +503,95 @@ const MainApp: React.FC = () => {
     });
   };
 
+  // 共有リンクをコピー
+  const handleCopyShareLink = () => {
+    // 現在の試合が公開設定されていない場合は保存モーダルを表示
+    if (!game.isPublic) {
+      setGame({ ...game, isPublic: true });
+      handleOpenSaveDialog();
+      return;
+    }
+    
+    // 既にIDがある場合はリンクをコピー
+    if (game.id) {
+      const shareUrl = `${window.location.origin}?gameId=${game.id}`;
+      navigator.clipboard.writeText(shareUrl)
+        .then(() => {
+          setSnackbarMessage('共有リンクをクリップボードにコピーしました');
+          setSnackbarSeverity('success');
+          setSnackbarOpen(true);
+        })
+        .catch(err => {
+          console.error('Failed to copy: ', err);
+          setSnackbarMessage('共有リンクのコピーに失敗しました');
+          setSnackbarSeverity('error');
+          setSnackbarOpen(true);
+        });
+    } else {
+      // IDがない場合は先に保存が必要
+      setSnackbarMessage('共有リンクを作成するには先に試合を保存してください');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+
   return (
     <>
       <AppBar position="sticky">
         <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            aria-label="menu"
-            onClick={handleMenuOpen}
-          >
-            <MenuIcon />
-          </IconButton>
+          {!isSharedMode && (
+            <IconButton
+              edge="start"
+              color="inherit"
+              aria-label="menu"
+              onClick={handleMenuOpen}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             <SportsBaseballIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-            野球スコア
+            野球スコア {isSharedMode && '(共有モード)'}
           </Typography>
-          <Button 
-            color="inherit" 
-            onClick={handleOpenDateDialog}
-            sx={{ mr: 1 }}
-          >
-            {new Date(game.date).toLocaleDateString('ja-JP')}
-          </Button>
-          <Button 
-            color="inherit" 
-            startIcon={<SaveIcon />}
-            onClick={handleOpenSaveDialog}
-          >
-            保存
-          </Button>
-          <Button 
-            color="inherit" 
-            onClick={toggleViewMode}
-          >
-            {viewMode === 'edit' ? '一覧表示' : '編集に戻る'}
-          </Button>
-          <UserProfile />
+          {!isSharedMode ? (
+            <>
+              <Button 
+                color="inherit" 
+                onClick={handleOpenDateDialog}
+                sx={{ mr: 1 }}
+              >
+                {new Date(game.date).toLocaleDateString('ja-JP')}
+              </Button>
+              <Button 
+                color="inherit" 
+                startIcon={<SaveIcon />}
+                onClick={handleOpenSaveDialog}
+              >
+                保存
+              </Button>
+              <Button 
+                color="inherit" 
+                onClick={toggleViewMode}
+              >
+                {viewMode === 'edit' ? '一覧表示' : '編集に戻る'}
+              </Button>
+              <UserProfile />
+            </>
+          ) : (
+            // 共有モードでのボタン
+            <Button 
+              color="inherit" 
+              onClick={() => window.location.href = window.location.origin}
+            >
+              アプリに戻る
+            </Button>
+          )}
         </Toolbar>
       </AppBar>
       
       <Container sx={{ pt: 2 }}>
         {/* チーム管理画面 */}
-        {showTeamManagement ? (
+        {showTeamManagement && !isSharedMode ? (
           <TeamList 
             onSelectTeam={(teamId) => {
               handleSelectTeamForGame(teamId);
@@ -501,7 +601,7 @@ const MainApp: React.FC = () => {
         ) : (
           <>
             {/* ゲーム一覧 */}
-            {showGameList && (
+            {showGameList && !isSharedMode && (
               <GameList 
                 onSelectGame={handleSelectGame} 
                 onGameDeleted={() => {
@@ -509,6 +609,7 @@ const MainApp: React.FC = () => {
                   setSnackbarSeverity('success');
                   setSnackbarOpen(true);
                 }}
+                onShareGame={handleCopyShareLink}
               />
             )}
             
@@ -519,12 +620,12 @@ const MainApp: React.FC = () => {
                 justifyContent: 'center', 
                 alignItems: 'center', 
                 mb: 2,
-                cursor: 'pointer' 
+                cursor: isSharedMode ? 'default' : 'pointer' 
               }}
-              onClick={handleOpenVenueDialog}
+              onClick={!isSharedMode ? handleOpenVenueDialog : undefined}
             >
               <Typography variant="subtitle1" align="center">
-                {game.tournament ? game.tournament : '大会名をクリックして設定'} 
+                {game.tournament ? game.tournament : isSharedMode ? '' : '大会名をクリックして設定'} 
                 {game.venue && ` @ ${game.venue}`}
               </Typography>
             </Box>
@@ -535,6 +636,18 @@ const MainApp: React.FC = () => {
               currentInning={game.currentInning} 
             />
             
+            {/* 共有モードの場合は共有ボタンを表示 */}
+            {!isSharedMode && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 3 }}>
+                <Button 
+                  variant="outlined" 
+                  onClick={handleCopyShareLink}
+                >
+                  この試合結果を共有
+                </Button>
+              </Box>
+            )}
+            
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
               <Tabs value={tabIndex} onChange={handleTabChange}>
                 <Tab label={game.awayTeam.name} />
@@ -542,14 +655,14 @@ const MainApp: React.FC = () => {
               </Tabs>
             </Box>
 
-            {viewMode === 'summary' ? (
+            {viewMode === 'summary' || isSharedMode ? (
               // 打席結果一覧表示モード
               <AtBatSummaryTable 
                 team={currentTeam} 
                 maxInning={game.currentInning}
               />
             ) : (
-              // 編集モード
+              // 編集モード（共有モードでは表示しない）
               <>
                 <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="h6">
@@ -623,6 +736,24 @@ const MainApp: React.FC = () => {
               対戦: {game.awayTeam.name} vs {game.homeTeam.name}
             </Typography>
           </Box>
+          
+          <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
+            <Typography variant="body2">
+              公開設定:
+            </Typography>
+            <Button 
+              variant={game.isPublic ? "contained" : "outlined"} 
+              color={game.isPublic ? "primary" : "inherit"}
+              onClick={() => setGame({ ...game, isPublic: !game.isPublic })}
+              size="small"
+              sx={{ ml: 2 }}
+            >
+              {game.isPublic ? "公開" : "非公開"}
+            </Button>
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            公開設定にすると、URLを知っている人なら誰でもこの試合結果を閲覧できます。
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseSaveDialog}>キャンセル</Button>

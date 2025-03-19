@@ -73,6 +73,7 @@ export interface Game {
   userEmail?: string; // ユーザーのメールアドレス（オプショナル）
   venue?: string; // 球場・場所
   tournament?: string; // 大会名
+  isPublic?: boolean; // 公開状態
 }
 
 // 保存用の選手情報

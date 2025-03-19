@@ -19,15 +19,17 @@ import {
   ListItemSecondaryAction
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ShareIcon from '@mui/icons-material/Share';
 import { getAllGames, deleteGame } from '../firebase/gameService';
 import { Game } from '../types';
 
 interface GameListProps {
   onSelectGame: (gameId: string) => void;
   onGameDeleted?: () => void;
+  onShareGame?: (gameId: string) => void;
 }
 
-const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
+const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShareGame }) => {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +98,14 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
     }
   };
 
+  // シェアボタンのクリックハンドラー
+  const handleShareGame = (gameId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (onShareGame) {
+      onShareGame(gameId);
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
@@ -132,19 +142,38 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
             <ListItem 
               disablePadding
               secondaryAction={
-                <IconButton 
-                  edge="end" 
-                  aria-label="delete"
-                  onClick={(e) => handleOpenDeleteDialog(game.id, e)}
-                >
-                  <DeleteIcon />
-                </IconButton>
+                <Box>
+                  {onShareGame && (
+                    <IconButton
+                      edge="end"
+                      aria-label="share"
+                      onClick={(e) => handleShareGame(game.id, e)}
+                      sx={{ mr: 1 }}
+                    >
+                      <ShareIcon />
+                    </IconButton>
+                  )}
+                  <IconButton 
+                    edge="end" 
+                    aria-label="delete"
+                    onClick={(e) => handleOpenDeleteDialog(game.id, e)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
               }
             >
               <ListItemButton onClick={() => onSelectGame(game.id)}>
                 <ListItemText
                   primary={`${game.awayTeam.name} vs ${game.homeTeam.name}`}
-                  secondary={formatDate(game.date)}
+                  secondary={
+                    <>
+                      {formatDate(game.date)}
+                      {game.tournament && ` | ${game.tournament}`}
+                      {game.venue && ` @ ${game.venue}`}
+                      {game.isPublic && ' | 公開'}
+                    </>
+                  }
                 />
               </ListItemButton>
             </ListItem>
