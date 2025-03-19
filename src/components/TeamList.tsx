@@ -103,6 +103,17 @@ const TeamList: React.FC<TeamListProps> = ({ onSelectTeam }) => {
   const [playerPosition, setPlayerPosition] = useState('');
   const [confirmDeletePlayerId, setConfirmDeletePlayerId] = useState<string | null>(null);
   
+  // アコーディオンの開閉状態
+  const [expandedAccordions, setExpandedAccordions] = useState<Record<string, boolean>>({});
+  
+  // アコーディオンの開閉を管理
+  const handleAccordionChange = (teamId: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
+    setExpandedAccordions(prev => ({
+      ...prev,
+      [teamId]: isExpanded
+    }));
+  };
+  
   // チームデータの読み込み
   const loadTeams = async () => {
     if (!currentUser) return;
@@ -205,6 +216,12 @@ const TeamList: React.FC<TeamListProps> = ({ onSelectTeam }) => {
   const handleOpenPlayerDialog = (teamId: string, player?: PlayerSetting) => {
     setCurrentTeamId(teamId);
     
+    // アコーディオンを開く状態に設定
+    setExpandedAccordions(prev => ({
+      ...prev,
+      [teamId]: true
+    }));
+    
     if (player) {
       setPlayerName(player.name);
       setPlayerNumber(player.number);
@@ -259,6 +276,12 @@ const TeamList: React.FC<TeamListProps> = ({ onSelectTeam }) => {
       // ダイアログを閉じてデータを再読み込み
       handleClosePlayerDialog();
       await loadTeams();
+      
+      // 現在のチームのアコーディオンは開いたままにする
+      setExpandedAccordions(prev => ({
+        ...prev,
+        [currentTeamId]: true
+      }));
     } catch (err: any) {
       console.error('Failed to save player:', err);
       setError('選手の保存に失敗しました: ' + err.message);
@@ -284,6 +307,12 @@ const TeamList: React.FC<TeamListProps> = ({ onSelectTeam }) => {
       await removePlayerFromTeam(currentTeamId, confirmDeletePlayerId);
       setConfirmDeletePlayerId(null);
       await loadTeams();
+      
+      // 現在のチームのアコーディオンは開いたままにする
+      setExpandedAccordions(prev => ({
+        ...prev,
+        [currentTeamId]: true
+      }));
     } catch (err: any) {
       console.error('Failed to delete player:', err);
       setError('選手の削除に失敗しました: ' + err.message);
@@ -296,6 +325,92 @@ const TeamList: React.FC<TeamListProps> = ({ onSelectTeam }) => {
     if (onSelectTeam) {
       onSelectTeam(teamId);
     }
+  };
+  
+  // 選手管理タブの内容
+  const renderPlayerManagementTab = () => {
+    if (teams.length === 0) {
+      return (
+        <Typography variant="body1" color="textSecondary" sx={{ my: 4, textAlign: 'center' }}>
+          チームがまだ登録されていません。「チーム一覧」タブでチームを追加してください。
+        </Typography>
+      );
+    }
+    
+    return (
+      <>
+        {teams.map((team) => (
+          <Accordion 
+            key={team.id} 
+            sx={{ mb: 2 }}
+            expanded={!!expandedAccordions[team.id]}
+            onChange={handleAccordionChange(team.id)}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              aria-controls={`team-${team.id}-content`}
+              id={`team-${team.id}-header`}
+            >
+              <Typography variant="h6">{team.name}</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box sx={{ mb: 2 }}>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<PersonAddIcon />}
+                  onClick={() => handleOpenPlayerDialog(team.id)}
+                >
+                  選手を追加
+                </Button>
+              </Box>
+              
+              {(!team.players || team.players.length === 0) ? (
+                <Typography variant="body2" color="textSecondary">
+                  選手が登録されていません。「選手を追加」ボタンをクリックして、選手を追加してください。
+                </Typography>
+              ) : (
+                <List>
+                  {team.players.map((player) => (
+                    <React.Fragment key={player.id}>
+                      <ListItem>
+                        <ListItemText
+                          primary={`${player.name} ${player.number ? `#${player.number}` : ''}`}
+                          secondary={player.position || '役職未設定'}
+                        />
+                        <ListItemSecondaryAction>
+                          <IconButton
+                            edge="end"
+                            aria-label="edit"
+                            onClick={() => {
+                              setCurrentTeamId(team.id);
+                              handleOpenPlayerDialog(team.id, player);
+                            }}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton
+                            edge="end"
+                            aria-label="delete"
+                            onClick={() => {
+                              setCurrentTeamId(team.id);
+                              handleConfirmDeletePlayer(player.id);
+                            }}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </ListItemSecondaryAction>
+                      </ListItem>
+                      <Divider variant="inset" component="li" />
+                    </React.Fragment>
+                  ))}
+                </List>
+              )}
+            </AccordionDetails>
+          </Accordion>
+        ))}
+      </>
+    );
   };
   
   // ローディング表示
@@ -412,79 +527,7 @@ const TeamList: React.FC<TeamListProps> = ({ onSelectTeam }) => {
       
       {/* 選手管理タブ */}
       <TabPanel value={tabValue} index={1}>
-        {teams.length === 0 ? (
-          <Typography variant="body1" color="textSecondary" sx={{ my: 4, textAlign: 'center' }}>
-            チームがまだ登録されていません。「チーム一覧」タブでチームを追加してください。
-          </Typography>
-        ) : (
-          <>
-            {teams.map((team) => (
-              <Accordion key={team.id} sx={{ mb: 2 }}>
-                <AccordionSummary
-                  expandIcon={<ExpandMoreIcon />}
-                  aria-controls={`team-${team.id}-content`}
-                  id={`team-${team.id}-header`}
-                >
-                  <Typography variant="h6">{team.name}</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Box sx={{ mb: 2 }}>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      startIcon={<PersonAddIcon />}
-                      onClick={() => handleOpenPlayerDialog(team.id)}
-                    >
-                      選手を追加
-                    </Button>
-                  </Box>
-                  
-                  {(!team.players || team.players.length === 0) ? (
-                    <Typography variant="body2" color="textSecondary">
-                      選手が登録されていません。「選手を追加」ボタンをクリックして、選手を追加してください。
-                    </Typography>
-                  ) : (
-                    <List>
-                      {team.players.map((player) => (
-                        <React.Fragment key={player.id}>
-                          <ListItem>
-                            <ListItemText
-                              primary={`${player.name} ${player.number ? `#${player.number}` : ''}`}
-                              secondary={player.position || '役職未設定'}
-                            />
-                            <ListItemSecondaryAction>
-                              <IconButton
-                                edge="end"
-                                aria-label="edit"
-                                onClick={() => {
-                                  setCurrentTeamId(team.id);
-                                  handleOpenPlayerDialog(team.id, player);
-                                }}
-                              >
-                                <EditIcon />
-                              </IconButton>
-                              <IconButton
-                                edge="end"
-                                aria-label="delete"
-                                onClick={() => {
-                                  setCurrentTeamId(team.id);
-                                  handleConfirmDeletePlayer(player.id);
-                                }}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </ListItemSecondaryAction>
-                          </ListItem>
-                          <Divider variant="inset" component="li" />
-                        </React.Fragment>
-                      ))}
-                    </List>
-                  )}
-                </AccordionDetails>
-              </Accordion>
-            ))}
-          </>
-        )}
+        {renderPlayerManagementTab()}
       </TabPanel>
       
       {/* チーム追加・編集ダイアログ */}
