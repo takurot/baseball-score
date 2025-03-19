@@ -131,15 +131,18 @@ const MainApp: React.FC = () => {
       const sharedGameId = urlParams.get('gameId');
       
       if (sharedGameId) {
+        console.log('Found gameId in URL:', sharedGameId);
         try {
           setSharedGameLoading(true);
           const sharedGame = await getSharedGameById(sharedGameId);
           if (sharedGame) {
+            console.log('Successfully loaded shared game:', sharedGameId);
             setGame(sharedGame);
             setIsSharedMode(true);
             setViewMode('summary'); // 共有リンクでは自動的に一覧表示モードに
             setSharedGameError(null);
           } else {
+            console.error('Game not found:', sharedGameId);
             setSharedGameError('指定された試合データが見つかりませんでした。');
           }
         } catch (error: any) {
@@ -352,39 +355,42 @@ const MainApp: React.FC = () => {
     setSaveDialogOpen(false);
   };
 
-  // 試合データを保存
+  // 試合データを保存する関数
   const handleSaveGame = async () => {
     try {
-      const gameId = await saveGame(game);
-      setSaveDialogOpen(false);
-      
-      // IDを更新
-      setGame(prevGame => ({
-        ...prevGame,
-        id: gameId
-      }));
-
-      // 公開設定がONの場合は共有リンクをコピー
-      if (game.isPublic) {
-        const shareUrl = `${window.location.origin}?gameId=${gameId}`;
-        try {
-          await navigator.clipboard.writeText(shareUrl);
-          setSnackbarMessage('試合データを保存しました。共有URLをクリップボードにコピーしました');
-        } catch (clipboardErr) {
-          console.error('Failed to copy to clipboard:', clipboardErr);
-          setSnackbarMessage(`試合データを保存しました。共有URL: ${shareUrl}`);
-        }
-      } else {
-        setSnackbarMessage('試合データを保存しました');
+      if (!currentUser) {
+        setSnackbarOpen(true);
+        setSnackbarMessage('ログインしてください');
+        return;
       }
+
+      // ゲームオブジェクトに最新のデータを設定
+      const gameToSave = {
+        ...game,
+        lastUpdated: new Date().toISOString()
+      };
+
+      // Firestoreに保存
+      let gameId: string;
+      if (game.id) {
+        // 既存の試合データを更新
+        await saveGame(gameToSave);
+        gameId = game.id;
+      } else {
+        // 新しい試合データを作成
+        gameId = await saveGame(gameToSave);
+        setGame(prev => ({ ...prev, id: gameId }));
+      }
+
+      setSnackbarOpen(true);
+      setSnackbarMessage('試合データを保存しました');
       
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    } catch (error: any) {
+      // 最後に保存した試合のIDをローカルストレージに保存
+      localStorage.setItem('lastGameId', gameId);
+    } catch (error) {
       console.error('Error saving game:', error);
-      setSnackbarMessage(`保存に失敗しました: ${error.message}`);
-      setSnackbarSeverity('error');
       setSnackbarOpen(true);
+      setSnackbarMessage('保存中にエラーが発生しました');
     }
   };
 
@@ -404,20 +410,6 @@ const MainApp: React.FC = () => {
       setSnackbarMessage(`読み込みに失敗しました: ${error.message}`);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
-    }
-  };
-
-  // チーム選択ダイアログを表示
-  const showTeamSelectionDialog = async () => {
-    try {
-      setLoadingTeams(true);
-      const teams = await getUserTeams();
-      setAvailableTeams(teams);
-      setTeamSelectionDialogOpen(true);
-    } catch (error) {
-      console.error('Failed to load teams:', error);
-    } finally {
-      setLoadingTeams(false);
     }
   };
 
@@ -517,39 +509,6 @@ const MainApp: React.FC = () => {
     });
   };
 
-  // 共有リンクをコピー
-  const handleCopyShareLink = () => {
-    // 現在の試合が公開設定されていない場合は保存モーダルを表示
-    if (!game.isPublic) {
-      setGame({ ...game, isPublic: true });
-      handleOpenSaveDialog();
-      return;
-    }
-    
-    // 既にIDがある場合はリンクをコピー
-    if (game.id) {
-      const shareUrl = `${window.location.origin}?gameId=${game.id}`;
-      navigator.clipboard.writeText(shareUrl)
-        .then(() => {
-          setSnackbarMessage('共有リンクをクリップボードにコピーしました');
-          setSnackbarSeverity('success');
-          setSnackbarOpen(true);
-        })
-        .catch(err => {
-          console.error('Failed to copy: ', err);
-          // クリップボードへのコピーに失敗した場合は、URLを表示する
-          setSnackbarMessage(`共有リンク: ${shareUrl}`);
-          setSnackbarSeverity('info');
-          setSnackbarOpen(true);
-        });
-    } else {
-      // IDがない場合は先に保存が必要
-      setSnackbarMessage('共有リンクを作成するには先に試合を保存してください');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    }
-  };
-
   return (
     <>
       <AppBar position="sticky">
@@ -624,7 +583,6 @@ const MainApp: React.FC = () => {
                   setSnackbarSeverity('success');
                   setSnackbarOpen(true);
                 }}
-                onShareGame={handleCopyShareLink}
               />
             )}
             
@@ -650,18 +608,6 @@ const MainApp: React.FC = () => {
               awayTeam={game.awayTeam} 
               currentInning={game.currentInning} 
             />
-            
-            {/* 共有モードの場合は共有ボタンを表示 */}
-            {!isSharedMode && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 3 }}>
-                <Button 
-                  variant="outlined" 
-                  onClick={handleCopyShareLink}
-                >
-                  この試合結果を共有
-                </Button>
-              </Box>
-            )}
             
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
               <Tabs value={tabIndex} onChange={handleTabChange}>
@@ -768,7 +714,7 @@ const MainApp: React.FC = () => {
           </Box>
           <Typography variant="caption" color="text.secondary">
             公開設定にすると、URLを知っている人なら誰でもこの試合結果を閲覧できます。
-            {game.isPublic && '保存後に共有URLがクリップボードにコピーされます。'}
+            {game.isPublic && '保存後に共有URLが表示されます。'}
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -898,13 +844,15 @@ const MainApp: React.FC = () => {
       {/* スナックバー通知 */}
       <Snackbar 
         open={snackbarOpen} 
-        autoHideDuration={6000} 
+        autoHideDuration={snackbarSeverity === 'info' ? null : 6000} 
         onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert 
           onClose={() => setSnackbarOpen(false)} 
           severity={snackbarSeverity}
           sx={{ width: '100%' }}
+          variant="filled"
         >
           {snackbarMessage}
         </Alert>
