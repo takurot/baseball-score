@@ -76,7 +76,9 @@ const initialGame: Game = {
   date: new Date().toISOString().split('T')[0],
   homeTeam: initialHomeTeam,
   awayTeam: initialAwayTeam,
-  currentInning: 1
+  currentInning: 1,
+  venue: '', // 球場・場所
+  tournament: '' // 大会名
 };
 
 // アプリのメインコンテンツコンポーネント
@@ -107,6 +109,9 @@ const MainApp: React.FC = () => {
 
   // 日付設定関連の状態
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
+  
+  // 場所と大会名設定関連の状態
+  const [venueDialogOpen, setVenueDialogOpen] = useState(false);
   
   // 現在選択されているチーム
   const currentTeam = tabIndex === 0 ? game.awayTeam : game.homeTeam;
@@ -419,6 +424,31 @@ const MainApp: React.FC = () => {
     });
   };
 
+  // 場所設定ダイアログを開く
+  const handleOpenVenueDialog = () => {
+    setVenueDialogOpen(true);
+  };
+
+  // 場所設定ダイアログを閉じる
+  const handleCloseVenueDialog = () => {
+    setVenueDialogOpen(false);
+  };
+
+  // 場所と大会名を更新する
+  const handleVenueChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setGame({
+      ...game,
+      venue: event.target.value
+    });
+  };
+
+  const handleTournamentChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setGame({
+      ...game,
+      tournament: event.target.value
+    });
+  };
+
   return (
     <>
       <AppBar position="sticky">
@@ -481,6 +511,23 @@ const MainApp: React.FC = () => {
                 }}
               />
             )}
+            
+            {/* 場所と大会名の表示 */}
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                mb: 2,
+                cursor: 'pointer' 
+              }}
+              onClick={handleOpenVenueDialog}
+            >
+              <Typography variant="subtitle1" align="center">
+                {game.tournament ? game.tournament : '大会名をクリックして設定'} 
+                {game.venue && ` @ ${game.venue}`}
+              </Typography>
+            </Box>
             
             <ScoreBoard 
               homeTeam={game.homeTeam} 
@@ -562,6 +609,16 @@ const MainApp: React.FC = () => {
             <Typography variant="body2">
               日付: {new Date(game.date).toLocaleDateString('ja-JP')}
             </Typography>
+            {game.tournament && (
+              <Typography variant="body2">
+                大会名: {game.tournament}
+              </Typography>
+            )}
+            {game.venue && (
+              <Typography variant="body2">
+                場所: {game.venue}
+              </Typography>
+            )}
             <Typography variant="body2">
               対戦: {game.awayTeam.name} vs {game.homeTeam.name}
             </Typography>
@@ -594,6 +651,37 @@ const MainApp: React.FC = () => {
         <DialogActions>
           <Button onClick={handleCloseDateDialog}>キャンセル</Button>
           <Button onClick={handleCloseDateDialog} color="primary">
+            設定
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* 場所と大会名設定ダイアログ */}
+      <Dialog open={venueDialogOpen} onClose={handleCloseVenueDialog}>
+        <DialogTitle>場所と大会名を設定</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="大会名"
+            type="text"
+            value={game.tournament || ''}
+            onChange={handleTournamentChange}
+            fullWidth
+            margin="normal"
+            placeholder="例: ○○リーグ戦"
+          />
+          <TextField
+            label="球場・場所"
+            type="text"
+            value={game.venue || ''}
+            onChange={handleVenueChange}
+            fullWidth
+            margin="normal"
+            placeholder="例: ○○グラウンド"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseVenueDialog}>キャンセル</Button>
+          <Button onClick={handleCloseVenueDialog} color="primary">
             設定
           </Button>
         </DialogActions>
