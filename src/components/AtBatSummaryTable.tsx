@@ -337,7 +337,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning }
               
               return (
                 <TableRow key={player.id}>
-                  <TableCell>{player.order}</TableCell>
+                  <TableCell>{player.order === 0 ? '-' : player.order}</TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontWeight: player.isActive ? 'bold' : 'normal' }}>
                       {player.name}
