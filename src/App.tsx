@@ -59,14 +59,14 @@ const theme = createTheme({
 // 初期データ
 const initialHomeTeam: Team = {
   id: uuidv4(),
-  name: 'ホームチーム',
+  name: '後攻チーム',
   players: [],
   atBats: []
 };
 
 const initialAwayTeam: Team = {
   id: uuidv4(),
-  name: 'アウェイチーム',
+  name: '先攻チーム',
   players: [],
   atBats: []
 };
@@ -388,7 +388,7 @@ const MainApp: React.FC = () => {
       }
       
       closeTeamSelectionDialog();
-      setSnackbarMessage(`${teamSetting.name}を${teamSelectionMode === 'home' ? 'ホーム' : 'アウェイ'}チームに設定しました`);
+      setSnackbarMessage(`${teamSetting.name}を${teamSelectionMode === 'home' ? '後攻' : '先攻'}チームに設定しました`);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error: any) {
@@ -556,7 +556,7 @@ const MainApp: React.FC = () => {
         fullWidth
       >
         <DialogTitle>
-          {teamSelectionMode === 'home' ? 'ホーム' : 'アウェイ'}チームを選択
+          {teamSelectionMode === 'home' ? '後攻' : '先攻'}チームを選択
         </DialogTitle>
         <DialogContent>
           {loadingTeams ? (
@@ -600,10 +600,10 @@ const MainApp: React.FC = () => {
       >
         <MenuItem onClick={handleNewGame}>新しい試合</MenuItem>
         <MenuItem onClick={() => { setTeamSelection('home'); handleMenuClose(); }}>
-          ホームチームを選択
+          後攻チームを選択
         </MenuItem>
         <MenuItem onClick={() => { setTeamSelection('away'); handleMenuClose(); }}>
-          アウェイチームを選択
+          先攻チームを選択
         </MenuItem>
         <Divider />
         <MenuItem onClick={() => { toggleGameList(); handleMenuClose(); }}>
