@@ -32,6 +32,7 @@ export const saveGame = async (game: Game): Promise<string> => {
       ...gameClone,
       userId: user.uid, // ユーザーIDを追加
       userEmail: user.email, // ユーザーのメールアドレスを追加
+      isPublic: game.isPublic ?? false, // 公開状態を追加
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -103,6 +104,30 @@ export const getGameById = async (gameId: string): Promise<Game | null> => {
     }
   } catch (error) {
     console.error('Error getting game:', error);
+    throw error;
+  }
+};
+
+// 特定の試合データを取得（パブリックに共有されたゲーム用）
+export const getSharedGameById = async (gameId: string): Promise<Game | null> => {
+  try {
+    const docRef = doc(db, GAMES_COLLECTION, gameId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      const data = docSnap.data() as Game;
+      
+      // 公開設定されているかチェック
+      if (!data.isPublic) {
+        throw new Error('この試合データは公開されていません');
+      }
+      
+      return { ...data, id: docSnap.id };
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error getting shared game:', error);
     throw error;
   }
 };
