@@ -43,6 +43,8 @@ import { getUserTeams, getTeamById } from './firebase/teamService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import UserProfile from './components/UserProfile';
+import { analytics } from './firebase/config';
+import { logEvent } from 'firebase/analytics';
 
 // テーマの作成
 const theme = createTheme({
@@ -79,6 +81,14 @@ const initialGame: Game = {
   currentInning: 1,
   venue: '', // 球場・場所
   tournament: '' // 大会名
+};
+
+// アナリティクスイベントを送信するヘルパー関数
+const sendAnalyticsEvent = (eventName: string, eventParams?: Record<string, any>) => {
+  if (analytics) {
+    logEvent(analytics, eventName, eventParams);
+    console.log(`Analytics event sent: ${eventName}`, eventParams);
+  }
 };
 
 // アプリのメインコンテンツコンポーネント
@@ -141,6 +151,12 @@ const MainApp: React.FC = () => {
             setIsSharedMode(true);
             setViewMode('summary'); // 共有リンクでは自動的に一覧表示モードに
             setSharedGameError(null);
+            
+            // 共有モードの場合はアナリティクスイベントを送信
+            sendAnalyticsEvent('shared_game_view', { 
+              gameId: sharedGameId,
+              gameTitle: `${sharedGame.awayTeam.name} vs ${sharedGame.homeTeam.name}`
+            });
           } else {
             console.error('Game not found:', sharedGameId);
             setSharedGameError('指定された試合データが見つかりませんでした。');
@@ -151,6 +167,9 @@ const MainApp: React.FC = () => {
         } finally {
           setSharedGameLoading(false);
         }
+      } else {
+        // 通常モードの場合はページビューイベントを送信
+        sendAnalyticsEvent('page_view', { page_title: 'Home' });
       }
     };
     
@@ -342,7 +361,11 @@ const MainApp: React.FC = () => {
 
   // 表示モードの切り替え
   const toggleViewMode = () => {
-    setViewMode(viewMode === 'edit' ? 'summary' : 'edit');
+    const newMode = viewMode === 'edit' ? 'summary' : 'edit';
+    setViewMode(newMode);
+    
+    // アナリティクスイベント：表示モード切り替え
+    sendAnalyticsEvent('view_mode_change', { mode: newMode });
   };
 
   // 保存ダイアログを開く
@@ -379,11 +402,28 @@ const MainApp: React.FC = () => {
         gameId = await saveGameAsNew(gameToSave);
         setGame(prev => ({ ...prev, id: gameId }));
         message = '新しい試合データとして保存しました';
+        
+        // アナリティクスイベントを送信
+        sendAnalyticsEvent('game_save_new', { 
+          gameId,
+          teams: `${game.awayTeam.name} vs ${game.homeTeam.name}`
+        });
       } else {
         // 既存の試合データを更新または新規に保存
         gameId = await saveGame(gameToSave);
         if (!game.id) {
           setGame(prev => ({ ...prev, id: gameId }));
+          // 新規保存の場合
+          sendAnalyticsEvent('game_save_new', { 
+            gameId,
+            teams: `${game.awayTeam.name} vs ${game.homeTeam.name}`
+          });
+        } else {
+          // 上書き保存の場合
+          sendAnalyticsEvent('game_save_update', { 
+            gameId,
+            teams: `${game.awayTeam.name} vs ${game.homeTeam.name}`
+          });
         }
         message = '試合データを保存しました';
       }
@@ -414,6 +454,12 @@ const MainApp: React.FC = () => {
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
         setShowGameList(false);
+        
+        // アナリティクスイベント：試合データ読み込み
+        sendAnalyticsEvent('game_load', { 
+          gameId,
+          teams: `${loadedGame.awayTeam.name} vs ${loadedGame.homeTeam.name}`
+        });
       }
     } catch (error: any) {
       console.error('Error loading game:', error);
