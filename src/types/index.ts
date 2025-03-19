@@ -71,6 +71,8 @@ export interface Game {
   currentInning: number;
   userId?: string; // ユーザーID（オプショナル）
   userEmail?: string; // ユーザーのメールアドレス（オプショナル）
+  venue?: string; // 球場・場所
+  tournament?: string; // 大会名
 }
 
 // 保存用の選手情報
