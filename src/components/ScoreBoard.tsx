@@ -56,7 +56,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
   })));
 
   return (
-    <Paper sx={{ mb: 3 }}>
+    <Paper sx={{ mb: 3, mt: 3 }}>
       <TableContainer>
         <Table size="small">
           <TableHead>

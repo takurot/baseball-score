@@ -432,7 +432,7 @@ const MainApp: React.FC = () => {
         </Toolbar>
       </AppBar>
       
-      <Container>
+      <Container sx={{ pt: 2 }}>
         {/* チーム管理画面 */}
         {showTeamManagement ? (
           <TeamList 
