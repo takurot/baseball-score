@@ -106,7 +106,7 @@ const MainApp: React.FC = () => {
   const menuOpen = Boolean(menuAnchorEl);
 
   // 現在選択されているチーム
-  const currentTeam = tabIndex === 0 ? game.homeTeam : game.awayTeam;
+  const currentTeam = tabIndex === 0 ? game.awayTeam : game.homeTeam;
   
   // 打席結果の編集関連の状態
   const [editingAtBat, setEditingAtBat] = useState<AtBat | null>(null);
@@ -142,9 +142,9 @@ const MainApp: React.FC = () => {
   // チーム更新ハンドラー
   const handleTeamUpdate = (updatedTeam: Team) => {
     if (tabIndex === 0) {
-      setGame({ ...game, homeTeam: updatedTeam });
-    } else {
       setGame({ ...game, awayTeam: updatedTeam });
+    } else {
+      setGame({ ...game, homeTeam: updatedTeam });
     }
     
     // 選手が更新された場合、選択中の選手も更新する
@@ -161,16 +161,16 @@ const MainApp: React.FC = () => {
     if (tabIndex === 0) {
       setGame({
         ...game,
-        homeTeam: {
-          ...game.homeTeam,
+        awayTeam: {
+          ...game.awayTeam,
           atBats: updatedAtBats
         }
       });
     } else {
       setGame({
         ...game,
-        awayTeam: {
-          ...game.awayTeam,
+        homeTeam: {
+          ...game.homeTeam,
           atBats: updatedAtBats
         }
       });
@@ -192,16 +192,16 @@ const MainApp: React.FC = () => {
     if (tabIndex === 0) {
       setGame({
         ...game,
-        homeTeam: {
-          ...game.homeTeam,
+        awayTeam: {
+          ...game.awayTeam,
           atBats: updatedAtBats
         }
       });
     } else {
       setGame({
         ...game,
-        awayTeam: {
-          ...game.awayTeam,
+        homeTeam: {
+          ...game.homeTeam,
           atBats: updatedAtBats
         }
       });
@@ -222,16 +222,16 @@ const MainApp: React.FC = () => {
     if (tabIndex === 0) {
       setGame({
         ...game,
-        homeTeam: {
-          ...game.homeTeam,
+        awayTeam: {
+          ...game.awayTeam,
           atBats: updatedAtBats
         }
       });
     } else {
       setGame({
         ...game,
-        awayTeam: {
-          ...game.awayTeam,
+        homeTeam: {
+          ...game.homeTeam,
           atBats: updatedAtBats
         }
       });
@@ -463,8 +463,8 @@ const MainApp: React.FC = () => {
             
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
               <Tabs value={tabIndex} onChange={handleTabChange}>
-                <Tab label={game.homeTeam.name} />
                 <Tab label={game.awayTeam.name} />
+                <Tab label={game.homeTeam.name} />
               </Tabs>
             </Box>
 
