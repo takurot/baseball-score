@@ -126,6 +126,14 @@ const TeamManager: React.FC<TeamManagerProps> = ({
     onTeamUpdate({ ...team, players: updatedPlayers });
   };
 
+  // 選手の打順を更新する
+  const handleUpdatePlayerOrder = (playerId: string, order: number) => {
+    const updatedPlayers = team.players.map(p => 
+      p.id === playerId ? { ...p, order } : p
+    );
+    onTeamUpdate({ ...team, players: updatedPlayers });
+  };
+
   // チーム名編集ダイアログを開く
   const handleOpenTeamNameDialog = () => {
     setTeamName(team.name);
@@ -243,6 +251,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         onRegisterAtBat={onRegisterAtBat}
         onToggleStatus={handleTogglePlayerStatus}
         onEditPlayer={handleEditPlayer}
+        onUpdatePlayerOrder={handleUpdatePlayerOrder}
       />
 
       {/* 選手追加/編集ダイアログ */}

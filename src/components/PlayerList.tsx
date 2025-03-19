@@ -10,7 +10,11 @@ import {
   Typography,
   Button,
   IconButton,
-  Tooltip
+  Tooltip,
+  Select,
+  MenuItem,
+  FormControl,
+  SelectChangeEvent
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import { Player } from '../types';
@@ -20,19 +24,32 @@ interface PlayerListProps {
   onRegisterAtBat?: (player: Player) => void;
   onToggleStatus?: (playerId: string) => void;
   onEditPlayer?: (playerId: string) => void;
+  onUpdatePlayerOrder?: (playerId: string, order: number) => void;
 }
 
 const PlayerList: React.FC<PlayerListProps> = ({ 
   players, 
   onRegisterAtBat, 
   onToggleStatus,
-  onEditPlayer
+  onEditPlayer,
+  onUpdatePlayerOrder
 }) => {
   const sortedPlayers = [...players].sort((a, b) => a.order - b.order);
   
   // 出場中の選手と控えの選手を分ける
   const activePlayers = sortedPlayers.filter(player => player.isActive);
   const benchPlayers = sortedPlayers.filter(player => !player.isActive);
+
+  // 打順変更ハンドラー
+  const handleOrderChange = (playerId: string, event: SelectChangeEvent<number>) => {
+    if (onUpdatePlayerOrder) {
+      const newOrder = Number(event.target.value);
+      onUpdatePlayerOrder(playerId, newOrder);
+    }
+  };
+
+  // 打順選択用の選択肢を生成（1～9）
+  const orderOptions = Array.from({ length: 9 }, (_, i) => i + 1);
 
   return (
     <TableContainer component={Paper} sx={{ mb: 3 }}>
@@ -61,7 +78,28 @@ const PlayerList: React.FC<PlayerListProps> = ({
                   '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' }
                 }}
               >
-                <TableCell>{player.order}</TableCell>
+                <TableCell>
+                  {onUpdatePlayerOrder ? (
+                    <FormControl size="small" sx={{ minWidth: 65 }}>
+                      <Select
+                        value={player.order === 0 ? '' : player.order}
+                        onChange={(e: SelectChangeEvent<number>) => handleOrderChange(player.id, e)}
+                        displayEmpty
+                      >
+                        <MenuItem value="">
+                          <em>未設定</em>
+                        </MenuItem>
+                        {orderOptions.map((order) => (
+                          <MenuItem key={order} value={order}>
+                            {order}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    player.order || '未設定'
+                  )}
+                </TableCell>
                 <TableCell>{player.number}</TableCell>
                 <TableCell>{player.name}</TableCell>
                 <TableCell>{player.position}</TableCell>
@@ -132,7 +170,28 @@ const PlayerList: React.FC<PlayerListProps> = ({
                     '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
                   }}
                 >
-                  <TableCell>{player.order}</TableCell>
+                  <TableCell>
+                    {onUpdatePlayerOrder ? (
+                      <FormControl size="small" sx={{ minWidth: 65 }}>
+                        <Select
+                          value={player.order === 0 ? '' : player.order}
+                          onChange={(e: SelectChangeEvent<number>) => handleOrderChange(player.id, e)}
+                          displayEmpty
+                        >
+                          <MenuItem value="">
+                            <em>未設定</em>
+                          </MenuItem>
+                          {orderOptions.map((order) => (
+                            <MenuItem key={order} value={order}>
+                              {order}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    ) : (
+                      player.order || '未設定'
+                    )}
+                  </TableCell>
                   <TableCell>{player.number}</TableCell>
                   <TableCell>{player.name}</TableCell>
                   <TableCell>{player.position}</TableCell>
