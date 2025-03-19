@@ -697,25 +697,6 @@ const MainApp: React.FC = () => {
               対戦: {game.awayTeam.name} vs {game.homeTeam.name}
             </Typography>
           </Box>
-          
-          <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body2">
-              公開設定:
-            </Typography>
-            <Button 
-              variant={game.isPublic ? "contained" : "outlined"} 
-              color={game.isPublic ? "primary" : "inherit"}
-              onClick={() => setGame({ ...game, isPublic: !game.isPublic })}
-              size="small"
-              sx={{ ml: 2 }}
-            >
-              {game.isPublic ? "公開" : "非公開"}
-            </Button>
-          </Box>
-          <Typography variant="caption" color="text.secondary">
-            公開設定にすると、URLを知っている人なら誰でもこの試合結果を閲覧できます。
-            {game.isPublic && '保存後に共有URLが表示されます。'}
-          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseSaveDialog}>キャンセル</Button>
