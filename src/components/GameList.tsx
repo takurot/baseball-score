@@ -16,11 +16,17 @@ import {
   DialogContentText,
   DialogActions,
   Button,
-  ListItemSecondaryAction
+  ListItemSecondaryAction,
+  Switch,
+  Tooltip,
+  TextField
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ShareIcon from '@mui/icons-material/Share';
-import { getAllGames, deleteGame } from '../firebase/gameService';
+import PublicIcon from '@mui/icons-material/Public';
+import PublicOffIcon from '@mui/icons-material/PublicOff';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { getAllGames, deleteGame, updateGamePublicStatus } from '../firebase/gameService';
 import { Game } from '../types';
 
 interface GameListProps {
@@ -35,6 +41,9 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [gameToDelete, setGameToDelete] = useState<string | null>(null);
+  const [shareUrlDialogOpen, setShareUrlDialogOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [updatingPublicStatus, setUpdatingPublicStatus] = useState<string | null>(null);
 
   const fetchGames = async () => {
     try {
@@ -106,6 +115,46 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
     }
   };
 
+  // 公開状態の切り替え
+  const handleTogglePublic = async (gameId: string, currentPublicStatus: boolean, event: React.MouseEvent) => {
+    event.stopPropagation();
+    try {
+      setUpdatingPublicStatus(gameId);
+      await updateGamePublicStatus(gameId, !currentPublicStatus);
+      // 状態を更新
+      setGames(games.map(game => 
+        game.id === gameId 
+          ? { ...game, isPublic: !currentPublicStatus } 
+          : game
+      ));
+    } catch (err) {
+      console.error('Failed to update public status:', err);
+      setError('公開設定の更新に失敗しました。');
+    } finally {
+      setUpdatingPublicStatus(null);
+    }
+  };
+
+  // 共有URLを直接表示
+  const handleShowShareUrl = (gameId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    // 共有URLを生成
+    const url = `${window.location.origin}?gameId=${gameId}`;
+    setShareUrl(url);
+    setShareUrlDialogOpen(true);
+  };
+
+  // URLをクリップボードにコピー
+  const handleCopyToClipboard = () => {
+    try {
+      navigator.clipboard.writeText(shareUrl);
+      alert('URLをクリップボードにコピーしました');
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      alert('URLのコピーに失敗しました。手動でコピーしてください。');
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
@@ -142,21 +191,39 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
             <ListItem 
               disablePadding
               secondaryAction={
-                <Box>
-                  {onShareGame && (
-                    <IconButton
-                      edge="end"
-                      aria-label="share"
-                      onClick={(e) => handleShareGame(game.id, e)}
-                      sx={{ mr: 1 }}
-                    >
-                      <ShareIcon />
-                    </IconButton>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Tooltip title={game.isPublic ? "公開中" : "非公開"}>
+                    <span>
+                      <Switch
+                        checked={Boolean(game.isPublic)}
+                        onChange={(e) => {}}
+                        onClick={(e) => handleTogglePublic(game.id, Boolean(game.isPublic), e)}
+                        disabled={updatingPublicStatus === game.id}
+                        color="primary"
+                        size="small"
+                        icon={<PublicOffIcon />}
+                        checkedIcon={<PublicIcon />}
+                      />
+                    </span>
+                  </Tooltip>
+                  
+                  {game.isPublic && (
+                    <Tooltip title="共有URLを表示">
+                      <IconButton
+                        aria-label="copy share link"
+                        onClick={(e) => handleShowShareUrl(game.id, e)}
+                        size="small"
+                      >
+                        <ContentCopyIcon />
+                      </IconButton>
+                    </Tooltip>
                   )}
+                  
                   <IconButton 
                     edge="end" 
                     aria-label="delete"
                     onClick={(e) => handleOpenDeleteDialog(game.id, e)}
+                    size="small"
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -171,7 +238,8 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
                       {formatDate(game.date)}
                       {game.tournament && ` | ${game.tournament}`}
                       {game.venue && ` @ ${game.venue}`}
-                      {game.isPublic && ' | 公開'}
+                      {game.currentInning && ` | ${game.currentInning}回`}
+                      {game.isPublic && ' | 公開中'}
                     </>
                   }
                 />
@@ -196,6 +264,44 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
           <Button onClick={handleCloseDeleteDialog}>キャンセル</Button>
           <Button onClick={handleDeleteGame} color="error">
             削除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 共有URL表示ダイアログ */}
+      <Dialog 
+        open={shareUrlDialogOpen} 
+        onClose={() => setShareUrlDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>共有URL</DialogTitle>
+        <DialogContent>
+          <Typography paragraph>
+            以下のURLを共有することで、この試合結果を他の人に共有できます。
+          </Typography>
+          
+          <TextField
+            value={shareUrl}
+            fullWidth
+            variant="outlined"
+            margin="normal"
+            InputProps={{
+              readOnly: true,
+            }}
+            onClick={(e) => (e.target as HTMLInputElement).select()}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            variant="contained" 
+            onClick={handleCopyToClipboard}
+            color="primary"
+          >
+            URLをコピー
+          </Button>
+          <Button onClick={() => setShareUrlDialogOpen(false)}>
+            閉じる
           </Button>
         </DialogActions>
       </Dialog>
