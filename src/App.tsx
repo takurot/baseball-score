@@ -271,7 +271,8 @@ const MainApp: React.FC = () => {
     if (showTeamManagement) {
       setShowTeamManagement(false);
     }
-    showTeamSelectionDialog();
+    // チーム選択ダイアログを表示せず、直接新しい試合画面に遷移
+    // showTeamSelectionDialog();
   };
 
   // 表示モードの切り替え
