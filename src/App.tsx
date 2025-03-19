@@ -566,12 +566,7 @@ const MainApp: React.FC = () => {
       <Container sx={{ pt: 2 }}>
         {/* チーム管理画面 */}
         {showTeamManagement && !isSharedMode ? (
-          <TeamList 
-            onSelectTeam={(teamId) => {
-              handleSelectTeamForGame(teamId);
-              toggleTeamManagement(); // チーム選択後はチーム管理画面を閉じる
-            }}
-          />
+          <TeamList />
         ) : (
           <>
             {/* ゲーム一覧 */}

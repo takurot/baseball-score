@@ -77,11 +77,7 @@ const TabPanel = (props: TabPanelProps) => {
   );
 };
 
-interface TeamListProps {
-  onSelectTeam?: (teamId: string) => void;
-}
-
-const TeamList: React.FC<TeamListProps> = ({ onSelectTeam }) => {
+const TeamList: React.FC = () => {
   const { currentUser } = useAuth();
   const [teams, setTeams] = useState<TeamSetting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -319,14 +315,6 @@ const TeamList: React.FC<TeamListProps> = ({ onSelectTeam }) => {
     }
   };
   
-  // 新しいゲームの作成時にチームデータを呼び出す
-  const handleSelectTeamForGame = (teamId: string) => {
-    // 親コンポーネントに選択されたチームIDを通知
-    if (onSelectTeam) {
-      onSelectTeam(teamId);
-    }
-  };
-  
   // 選手管理タブの内容
   const renderPlayerManagementTab = () => {
     if (teams.length === 0) {
@@ -496,13 +484,6 @@ const TeamList: React.FC<TeamListProps> = ({ onSelectTeam }) => {
                     </Box>
                   </CardContent>
                   <CardActions>
-                    <Button 
-                      size="small" 
-                      variant="outlined" 
-                      onClick={() => handleSelectTeamForGame(team.id)}
-                    >
-                      このチームで試合開始
-                    </Button>
                     <Button 
                       size="small" 
                       startIcon={<EditIcon />}
