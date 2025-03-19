@@ -105,6 +105,9 @@ const MainApp: React.FC = () => {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchorEl);
 
+  // 日付設定関連の状態
+  const [dateDialogOpen, setDateDialogOpen] = useState(false);
+  
   // 現在選択されているチーム
   const currentTeam = tabIndex === 0 ? game.awayTeam : game.homeTeam;
   
@@ -398,6 +401,24 @@ const MainApp: React.FC = () => {
     }
   };
 
+  // 日付設定ダイアログを開く
+  const handleOpenDateDialog = () => {
+    setDateDialogOpen(true);
+  };
+
+  // 日付設定ダイアログを閉じる
+  const handleCloseDateDialog = () => {
+    setDateDialogOpen(false);
+  };
+
+  // 日付を更新する
+  const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setGame({
+      ...game,
+      date: event.target.value
+    });
+  };
+
   return (
     <>
       <AppBar position="sticky">
@@ -414,6 +435,13 @@ const MainApp: React.FC = () => {
             <SportsBaseballIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
             野球スコア
           </Typography>
+          <Button 
+            color="inherit" 
+            onClick={handleOpenDateDialog}
+            sx={{ mr: 1 }}
+          >
+            {new Date(game.date).toLocaleDateString('ja-JP')}
+          </Button>
           <Button 
             color="inherit" 
             startIcon={<SaveIcon />}
@@ -543,6 +571,30 @@ const MainApp: React.FC = () => {
           <Button onClick={handleCloseSaveDialog}>キャンセル</Button>
           <Button onClick={handleSaveGame} color="primary">
             保存
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* 日付設定ダイアログ */}
+      <Dialog open={dateDialogOpen} onClose={handleCloseDateDialog}>
+        <DialogTitle>試合日を設定</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="日付"
+            type="date"
+            value={game.date}
+            onChange={handleDateChange}
+            fullWidth
+            margin="normal"
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDateDialog}>キャンセル</Button>
+          <Button onClick={handleCloseDateDialog} color="primary">
+            設定
           </Button>
         </DialogActions>
       </Dialog>
