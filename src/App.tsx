@@ -94,7 +94,7 @@ const MainApp: React.FC = () => {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('success');
   
   // チーム管理関連の状態
   const [showTeamManagement, setShowTeamManagement] = useState(false);
@@ -357,15 +357,29 @@ const MainApp: React.FC = () => {
     try {
       const gameId = await saveGame(game);
       setSaveDialogOpen(false);
-      setSnackbarMessage('試合データを保存しました');
+      
+      // IDを更新
+      setGame(prevGame => ({
+        ...prevGame,
+        id: gameId
+      }));
+
+      // 公開設定がONの場合は共有リンクをコピー
+      if (game.isPublic) {
+        const shareUrl = `${window.location.origin}?gameId=${gameId}`;
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          setSnackbarMessage('試合データを保存しました。共有URLをクリップボードにコピーしました');
+        } catch (clipboardErr) {
+          console.error('Failed to copy to clipboard:', clipboardErr);
+          setSnackbarMessage(`試合データを保存しました。共有URL: ${shareUrl}`);
+        }
+      } else {
+        setSnackbarMessage('試合データを保存しました');
+      }
+      
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
-
-      // IDを更新
-      setGame({
-        ...game,
-        id: gameId
-      });
     } catch (error: any) {
       console.error('Error saving game:', error);
       setSnackbarMessage(`保存に失敗しました: ${error.message}`);
@@ -523,8 +537,9 @@ const MainApp: React.FC = () => {
         })
         .catch(err => {
           console.error('Failed to copy: ', err);
-          setSnackbarMessage('共有リンクのコピーに失敗しました');
-          setSnackbarSeverity('error');
+          // クリップボードへのコピーに失敗した場合は、URLを表示する
+          setSnackbarMessage(`共有リンク: ${shareUrl}`);
+          setSnackbarSeverity('info');
           setSnackbarOpen(true);
         });
     } else {
@@ -753,6 +768,7 @@ const MainApp: React.FC = () => {
           </Box>
           <Typography variant="caption" color="text.secondary">
             公開設定にすると、URLを知っている人なら誰でもこの試合結果を閲覧できます。
+            {game.isPublic && '保存後に共有URLがクリップボードにコピーされます。'}
           </Typography>
         </DialogContent>
         <DialogActions>
