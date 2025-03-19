@@ -11,8 +11,18 @@ import {
   Tooltip,
   Chip,
   Box,
-  Stack
+  Stack,
+  useMediaQuery,
+  useTheme,
+  Card,
+  CardContent,
+  Grid,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Divider
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Team, AtBat, HitResult } from '../types';
 
 interface AtBatSummaryTableProps {
@@ -207,7 +217,10 @@ const formatOPS = (value: number): string => {
   return value.toFixed(3);
 };
 
-const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning }) => {
+const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning }): JSX.Element => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   // 打順でソートした選手リストを修正
   // 1. 控えかつ打順0の選手を下に表示
   // 2. それ以外は打順でソート
@@ -281,8 +294,8 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning }
                   label={`${result}${rbiText}`} 
                   size="small"
                   sx={{ 
-                    fontSize: '0.7rem', 
-                    height: '24px',
+                    fontSize: isMobile ? '0.65rem' : '0.7rem', 
+                    height: isMobile ? '22px' : '24px',
                     backgroundColor,
                     color: textColor,
                     fontWeight: ['2B', '3B', 'HR'].includes(result) ? 'bold' : 'normal',
@@ -297,23 +310,136 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning }
     );
   };
 
-  return (
-    <Paper sx={{ p: 2, mb: 3, overflowX: 'auto' }}>
-      <Typography variant="h6" gutterBottom>
-        {team.name}の打席結果一覧
-      </Typography>
-      
-      <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-        <Typography variant="subtitle2">【凡例】</Typography>
-        <Chip size="small" sx={{ backgroundColor: customColors.hit, color: '#FFFFFF' }} label="ヒット" />
-        <Chip size="small" sx={{ backgroundColor: customColors.double, color: '#FFFFFF', fontWeight: 'bold' }} label="二塁打" />
-        <Chip size="small" sx={{ backgroundColor: customColors.triple, color: '#FFFFFF', fontWeight: 'bold' }} label="三塁打" />
-        <Chip size="small" sx={{ backgroundColor: customColors.homerun, color: '#FFFFFF', fontWeight: 'bold' }} label="ホームラン" />
-        <Chip size="small" sx={{ backgroundColor: customColors.walk }} label="四球/死球" />
-        <Chip size="small" sx={{ backgroundColor: customColors.error, color: '#FFFFFF' }} label="エラー" />
-        <Chip size="small" sx={{ backgroundColor: customColors.out }} label="アウト" />
-      </Box>
-      
+  // モバイル向けの結果チップ表示
+  const renderAtBatChips = (atBats: AtBat[]) => {
+    if (!atBats.length) {
+      return <Typography variant="body2" align="center">-</Typography>;
+    }
+
+    return (
+      <Stack direction="row" spacing={0.5} justifyContent="center" flexWrap="wrap">
+        {atBats.map((atBat) => {
+          const result = atBat.result;
+          const rbiText = atBat.rbi ? `(${atBat.rbi})` : '';
+          const backgroundColor = getResultColor(result);
+          const textColor = getTextColor(result);
+          
+          return (
+            <Tooltip 
+              key={atBat.id}
+              title={
+                <div>
+                  <div>{hitResultLabels[result]}</div>
+                  {atBat.description && <div>{atBat.description}</div>}
+                  {atBat.rbi ? <div>打点: {atBat.rbi}</div> : null}
+                </div>
+              }
+            >
+              <Chip 
+                label={`${result}${rbiText}`} 
+                size="small"
+                sx={{ 
+                  fontSize: '0.65rem', 
+                  height: '22px',
+                  backgroundColor,
+                  color: textColor,
+                  fontWeight: ['2B', '3B', 'HR'].includes(result) ? 'bold' : 'normal',
+                  margin: '2px'
+                }}
+              />
+            </Tooltip>
+          );
+        })}
+      </Stack>
+    );
+  };
+
+  // モバイル向けの選手カード表示
+  const renderMobileView = (): React.ReactNode => {
+    return (
+      <>
+        {sortedPlayers.map((player) => {
+          const playerAtBats = getPlayerAllAtBats(player.id);
+          const stats = calculateBattingStats(playerAtBats);
+          
+          return (
+            <Accordion key={player.id} sx={{ mb: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Grid container alignItems="center">
+                  <Grid item xs={2}>
+                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                      {player.order === 0 ? '-' : player.order}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={7}>
+                    <Typography variant="body1" sx={{ fontWeight: player.isActive ? 'bold' : 'normal' }}>
+                      {player.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {player.position} #{player.number}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={3}>
+                    <Typography variant="body2" align="right">
+                      {stats.hits}/{stats.atBats}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" align="right" display="block">
+                      {formatBattingAvg(stats.battingAvg)}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <Divider sx={{ mb: 1 }} />
+                <Grid container spacing={1}>
+                  {innings.map((inning) => (
+                    <Grid item xs={12} key={inning}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="body2" sx={{ minWidth: '40px', fontWeight: 'bold' }}>
+                          {inning}回:
+                        </Typography>
+                        <Box sx={{ flexGrow: 1 }}>
+                          {renderAtBatChips(getPlayerAtBatsForInning(player.id, inning))}
+                        </Box>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+                <Box sx={{ mt: 2, backgroundColor: '#f5f5f5', p: 1, borderRadius: 1 }}>
+                  <Grid container spacing={1}>
+                    <Grid item xs={4}>
+                      <Typography variant="caption" color="text.secondary">打数</Typography>
+                      <Typography variant="body2" align="center">{stats.atBats}</Typography>
+                    </Grid>
+                    <Grid item xs={4}>
+                      <Typography variant="caption" color="text.secondary">安打</Typography>
+                      <Typography variant="body2" align="center">{stats.hits}</Typography>
+                    </Grid>
+                    <Grid item xs={4}>
+                      <Typography variant="caption" color="text.secondary">打点</Typography>
+                      <Typography variant="body2" align="center">{stats.rbis}</Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">打率</Typography>
+                      <Typography variant="body2" align="center">{formatBattingAvg(stats.battingAvg)}</Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">OPS</Typography>
+                      <Typography variant="body2" align="center">{formatOPS(stats.ops)}</Typography>
+                    </Grid>
+                  </Grid>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          );
+        })}
+      </>
+    );
+  };
+
+  // デスクトップ向けのテーブル表示
+  const renderDesktopView = (): React.ReactNode => {
+    return (
       <TableContainer>
         <Table size="small">
           <TableHead>
@@ -358,6 +484,27 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning }
           </TableBody>
         </Table>
       </TableContainer>
+    );
+  };
+
+  return (
+    <Paper sx={{ p: 2, mb: 3, overflowX: 'auto' }}>
+      <Typography variant="h6" gutterBottom>
+        {team.name}の打席結果一覧
+      </Typography>
+      
+      <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+        <Typography variant="subtitle2">【凡例】</Typography>
+        <Chip size="small" sx={{ backgroundColor: customColors.hit, color: '#FFFFFF' }} label="ヒット" />
+        <Chip size="small" sx={{ backgroundColor: customColors.double, color: '#FFFFFF', fontWeight: 'bold' }} label="二塁打" />
+        <Chip size="small" sx={{ backgroundColor: customColors.triple, color: '#FFFFFF', fontWeight: 'bold' }} label="三塁打" />
+        <Chip size="small" sx={{ backgroundColor: customColors.homerun, color: '#FFFFFF', fontWeight: 'bold' }} label="ホームラン" />
+        <Chip size="small" sx={{ backgroundColor: customColors.walk }} label="四球/死球" />
+        <Chip size="small" sx={{ backgroundColor: customColors.error, color: '#FFFFFF' }} label="エラー" />
+        <Chip size="small" sx={{ backgroundColor: customColors.out }} label="アウト" />
+      </Box>
+      
+      {isMobile ? renderMobileView() : renderDesktopView()}
     </Paper>
   );
 };
