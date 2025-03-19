@@ -38,7 +38,7 @@ import ScoreBoard from './components/ScoreBoard';
 import AtBatSummaryTable from './components/AtBatSummaryTable';
 import GameList from './components/GameList';
 import TeamList from './components/TeamList';
-import { saveGame, getGameById, getSharedGameById } from './firebase/gameService';
+import { saveGame, getGameById, getSharedGameById, saveGameAsNew } from './firebase/gameService';
 import { getUserTeams, getTeamById } from './firebase/teamService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
@@ -349,14 +349,14 @@ const MainApp: React.FC = () => {
   const handleOpenSaveDialog = () => {
     setSaveDialogOpen(true);
   };
-
+  
   // 保存ダイアログを閉じる
   const handleCloseSaveDialog = () => {
     setSaveDialogOpen(false);
   };
 
   // 試合データを保存する関数
-  const handleSaveGame = async () => {
+  const handleSaveGame = async (saveAsNew: boolean = false) => {
     try {
       if (!currentUser) {
         setSnackbarOpen(true);
@@ -372,25 +372,35 @@ const MainApp: React.FC = () => {
 
       // Firestoreに保存
       let gameId: string;
-      if (game.id) {
-        // 既存の試合データを更新
-        await saveGame(gameToSave);
-        gameId = game.id;
-      } else {
-        // 新しい試合データを作成
-        gameId = await saveGame(gameToSave);
+      let message: string;
+      
+      if (saveAsNew) {
+        // 新しい試合データとして保存
+        gameId = await saveGameAsNew(gameToSave);
         setGame(prev => ({ ...prev, id: gameId }));
+        message = '新しい試合データとして保存しました';
+      } else {
+        // 既存の試合データを更新または新規に保存
+        gameId = await saveGame(gameToSave);
+        if (!game.id) {
+          setGame(prev => ({ ...prev, id: gameId }));
+        }
+        message = '試合データを保存しました';
       }
 
       setSnackbarOpen(true);
-      setSnackbarMessage('試合データを保存しました');
+      setSnackbarMessage(message);
       
       // 最後に保存した試合のIDをローカルストレージに保存
       localStorage.setItem('lastGameId', gameId);
+      
+      // 保存ダイアログを閉じる
+      setSaveDialogOpen(false);
     } catch (error) {
       console.error('Error saving game:', error);
       setSnackbarOpen(true);
-      setSnackbarMessage('保存中にエラーが発生しました');
+      setSnackbarMessage(error instanceof Error ? `保存中にエラーが発生しました: ${error.message}` : '保存中に不明なエラーが発生しました');
+      setSnackbarSeverity('error');
     }
   };
 
@@ -688,13 +698,30 @@ const MainApp: React.FC = () => {
             <Typography variant="body2">
               対戦: {game.awayTeam.name} vs {game.homeTeam.name}
             </Typography>
+            {game.id && (
+              <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>
+                ※この試合はすでに保存されています
+              </Typography>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseSaveDialog}>キャンセル</Button>
-          <Button onClick={handleSaveGame} color="primary">
-            保存
-          </Button>
+          {game.id && (
+            <>
+              <Button onClick={() => handleSaveGame(false)} color="primary">
+                上書き保存
+              </Button>
+              <Button onClick={() => handleSaveGame(true)} color="secondary">
+                新規保存
+              </Button>
+            </>
+          )}
+          {!game.id && (
+            <Button onClick={() => handleSaveGame()} color="primary">
+              保存
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
       
