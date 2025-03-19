@@ -2,10 +2,14 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ユーザー認証が必要
+    // ゲームデータのルール
     match /games/{gameId} {
+      // 公開されたゲームデータは誰でも読み取り可能
+      allow read: if resource.data.isPublic == true;
+      
       // 自分のデータだけ読み書き可能
       allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      
       // 新規作成時はユーザーIDが自分のものである必要がある
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
@@ -14,6 +18,7 @@ service cloud.firestore {
     match /teams/{teamId} {
       // 自分のデータだけ読み書き可能
       allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      
       // 新規作成時はユーザーIDが自分のものである必要がある
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
