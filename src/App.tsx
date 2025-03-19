@@ -564,23 +564,20 @@ const MainApp: React.FC = () => {
       </AppBar>
       
       <Container sx={{ pt: 2 }}>
-        {/* チーム管理画面 */}
+        {/* 画面の優先順位: チーム管理画面 > ゲーム一覧 > 通常の試合画面 */}
         {showTeamManagement && !isSharedMode ? (
           <TeamList />
+        ) : showGameList && !isSharedMode ? (
+          <GameList 
+            onSelectGame={handleSelectGame} 
+            onGameDeleted={() => {
+              setSnackbarMessage('試合データを削除しました');
+              setSnackbarSeverity('success');
+              setSnackbarOpen(true);
+            }}
+          />
         ) : (
           <>
-            {/* ゲーム一覧 */}
-            {showGameList && !isSharedMode && (
-              <GameList 
-                onSelectGame={handleSelectGame} 
-                onGameDeleted={() => {
-                  setSnackbarMessage('試合データを削除しました');
-                  setSnackbarSeverity('success');
-                  setSnackbarOpen(true);
-                }}
-              />
-            )}
-            
             {/* 場所と大会名の表示 */}
             <Box 
               sx={{ 
@@ -808,10 +805,24 @@ const MainApp: React.FC = () => {
       >
         <MenuItem onClick={handleNewGame}>新しい試合</MenuItem>
         <Divider />
-        <MenuItem onClick={() => { toggleGameList(); handleMenuClose(); }}>
+        <MenuItem onClick={() => { 
+          // チーム管理画面を閉じてから試合一覧を表示/非表示切り替え
+          if (showTeamManagement) {
+            setShowTeamManagement(false);
+          }
+          toggleGameList(); 
+          handleMenuClose(); 
+        }}>
           試合一覧を{showGameList ? '非表示' : '表示'}
         </MenuItem>
-        <MenuItem onClick={() => { toggleTeamManagement(); handleMenuClose(); }}>
+        <MenuItem onClick={() => { 
+          // 試合一覧が表示されている場合は閉じる
+          if (showGameList) {
+            setShowGameList(false);
+          }
+          toggleTeamManagement(); 
+          handleMenuClose(); 
+        }}>
           <GroupsIcon sx={{ mr: 1, fontSize: '1.25rem' }} />
           チーム・選手管理
         </MenuItem>
