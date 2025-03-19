@@ -173,7 +173,7 @@ export const addPlayerToTeam = async (teamId: string, player: Omit<PlayerSetting
     const newPlayer: PlayerSetting = {
       ...player,
       id: crypto.randomUUID(), // クライアントサイドでIDを生成
-      createdAt: serverTimestamp()
+      createdAt: new Date().toISOString() // サーバータイムスタンプの代わりに現在時刻を文字列で保存
     };
     
     // 既存の選手リストに追加
