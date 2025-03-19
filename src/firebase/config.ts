@@ -3,17 +3,38 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getAnalytics, Analytics } from 'firebase/analytics';
 
 // Firebaseの設定
-// 注意: 実際のプロジェクトでは環境変数を使用することをお勧めします
-// 以下の設定は公開リポジトリにプッシュする前に環境変数に移動してください
+// 環境変数から設定情報を読み込む
 const firebaseConfig = {
-    apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "***REMOVED***",
-    authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "***REMOVED***",
-    projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "***REMOVED***",
-    storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "***REMOVED***.appspot.com",
-    messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "***REMOVED***",
-    appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:***REMOVED***:web:f1f1dbaaed60119a7dc6a6",
-    measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID || "***REMOVED***"
+    apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+    authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.REACT_APP_FIREBASE_APP_ID,
+    measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
+
+// 環境変数が設定されているか確認
+const checkEnvVariables = () => {
+    const requiredVars = [
+        'REACT_APP_FIREBASE_API_KEY',
+        'REACT_APP_FIREBASE_AUTH_DOMAIN',
+        'REACT_APP_FIREBASE_PROJECT_ID',
+        'REACT_APP_FIREBASE_STORAGE_BUCKET',
+        'REACT_APP_FIREBASE_MESSAGING_SENDER_ID',
+        'REACT_APP_FIREBASE_APP_ID'
+    ];
+    
+    const missingVars = requiredVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+        console.warn(`警告: 以下の環境変数が設定されていません: ${missingVars.join(', ')}`);
+        console.warn('Firebase機能が正しく動作しない可能性があります。.envファイルで設定してください。');
+    }
+};
+
+// 環境変数チェック
+checkEnvVariables();
 
 // Firebaseの初期化
 const app = initializeApp(firebaseConfig);

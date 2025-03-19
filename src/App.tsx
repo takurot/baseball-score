@@ -45,6 +45,8 @@ import Login from './components/Login';
 import UserProfile from './components/UserProfile';
 import { analytics } from './firebase/config';
 import { logEvent } from 'firebase/analytics';
+import HelpDialog from './components/HelpDialog';
+import HelpIcon from '@mui/icons-material/Help';
 
 // テーマの作成
 const theme = createTheme({
@@ -133,6 +135,9 @@ const MainApp: React.FC = () => {
   const [isSharedMode, setIsSharedMode] = useState(false);
   const [sharedGameLoading, setSharedGameLoading] = useState(false);
   const [sharedGameError, setSharedGameError] = useState<string | null>(null);
+
+  // ヘルプダイアログの状態
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
 
   // URLから共有されたゲームIDを取得
   useEffect(() => {
@@ -565,6 +570,19 @@ const MainApp: React.FC = () => {
     });
   };
 
+  // ヘルプダイアログを開く
+  const handleOpenHelpDialog = () => {
+    setHelpDialogOpen(true);
+    
+    // アナリティクスイベント：ヘルプ表示
+    sendAnalyticsEvent('help_view', { screen: 'main' });
+  };
+
+  // ヘルプダイアログを閉じる
+  const handleCloseHelpDialog = () => {
+    setHelpDialogOpen(false);
+  };
+
   return (
     <>
       <AppBar position="sticky">
@@ -605,16 +623,35 @@ const MainApp: React.FC = () => {
               >
                 {viewMode === 'edit' ? '一覧表示' : '編集に戻る'}
               </Button>
+              <IconButton
+                color="inherit"
+                onClick={handleOpenHelpDialog}
+                aria-label="help"
+                title="ヘルプ"
+              >
+                <HelpIcon />
+              </IconButton>
               <UserProfile />
             </>
           ) : (
             // 共有モードでのボタン
-            <Button 
-              color="inherit" 
-              onClick={() => window.location.href = window.location.origin}
-            >
-              アプリに戻る
-            </Button>
+            <>
+              <IconButton
+                color="inherit"
+                onClick={handleOpenHelpDialog}
+                aria-label="help"
+                title="ヘルプ"
+                sx={{ mr: 1 }}
+              >
+                <HelpIcon />
+              </IconButton>
+              <Button 
+                color="inherit" 
+                onClick={() => window.location.href = window.location.origin}
+              >
+                アプリに戻る
+              </Button>
+            </>
           )}
         </Toolbar>
       </AppBar>
@@ -917,6 +954,9 @@ const MainApp: React.FC = () => {
           {snackbarMessage}
         </Alert>
       </Snackbar>
+      
+      {/* ヘルプダイアログ */}
+      <HelpDialog open={helpDialogOpen} onClose={handleCloseHelpDialog} />
     </>
   );
 };
