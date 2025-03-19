@@ -69,7 +69,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {/* アウェイチーム */}
+            {/* 先攻チーム */}
             <TableRow>
               <TableCell>
                 <Typography variant="body2" fontWeight="bold">
@@ -86,7 +86,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
               </TableCell>
             </TableRow>
             
-            {/* ホームチーム */}
+            {/* 後攻チーム */}
             <TableRow>
               <TableCell>
                 <Typography variant="body2" fontWeight="bold">
