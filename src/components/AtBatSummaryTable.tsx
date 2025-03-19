@@ -109,6 +109,104 @@ const getTextColor = (result: HitResult): string => {
   return '#000000';
 };
 
+// 打撃成績を計算するヘルパー関数
+interface BattingStats {
+  atBats: number;       // 打数
+  hits: number;         // 安打数
+  rbis: number;         // 打点
+  walks: number;        // 四球/死球
+  singles: number;      // 単打
+  doubles: number;      // 二塁打
+  triples: number;      // 三塁打
+  homeRuns: number;     // ホームラン
+  battingAvg: number;   // 打率
+  obp: number;          // 出塁率
+  slg: number;          // 長打率
+  ops: number;          // OPS
+}
+
+// 選手の打撃成績を計算
+const calculateBattingStats = (playerAtBats: AtBat[]): BattingStats => {
+  const stats: BattingStats = {
+    atBats: 0,
+    hits: 0,
+    rbis: 0,
+    walks: 0,
+    singles: 0,
+    doubles: 0,
+    triples: 0,
+    homeRuns: 0,
+    battingAvg: 0,
+    obp: 0,
+    slg: 0,
+    ops: 0
+  };
+  
+  // 打点の合計
+  stats.rbis = playerAtBats.reduce((sum, atBat) => sum + (atBat.rbi || 0), 0);
+  
+  // 打撃結果の集計
+  playerAtBats.forEach(atBat => {
+    const result = atBat.result;
+    
+    // 四球/死球はカウント
+    if (result === 'BB' || result === 'HBP') {
+      stats.walks++;
+      return;
+    }
+    
+    // 犠打/犠飛はカウントしない
+    if (result === 'SAC' || result === 'SF') {
+      return;
+    }
+    
+    // 打数にカウントするケース
+    stats.atBats++;
+    
+    // 安打の種類に応じてカウント
+    if (['IH', 'LH', 'CH', 'RH'].includes(result)) {
+      stats.hits++;
+      stats.singles++;
+    } else if (result === '2B') {
+      stats.hits++;
+      stats.doubles++;
+    } else if (result === '3B') {
+      stats.hits++;
+      stats.triples++;
+    } else if (result === 'HR') {
+      stats.hits++;
+      stats.homeRuns++;
+    }
+  });
+  
+  // 打率計算 (打数が0の場合は0)
+  stats.battingAvg = stats.atBats > 0 ? stats.hits / stats.atBats : 0;
+  
+  // 出塁率計算 (打数+四球が0の場合は0)
+  const plateAppearances = stats.atBats + stats.walks;
+  stats.obp = plateAppearances > 0 ? (stats.hits + stats.walks) / plateAppearances : 0;
+  
+  // 長打率計算 (打数が0の場合は0)
+  const totalBases = stats.singles + (stats.doubles * 2) + (stats.triples * 3) + (stats.homeRuns * 4);
+  stats.slg = stats.atBats > 0 ? totalBases / stats.atBats : 0;
+  
+  // OPS計算
+  stats.ops = stats.obp + stats.slg;
+  
+  return stats;
+};
+
+// 打率などを表示するフォーマット関数
+const formatBattingAvg = (value: number): string => {
+  // 打率は通常3桁で表示（例: .333）
+  return value.toFixed(3).replace(/^0+/, '');
+};
+
+const formatOPS = (value: number): string => {
+  // OPSは通常3桁で表示（例: 1.000）
+  return value.toFixed(3);
+};
+
 const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning }) => {
   // 打順でソートした選手リスト
   const sortedPlayers = [...team.players].sort((a, b) => a.order - b.order);
@@ -122,6 +220,11 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning }
   // 選手ごとのイニングごとの打席結果を取得する関数（複数の結果を返す）
   const getPlayerAtBatsForInning = (playerId: string, inning: number): AtBat[] => {
     return team.atBats.filter(atBat => atBat.playerId === playerId && atBat.inning === inning);
+  };
+
+  // 選手の全ての打席結果を取得
+  const getPlayerAllAtBats = (playerId: string): AtBat[] => {
+    return team.atBats.filter(atBat => atBat.playerId === playerId);
   };
 
   // 打席結果を表示するセル（複数の結果に対応）
@@ -196,23 +299,38 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning }
               {innings.map(inning => (
                 <TableCell key={inning} align="center">{inning}回</TableCell>
               ))}
+              <TableCell align="center">打数</TableCell>
+              <TableCell align="center">安打</TableCell>
+              <TableCell align="center">打点</TableCell>
+              <TableCell align="center">打率</TableCell>
+              <TableCell align="center">OPS</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {sortedPlayers.map((player) => (
-              <TableRow key={player.id}>
-                <TableCell>{player.order}</TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: player.isActive ? 'bold' : 'normal' }}>
-                    {player.name}
-                  </Typography>
-                  <Typography variant="caption" display="block" color="text.secondary">
-                    {player.position} #{player.number}
-                  </Typography>
-                </TableCell>
-                {innings.map(inning => renderAtBatCell(getPlayerAtBatsForInning(player.id, inning)))}
-              </TableRow>
-            ))}
+            {sortedPlayers.map((player) => {
+              const playerAtBats = getPlayerAllAtBats(player.id);
+              const stats = calculateBattingStats(playerAtBats);
+              
+              return (
+                <TableRow key={player.id}>
+                  <TableCell>{player.order}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: player.isActive ? 'bold' : 'normal' }}>
+                      {player.name}
+                    </Typography>
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      {player.position} #{player.number}
+                    </Typography>
+                  </TableCell>
+                  {innings.map(inning => renderAtBatCell(getPlayerAtBatsForInning(player.id, inning)))}
+                  <TableCell align="center">{stats.atBats}</TableCell>
+                  <TableCell align="center">{stats.hits}</TableCell>
+                  <TableCell align="center">{stats.rbis}</TableCell>
+                  <TableCell align="center">{formatBattingAvg(stats.battingAvg)}</TableCell>
+                  <TableCell align="center">{formatOPS(stats.ops)}</TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
