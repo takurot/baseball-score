@@ -17,9 +17,17 @@ import {
   useMediaQuery,
   Card,
   CardContent,
-  Alert
+  Alert,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  IconButton,
+  Tooltip,
+  Button
 } from '@mui/material';
-import { getAllTeamStats, TeamStats } from '../firebase/statsService';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { getAllTeamStats, TeamStats, PlayerBattingStats } from '../firebase/statsService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -52,6 +60,7 @@ const TeamStatsList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
+  const [selectedTeamIndex, setSelectedTeamIndex] = useState<number | null>(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -63,6 +72,10 @@ const TeamStatsList: React.FC = () => {
         setError(null);
         const stats = await getAllTeamStats();
         setTeamStats(stats);
+        // 最初のチームが選択された状態にする
+        if (stats.length > 0) {
+          setSelectedTeamIndex(0);
+        }
       } catch (err: any) {
         console.error('Error fetching team stats:', err);
         setError(`成績の取得に失敗しました: ${err.message}`);
@@ -78,10 +91,17 @@ const TeamStatsList: React.FC = () => {
     setTabValue(newValue);
   };
 
+  const handleTeamSelect = (index: number) => {
+    setSelectedTeamIndex(index);
+  };
+
   // 打率などをフォーマット
   const formatBattingAvg = (value: number): string => {
     return value.toFixed(3).replace(/^0+/, '');
   };
+
+  // 選手の最低打席数（表示フィルター用）
+  const MIN_PLAYER_AT_BATS = 10;
 
   if (loading) {
     return (
@@ -132,9 +152,11 @@ const TeamStatsList: React.FC = () => {
         >
           <Tab label="チーム成績" />
           <Tab label="打撃成績" />
+          <Tab label="個人成績" />
         </Tabs>
       </Box>
 
+      {/* チーム成績タブ */}
       <TabPanel value={tabValue} index={0}>
         <TableContainer component={Paper}>
           <Table size={isMobile ? "small" : "medium"}>
@@ -174,6 +196,7 @@ const TeamStatsList: React.FC = () => {
         </TableContainer>
       </TabPanel>
 
+      {/* チーム打撃成績タブ */}
       <TabPanel value={tabValue} index={1}>
         {isMobile ? (
           // モバイル向け表示
@@ -267,6 +290,139 @@ const TeamStatsList: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+        )}
+      </TabPanel>
+
+      {/* 個人成績タブ */}
+      <TabPanel value={tabValue} index={2}>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            チームを選択
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {teamStats.map((team, index) => (
+              <Button
+                key={team.teamId}
+                variant={selectedTeamIndex === index ? 'contained' : 'outlined'}
+                onClick={() => handleTeamSelect(index)}
+                sx={{ mb: 1 }}
+              >
+                {team.teamName}
+              </Button>
+            ))}
+          </Box>
+        </Box>
+
+        {selectedTeamIndex !== null && (
+          <>
+            <Typography variant="h6" sx={{ mt: 3, mb: 2, display: 'flex', alignItems: 'center' }}>
+              {teamStats[selectedTeamIndex].teamName}の選手成績
+              <Tooltip title="規定打席（10打席以上）に到達した選手を上位表示しています。">
+                <IconButton size="small" sx={{ ml: 1 }}>
+                  <InfoOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Typography>
+
+            {isMobile ? (
+              // モバイル向け表示 - アコーディオン形式
+              <Box>
+                {teamStats[selectedTeamIndex].playerStats.length === 0 ? (
+                  <Alert severity="info">選手の打撃成績はまだありません</Alert>
+                ) : (
+                  teamStats[selectedTeamIndex].playerStats.map((player) => (
+                    <Accordion key={player.playerId} sx={{ mb: 1 }}>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                          <Typography>
+                            {player.playerNumber} {player.playerName} ({player.playerPosition})
+                          </Typography>
+                          <Typography variant="body2" sx={{ ml: 2, fontWeight: 'bold' }}>
+                            打率 {formatBattingAvg(player.battingAvg)}
+                          </Typography>
+                        </Box>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                          <Typography variant="body2">試合数: {player.gameCount}</Typography>
+                          <Typography variant="body2">打数: {player.atBats}</Typography>
+                          <Typography variant="body2">安打: {player.hits}</Typography>
+                          <Typography variant="body2">二塁打: {player.doubles}</Typography>
+                          <Typography variant="body2">三塁打: {player.triples}</Typography>
+                          <Typography variant="body2">本塁打: {player.homeRuns}</Typography>
+                          <Typography variant="body2">打点: {player.rbis}</Typography>
+                          <Typography variant="body2">四死球: {player.walks}</Typography>
+                          <Typography variant="body2">三振: {player.strikeouts}</Typography>
+                          <Typography variant="body2">出塁率: {formatBattingAvg(player.obp)}</Typography>
+                          <Typography variant="body2">長打率: {formatBattingAvg(player.slg)}</Typography>
+                          <Typography variant="body2">OPS: {formatBattingAvg(player.ops)}</Typography>
+                        </Box>
+                      </AccordionDetails>
+                    </Accordion>
+                  ))
+                )}
+              </Box>
+            ) : (
+              // デスクトップ向け表示 - テーブル形式
+              <TableContainer component={Paper}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>背番号</TableCell>
+                      <TableCell>名前</TableCell>
+                      <TableCell>ポジション</TableCell>
+                      <TableCell align="center">試合</TableCell>
+                      <TableCell align="center">打数</TableCell>
+                      <TableCell align="center">安打</TableCell>
+                      <TableCell align="center">2B</TableCell>
+                      <TableCell align="center">3B</TableCell>
+                      <TableCell align="center">HR</TableCell>
+                      <TableCell align="center">打点</TableCell>
+                      <TableCell align="center">四死球</TableCell>
+                      <TableCell align="center">三振</TableCell>
+                      <TableCell align="center">打率</TableCell>
+                      <TableCell align="center">出塁率</TableCell>
+                      <TableCell align="center">長打率</TableCell>
+                      <TableCell align="center">OPS</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {teamStats[selectedTeamIndex].playerStats.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={16} align="center">選手の打撃成績はまだありません</TableCell>
+                      </TableRow>
+                    ) : (
+                      teamStats[selectedTeamIndex].playerStats.map((player) => (
+                        <TableRow 
+                          key={player.playerId}
+                          sx={{ 
+                            backgroundColor: player.atBats >= MIN_PLAYER_AT_BATS ? 'rgba(232, 244, 253, 0.3)' : 'inherit'
+                          }}
+                        >
+                          <TableCell>{player.playerNumber}</TableCell>
+                          <TableCell>{player.playerName}</TableCell>
+                          <TableCell>{player.playerPosition}</TableCell>
+                          <TableCell align="center">{player.gameCount}</TableCell>
+                          <TableCell align="center">{player.atBats}</TableCell>
+                          <TableCell align="center">{player.hits}</TableCell>
+                          <TableCell align="center">{player.doubles}</TableCell>
+                          <TableCell align="center">{player.triples}</TableCell>
+                          <TableCell align="center">{player.homeRuns}</TableCell>
+                          <TableCell align="center">{player.rbis}</TableCell>
+                          <TableCell align="center">{player.walks}</TableCell>
+                          <TableCell align="center">{player.strikeouts}</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 'bold' }}>{formatBattingAvg(player.battingAvg)}</TableCell>
+                          <TableCell align="center">{formatBattingAvg(player.obp)}</TableCell>
+                          <TableCell align="center">{formatBattingAvg(player.slg)}</TableCell>
+                          <TableCell align="center">{formatBattingAvg(player.ops)}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </>
         )}
       </TabPanel>
     </Container>
