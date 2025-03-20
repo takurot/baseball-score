@@ -371,6 +371,18 @@ const MainApp: React.FC = () => {
   // 試合一覧の表示/非表示切り替え
   const toggleGameList = () => {
     setShowGameList(!showGameList);
+    
+    // 他の画面を非表示にする
+    if (showTeamManagement) {
+      setShowTeamManagement(false);
+    }
+    
+    // 通算成績画面が表示されている場合は閉じる
+    if (showTeamStats) {
+      setShowTeamStats(false);
+    }
+    
+    handleMenuClose();
   };
 
   // チーム管理画面の表示/非表示切り替え
