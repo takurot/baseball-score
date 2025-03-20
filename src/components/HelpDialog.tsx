@@ -25,6 +25,7 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import SportsBaseballIcon from '@mui/icons-material/SportsBaseball';
 import MenuIcon from '@mui/icons-material/Menu';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -208,6 +209,27 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
               </ListItem>
               <ListItem>
                 <ListItemText primary="4. 打席履歴の確認" secondary="入力した打席結果は下部の履歴に表示され、編集や削除が可能です" />
+              </ListItem>
+            </List>
+          </Paper>
+
+          <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              得点追加ボタンの使い方
+            </Typography>
+            <List>
+              <ListItem>
+                <ListItemIcon><AddCircleIcon sx={{ fontSize: '1.25rem' }} /></ListItemIcon>
+                <ListItemText primary="1. 「得点追加」ボタンをクリック" secondary="打席結果に関連しない得点を追加する場合に使用します" />
+              </ListItem>
+              <ListItem>
+                <ListItemText primary="2. 得点理由を選択" secondary="四球、死球、暴投/パスボール、ボーク、エラー、その他から選択します" />
+              </ListItem>
+              <ListItem>
+                <ListItemText primary="3. 「追加」ボタンをクリック" secondary="得点が記録され、打席履歴に表示されます" />
+              </ListItem>
+              <ListItem>
+                <ListItemText primary="使用例" secondary="盗塁や暴投による得点、四球後の得点など、打撃結果に直接紐づかない得点を記録できます" />
               </ListItem>
             </List>
           </Paper>
