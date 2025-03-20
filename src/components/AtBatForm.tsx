@@ -203,15 +203,20 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
           </Grid>
           
           <Grid item xs={12} sm={6}>
-            <TextField
-              label="打点"
-              type="number"
-              value={rbi}
-              onChange={(e) => setRbi(parseInt(e.target.value) || 0)}
-              InputProps={{ inputProps: { min: 0, max: 4 } }}
-              fullWidth
-              margin="normal"
-            />
+            <FormControl fullWidth margin="normal">
+              <InputLabel>打点</InputLabel>
+              <Select
+                value={rbi}
+                onChange={(e) => setRbi(Number(e.target.value))}
+                label="打点"
+              >
+                <MenuItem value={0}>0</MenuItem>
+                <MenuItem value={1}>1</MenuItem>
+                <MenuItem value={2}>2</MenuItem>
+                <MenuItem value={3}>3</MenuItem>
+                <MenuItem value={4}>4 (グランドスラム)</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
           
           <Grid item xs={12}>
