@@ -8,7 +8,6 @@ import {
   Select, 
   TextField, 
   Typography,
-  Paper,
   Grid,
   ListSubheader,
   Stack
@@ -97,9 +96,9 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
   // 選手が選択されていない場合（編集モードでない場合のみ表示）
   if (!player && !isEditMode) {
     return (
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Box sx={{ p: 2 }}>
         <Typography>選手リストから選手をクリックして選択してください</Typography>
-      </Paper>
+      </Box>
     );
   }
 
@@ -171,7 +170,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
     : player?.position;
 
   return (
-    <Paper sx={{ p: 2, mb: 3 }}>
+    <Box>
       <Typography variant="h6" gutterBottom>
         {isEditMode ? '打席結果編集' : '打席結果登録'}: {displayPlayerName} ({displayPosition})
       </Typography>
@@ -179,7 +178,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
       <Box component="form" onSubmit={handleSubmit}>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth margin="normal">
+            <FormControl fullWidth>
               <InputLabel>打席結果</InputLabel>
               <Select
                 value={result}
@@ -203,7 +202,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
           </Grid>
           
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth margin="normal">
+            <FormControl fullWidth>
               <InputLabel>打点</InputLabel>
               <Select
                 value={rbi}
@@ -225,7 +224,6 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               fullWidth
-              margin="normal"
               multiline
               rows={2}
             />
@@ -264,7 +262,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
           </Grid>
         </Grid>
       </Box>
-    </Paper>
+    </Box>
   );
 };
 

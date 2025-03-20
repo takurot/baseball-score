@@ -147,6 +147,9 @@ const MainApp: React.FC = () => {
   // ヘルプダイアログの状態
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
 
+  // 打席登録ダイアログの状態
+  const [atBatDialogOpen, setAtBatDialogOpen] = useState(false);
+
   // 得点追加ダイアログの状態
   const [runDialogOpen, setRunDialogOpen] = useState(false);
   const [runType, setRunType] = useState<RunEventType>('押し出し');
@@ -285,6 +288,7 @@ const MainApp: React.FC = () => {
   // 打席結果の編集ハンドラー
   const handleEditAtBat = (atBat: AtBat) => {
     setEditingAtBat(atBat);
+    setAtBatDialogOpen(true); // 編集時もダイアログを開く
   };
 
   // 打席結果の更新ハンドラー
@@ -345,6 +349,13 @@ const MainApp: React.FC = () => {
   // 選手を打席登録するハンドラー
   const handleRegisterAtBat = (player: Player) => {
     setSelectedPlayer(player);
+    setAtBatDialogOpen(true); // ダイアログを開く
+  };
+
+  // 打席登録ダイアログを閉じる
+  const handleCloseAtBatDialog = () => {
+    setAtBatDialogOpen(false);
+    setSelectedPlayer(null);
   };
 
   // 試合一覧の表示/非表示切り替え
@@ -805,15 +816,6 @@ const MainApp: React.FC = () => {
                   onRegisterAtBat={handleRegisterAtBat}
                 />
                 
-                <AtBatForm 
-                  player={selectedPlayer} 
-                  inning={game.currentInning}
-                  onAddAtBat={handleAddAtBat}
-                  editingAtBat={editingAtBat}
-                  onUpdateAtBat={handleUpdateAtBat}
-                  onCancelEdit={handleCancelEdit}
-                />
-                
                 <AtBatHistory 
                   atBats={currentTeam.atBats} 
                   players={currentTeam.players}
@@ -831,6 +833,40 @@ const MainApp: React.FC = () => {
                   currentTeamName={currentTeam.name}
                   opposingTeamName={tabIndex === 0 ? game.homeTeam.name : game.awayTeam.name}
                 />
+
+                {/* 打席登録ダイアログ */}
+                <Dialog 
+                  open={atBatDialogOpen} 
+                  onClose={handleCloseAtBatDialog}
+                  maxWidth="md"
+                  fullWidth
+                >
+                  <DialogTitle>
+                    {editingAtBat ? "打席結果の編集" : "打席結果の登録"}
+                  </DialogTitle>
+                  <DialogContent>
+                    <AtBatForm 
+                      player={selectedPlayer} 
+                      inning={game.currentInning}
+                      onAddAtBat={(atBat) => {
+                        handleAddAtBat(atBat);
+                        handleCloseAtBatDialog();
+                      }}
+                      editingAtBat={editingAtBat}
+                      onUpdateAtBat={(updatedAtBat) => {
+                        handleUpdateAtBat(updatedAtBat);
+                        handleCloseAtBatDialog();
+                      }}
+                      onCancelEdit={() => {
+                        handleCancelEdit();
+                        handleCloseAtBatDialog();
+                      }}
+                    />
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={handleCloseAtBatDialog} color="inherit">閉じる</Button>
+                  </DialogActions>
+                </Dialog>
               </>
             )}
           </>
