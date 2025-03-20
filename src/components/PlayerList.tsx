@@ -14,9 +14,15 @@ import {
   Select,
   MenuItem,
   FormControl,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Box,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import PersonOffIcon from '@mui/icons-material/PersonOff';
+import PersonIcon from '@mui/icons-material/Person';
 import { Player } from '../types';
 
 interface PlayerListProps {
@@ -34,6 +40,9 @@ const PlayerList: React.FC<PlayerListProps> = ({
   onEditPlayer,
   onUpdatePlayerOrder
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   const sortedPlayers = [...players].sort((a, b) => a.order - b.order);
   
   // 出場中の選手と控えの選手を分ける
@@ -63,9 +72,9 @@ const PlayerList: React.FC<PlayerListProps> = ({
         <TableHead>
           <TableRow>
             <TableCell>打順</TableCell>
-            <TableCell>背番号</TableCell>
+            <TableCell>{isMobile ? '番号' : '背番号'}</TableCell>
             <TableCell>名前</TableCell>
-            <TableCell>ポジション</TableCell>
+            <TableCell>{isMobile ? 'ポジ' : 'ポジション'}</TableCell>
             <TableCell>アクション</TableCell>
           </TableRow>
         </TableHead>
@@ -104,36 +113,48 @@ const PlayerList: React.FC<PlayerListProps> = ({
                 <TableCell>{player.name}</TableCell>
                 <TableCell>{player.position}</TableCell>
                 <TableCell>
-                  <Button 
-                    variant="outlined" 
-                    size="small" 
-                    onClick={() => onRegisterAtBat && onRegisterAtBat(player)}
-                    color="primary"
-                  >
-                    打席登録
-                  </Button>
-                  {onToggleStatus && (
-                    <Button 
-                      variant="outlined" 
-                      size="small" 
-                      onClick={() => onToggleStatus(player.id)}
-                      color="secondary"
-                      sx={{ ml: 1 }}
-                    >
-                      控えにする
-                    </Button>
-                  )}
-                  {onEditPlayer && (
-                    <Tooltip title="選手情報を編集">
-                      <IconButton 
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap', 
+                    gap: 0.5, 
+                    '& .MuiButton-root': { 
+                      minWidth: isMobile ? '36px' : '64px',
+                      padding: isMobile ? '4px 8px' : undefined 
+                    } 
+                  }}>
+                    {onRegisterAtBat && (
+                      <Button 
+                        variant="outlined" 
                         size="small" 
-                        onClick={() => onEditPlayer(player.id)}
-                        sx={{ ml: 1 }}
+                        onClick={() => onRegisterAtBat(player)}
+                        color="primary"
+                        startIcon={isMobile ? <AssignmentIcon fontSize="small" /> : undefined}
                       >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
+                        {isMobile ? '打席' : '打席登録'}
+                      </Button>
+                    )}
+                    {onToggleStatus && (
+                      <Button 
+                        variant="outlined" 
+                        size="small" 
+                        onClick={() => onToggleStatus(player.id)}
+                        color="secondary"
+                        startIcon={isMobile ? <PersonOffIcon fontSize="small" /> : undefined}
+                      >
+                        {isMobile ? '控え' : '控えに'}
+                      </Button>
+                    )}
+                    {onEditPlayer && (
+                      <Tooltip title="選手情報を編集">
+                        <IconButton 
+                          size="small" 
+                          onClick={() => onEditPlayer(player.id)}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Box>
                 </TableCell>
               </TableRow>
             ))
@@ -155,9 +176,9 @@ const PlayerList: React.FC<PlayerListProps> = ({
             <TableHead>
               <TableRow>
                 <TableCell>打順</TableCell>
-                <TableCell>背番号</TableCell>
+                <TableCell>{isMobile ? '番号' : '背番号'}</TableCell>
                 <TableCell>名前</TableCell>
-                <TableCell>ポジション</TableCell>
+                <TableCell>{isMobile ? 'ポジ' : 'ポジション'}</TableCell>
                 <TableCell>アクション</TableCell>
               </TableRow>
             </TableHead>
@@ -196,27 +217,37 @@ const PlayerList: React.FC<PlayerListProps> = ({
                   <TableCell>{player.name}</TableCell>
                   <TableCell>{player.position}</TableCell>
                   <TableCell>
-                    {onToggleStatus && (
-                      <Button 
-                        variant="outlined" 
-                        size="small" 
-                        onClick={() => onToggleStatus(player.id)}
-                        color="success"
-                      >
-                        出場させる
-                      </Button>
-                    )}
-                    {onEditPlayer && (
-                      <Tooltip title="選手情報を編集">
-                        <IconButton 
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexWrap: 'wrap', 
+                      gap: 0.5,
+                      '& .MuiButton-root': { 
+                        minWidth: isMobile ? '36px' : '64px',
+                        padding: isMobile ? '4px 8px' : undefined 
+                      } 
+                    }}>
+                      {onToggleStatus && (
+                        <Button 
+                          variant="outlined" 
                           size="small" 
-                          onClick={() => onEditPlayer(player.id)}
-                          sx={{ ml: 1 }}
+                          onClick={() => onToggleStatus(player.id)}
+                          color="success"
+                          startIcon={isMobile ? <PersonIcon fontSize="small" /> : undefined}
                         >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
+                          {isMobile ? '出場' : '出場させる'}
+                        </Button>
+                      )}
+                      {onEditPlayer && (
+                        <Tooltip title="選手情報を編集">
+                          <IconButton 
+                            size="small" 
+                            onClick={() => onEditPlayer(player.id)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}
