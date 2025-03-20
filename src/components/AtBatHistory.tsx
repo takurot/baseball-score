@@ -11,16 +11,18 @@ import {
   Chip,
   Tooltip,
   IconButton,
-  Box
+  Box,
+  Divider
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { AtBat, Player, HitResult } from '../types';
+import { AtBat, Player, HitResult, RunEvent } from '../types';
 
 interface AtBatHistoryProps {
   atBats: AtBat[];
   players: Player[];
   inning: number;
+  runEvents?: RunEvent[];
   onEditAtBat?: (atBat: AtBat) => void;
   onDeleteAtBat?: (atBatId: string) => void;
 }
@@ -65,21 +67,25 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
   atBats, 
   players, 
   inning,
+  runEvents = [],
   onEditAtBat,
   onDeleteAtBat
 }) => {
   // 指定されたイニングの打席結果のみをフィルタリング
   const filteredAtBats = atBats.filter(atBat => atBat.inning === inning);
   
-  // 打席結果がない場合
-  if (filteredAtBats.length === 0) {
+  // 指定されたイニングの得点イベントのみをフィルタリング
+  const filteredRunEvents = runEvents.filter(event => event.inning === inning);
+  
+  // 打席結果も得点イベントもない場合
+  if (filteredAtBats.length === 0 && filteredRunEvents.length === 0) {
     return (
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          {inning}回の打席結果
+          {inning}回の記録
         </Typography>
         <Typography>
-          まだ打席結果がありません
+          まだ記録がありません
         </Typography>
       </Paper>
     );
@@ -122,68 +128,115 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
   return (
     <Paper sx={{ p: 2, mb: 3 }}>
       <Typography variant="h6" gutterBottom>
-        {inning}回の打席結果
+        {inning}回の記録
       </Typography>
       
-      <TableContainer>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>選手</TableCell>
-              <TableCell>結果</TableCell>
-              <TableCell>打点</TableCell>
-              <TableCell>詳細</TableCell>
-              {(onEditAtBat || onDeleteAtBat) && <TableCell>操作</TableCell>}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredAtBats.map((atBat) => (
-              <TableRow key={atBat.id}>
-                <TableCell>{getPlayerName(atBat.playerId)}</TableCell>
-                <TableCell>
-                  <Tooltip title={hitResultLabels[atBat.result]}>
-                    <Chip 
-                      label={atBat.result} 
-                      color={getResultColor(atBat.result)}
-                      size="small"
-                    />
-                  </Tooltip>
-                </TableCell>
-                <TableCell>{atBat.rbi || 0}</TableCell>
-                <TableCell>{atBat.description || '-'}</TableCell>
-                {(onEditAtBat || onDeleteAtBat) && (
-                  <TableCell>
-                    <Box sx={{ display: 'flex' }}>
-                      {onEditAtBat && (
-                        <Tooltip title="編集">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => onEditAtBat(atBat)}
-                            color="primary"
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {onDeleteAtBat && (
-                        <Tooltip title="削除">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => onDeleteAtBat(atBat.id)}
-                            color="error"
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </Box>
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {/* 打席結果がある場合に表示 */}
+      {filteredAtBats.length > 0 && (
+        <>
+          <Typography variant="subtitle1" gutterBottom>
+            打席結果
+          </Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>選手</TableCell>
+                  <TableCell>結果</TableCell>
+                  <TableCell>打点</TableCell>
+                  <TableCell>詳細</TableCell>
+                  {(onEditAtBat || onDeleteAtBat) && <TableCell>操作</TableCell>}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredAtBats.map((atBat) => (
+                  <TableRow key={atBat.id}>
+                    <TableCell>{getPlayerName(atBat.playerId)}</TableCell>
+                    <TableCell>
+                      <Tooltip title={hitResultLabels[atBat.result]}>
+                        <Chip 
+                          label={atBat.result} 
+                          color={getResultColor(atBat.result)}
+                          size="small"
+                        />
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell>{atBat.rbi || 0}</TableCell>
+                    <TableCell>{atBat.description || '-'}</TableCell>
+                    {(onEditAtBat || onDeleteAtBat) && (
+                      <TableCell>
+                        <Box sx={{ display: 'flex' }}>
+                          {onEditAtBat && (
+                            <Tooltip title="編集">
+                              <IconButton 
+                                size="small" 
+                                onClick={() => onEditAtBat(atBat)}
+                                color="primary"
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                          {onDeleteAtBat && (
+                            <Tooltip title="削除">
+                              <IconButton 
+                                size="small" 
+                                onClick={() => onDeleteAtBat(atBat.id)}
+                                color="error"
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Box>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
+      
+      {/* 得点イベントがある場合に表示 */}
+      {filteredRunEvents.length > 0 && (
+        <>
+          {filteredAtBats.length > 0 && <Divider sx={{ my: 2 }} />}
+          
+          <Typography variant="subtitle1" gutterBottom>
+            その他の得点
+          </Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>種類</TableCell>
+                  <TableCell>得点</TableCell>
+                  <TableCell>攻撃</TableCell>
+                  <TableCell>メモ</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredRunEvents.map((event) => (
+                  <TableRow key={event.id}>
+                    <TableCell>
+                      <Chip 
+                        label={event.runType} 
+                        color="secondary"
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>{event.runCount}点</TableCell>
+                    <TableCell>{event.isTop ? '表（相手）' : '裏（自）'}</TableCell>
+                    <TableCell>{event.note || '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
     </Paper>
   );
 };

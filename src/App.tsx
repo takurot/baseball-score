@@ -23,14 +23,22 @@ import {
   Menu,
   MenuItem,
   CircularProgress,
-  Divider
+  Divider,
+  ListItemIcon,
+  Drawer,
+  List,
+  ListItem,
+  ListItemText,
+  InputLabel,
+  Select,
+  FormControl
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import MenuIcon from '@mui/icons-material/Menu';
 import SportsBaseballIcon from '@mui/icons-material/SportsBaseball';
 import GroupsIcon from '@mui/icons-material/Groups';
 import { v4 as uuidv4 } from 'uuid';
-import { Team, Player, AtBat, Game, TeamSetting } from './types';
+import { Team, Player, AtBat, Game, TeamSetting, RunEvent, RunEventType } from './types';
 import TeamManager from './components/TeamManager';
 import AtBatForm from './components/AtBatForm';
 import AtBatHistory from './components/AtBatHistory';
@@ -138,6 +146,13 @@ const MainApp: React.FC = () => {
 
   // ヘルプダイアログの状態
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
+
+  // 得点追加ダイアログの状態
+  const [runDialogOpen, setRunDialogOpen] = useState(false);
+  const [runType, setRunType] = useState<RunEventType>('押し出し');
+  const [runCount, setRunCount] = useState<number>(1);
+  const [runNote, setRunNote] = useState('');
+  const [isTopInning, setIsTopInning] = useState(false);
 
   // URLから共有されたゲームIDを取得
   useEffect(() => {
@@ -583,6 +598,50 @@ const MainApp: React.FC = () => {
     setHelpDialogOpen(false);
   };
 
+  // 得点追加ダイアログを開く
+  const handleOpenRunDialog = () => {
+    setRunType('押し出し');
+    setRunCount(1);
+    setRunNote('');
+    setIsTopInning(false); // デフォルトは裏（自チーム）
+    setRunDialogOpen(true);
+  };
+  
+  // 得点追加ダイアログを閉じる
+  const handleCloseRunDialog = () => {
+    setRunDialogOpen(false);
+  };
+  
+  // 得点追加の保存
+  const handleSaveRun = () => {
+    const newRunEvent: RunEvent = {
+      id: uuidv4(),
+      inning: game.currentInning,
+      isTop: isTopInning,
+      runType: runType,
+      runCount: runCount,
+      note: runNote || undefined,
+      timestamp: new Date()
+    };
+    
+    // 現在のゲームに得点イベントを追加
+    const updatedGame = { 
+      ...game, 
+      runEvents: [...(game.runEvents || []), newRunEvent] 
+    };
+    
+    setGame(updatedGame);
+    
+    // Firebase Analyticsにイベントを送信
+    sendAnalyticsEvent('add_run_event', {
+      run_type: runType,
+      run_count: runCount,
+      inning: game.currentInning
+    });
+    
+    handleCloseRunDialog();
+  };
+
   return (
     <>
       <AppBar position="sticky">
@@ -714,19 +773,29 @@ const MainApp: React.FC = () => {
                   <Typography variant="h6">
                     {game.currentInning}回
                   </Typography>
-                  <ButtonGroup>
+                  <Box>
                     <Button 
-                      onClick={() => handleInningChange(-1)}
-                      disabled={game.currentInning <= 1}
+                      variant="outlined"
+                      color="secondary"
+                      onClick={handleOpenRunDialog}
+                      sx={{ mr: 2 }}
                     >
-                      前の回
+                      得点追加
                     </Button>
-                    <Button 
-                      onClick={() => handleInningChange(1)}
-                    >
-                      次の回
-                    </Button>
-                  </ButtonGroup>
+                    <ButtonGroup>
+                      <Button 
+                        onClick={() => handleInningChange(-1)}
+                        disabled={game.currentInning <= 1}
+                      >
+                        前の回
+                      </Button>
+                      <Button 
+                        onClick={() => handleInningChange(1)}
+                      >
+                        次の回
+                      </Button>
+                    </ButtonGroup>
+                  </Box>
                 </Box>
                 
                 <TeamManager 
@@ -748,6 +817,7 @@ const MainApp: React.FC = () => {
                   atBats={currentTeam.atBats} 
                   players={currentTeam.players}
                   inning={game.currentInning}
+                  runEvents={game.runEvents}
                   onEditAtBat={handleEditAtBat}
                   onDeleteAtBat={handleDeleteAtBat}
                 />
@@ -957,6 +1027,67 @@ const MainApp: React.FC = () => {
       
       {/* ヘルプダイアログ */}
       <HelpDialog open={helpDialogOpen} onClose={handleCloseHelpDialog} />
+      
+      {/* 得点追加ダイアログ */}
+      <Dialog open={runDialogOpen} onClose={handleCloseRunDialog}>
+        <DialogTitle>得点追加（押し出し・ワイルドピッチなど）</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>得点タイプ</InputLabel>
+            <Select
+              value={runType}
+              onChange={(e) => setRunType(e.target.value as RunEventType)}
+              label="得点タイプ"
+            >
+              <MenuItem value="押し出し">押し出し四球/死球</MenuItem>
+              <MenuItem value="ワイルドピッチ">ワイルドピッチ</MenuItem>
+              <MenuItem value="パスボール">パスボール</MenuItem>
+              <MenuItem value="盗塁">盗塁（エラー含む）</MenuItem>
+              <MenuItem value="投手エラー">投手エラー（ボーク等）</MenuItem>
+              <MenuItem value="その他">その他</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>得点数</InputLabel>
+            <Select
+              value={runCount}
+              onChange={(e) => setRunCount(Number(e.target.value))}
+              label="得点数"
+            >
+              <MenuItem value={1}>1点</MenuItem>
+              <MenuItem value={2}>2点</MenuItem>
+              <MenuItem value={3}>3点</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>攻撃</InputLabel>
+            <Select
+              value={isTopInning ? "表" : "裏"}
+              onChange={(e) => setIsTopInning(e.target.value === "表")}
+              label="攻撃"
+            >
+              <MenuItem value="表">表（相手チーム）</MenuItem>
+              <MenuItem value="裏">裏（自チーム）</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <TextField
+            label="メモ（任意）"
+            fullWidth
+            multiline
+            rows={2}
+            sx={{ mt: 2 }}
+            value={runNote}
+            onChange={(e) => setRunNote(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseRunDialog}>キャンセル</Button>
+          <Button onClick={handleSaveRun} variant="contained" color="primary">追加</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

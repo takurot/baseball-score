@@ -74,6 +74,27 @@ export interface Game {
   venue?: string; // 球場・場所
   tournament?: string; // 大会名
   isPublic?: boolean; // 公開状態
+  runEvents?: RunEvent[]; // 打席以外での得点イベント
+}
+
+// 得点イベントの種類
+export type RunEventType = 
+  | '押し出し' 
+  | 'ワイルドピッチ' 
+  | 'パスボール' 
+  | '盗塁' 
+  | '投手エラー' 
+  | 'その他';
+
+// 打席以外での得点イベント
+export interface RunEvent {
+  id: string;
+  inning: number;
+  isTop: boolean; // true: 表, false: 裏
+  runType: RunEventType;
+  runCount: number;
+  note?: string;
+  timestamp: any; // Firestore timestamp
 }
 
 // 保存用の選手情報
