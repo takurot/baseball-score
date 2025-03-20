@@ -16,6 +16,7 @@ export type HitResult =
   | 'GO_2B' // セカンドゴロ (Ground Out to 2nd)
   | 'GO_3B' // サードゴロ (Ground Out to 3rd)
   | 'GO_SS' // ショートゴロ (Ground Out to Shortstop)
+  | 'GO_RF' // ライトゴロ (Ground Out to Right)
   | 'FO_LF' // レフトフライ (Fly Out to Left)
   | 'FO_CF' // センターフライ (Fly Out to Center)
   | 'FO_RF' // ライトフライ (Fly Out to Right)

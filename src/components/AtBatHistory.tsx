@@ -48,6 +48,7 @@ const hitResultLabels: Record<HitResult, string> = {
   'GO_2B': 'セカンドゴロ',
   'GO_3B': 'サードゴロ',
   'GO_SS': 'ショートゴロ',
+  'GO_RF': 'ライトゴロ',
   'FO_LF': 'レフトフライ',
   'FO_CF': 'センターフライ',
   'FO_RF': 'ライトフライ',

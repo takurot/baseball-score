@@ -42,6 +42,7 @@ const hitResultLabels: Record<HitResult, string> = {
   'GO_2B': 'セカンドゴロ',
   'GO_3B': 'サードゴロ',
   'GO_SS': 'ショートゴロ',
+  'GO_RF': 'ライトゴロ',
   'FO_LF': 'レフトフライ',
   'FO_CF': 'センターフライ',
   'FO_RF': 'ライトフライ',
@@ -63,7 +64,7 @@ const hitResultLabels: Record<HitResult, string> = {
 // 結果がアウトかどうかを判定する関数
 const isOutResult = (result: HitResult): boolean => {
   return [
-    'GO_P', 'GO_C', 'GO_1B', 'GO_2B', 'GO_3B', 'GO_SS',
+    'GO_P', 'GO_C', 'GO_1B', 'GO_2B', 'GO_3B', 'GO_SS', 'GO_RF',
     'FO_LF', 'FO_CF', 'FO_RF', 'FO_IF',
     'LO', 'DP', 'SAC', 'SF', 'SO'
   ].includes(result);
@@ -152,7 +153,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
   // 打撃結果をカテゴリごとにグループ化
   const hitOptions = [
     { category: 'ヒット', items: ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'] as HitResult[] },
-    { category: 'ゴロアウト', items: ['GO_P', 'GO_C', 'GO_1B', 'GO_2B', 'GO_3B', 'GO_SS'] as HitResult[] },
+    { category: 'ゴロアウト', items: ['GO_P', 'GO_C', 'GO_1B', 'GO_2B', 'GO_3B', 'GO_SS', 'GO_RF'] as HitResult[] },
     { category: 'フライアウト', items: ['FO_LF', 'FO_CF', 'FO_RF', 'FO_IF', 'LO'] as HitResult[] },
     { category: 'その他アウト', items: ['DP', 'SO'] as HitResult[] },
     { category: '犠打/犠飛', items: ['SAC', 'SF'] as HitResult[] },
