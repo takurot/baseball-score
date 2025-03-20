@@ -828,6 +828,8 @@ const MainApp: React.FC = () => {
                       runEvents: updatedRunEvents
                     });
                   }}
+                  currentTeamName={currentTeam.name}
+                  opposingTeamName={tabIndex === 0 ? game.homeTeam.name : game.awayTeam.name}
                 />
               </>
             )}
@@ -1072,12 +1074,12 @@ const MainApp: React.FC = () => {
           <FormControl fullWidth sx={{ mt: 2 }}>
             <InputLabel>攻撃</InputLabel>
             <Select
-              value={isTopInning ? "表" : "裏"}
-              onChange={(e) => setIsTopInning(e.target.value === "表")}
+              value={isTopInning ? "相手" : "自チーム"}
+              onChange={(e) => setIsTopInning(e.target.value === "相手")}
               label="攻撃"
             >
-              <MenuItem value="表">表（相手チーム）</MenuItem>
-              <MenuItem value="裏">裏（自チーム）</MenuItem>
+              <MenuItem value="相手">{tabIndex === 0 ? game.homeTeam.name : game.awayTeam.name}（相手チーム）</MenuItem>
+              <MenuItem value="自チーム">{tabIndex === 0 ? game.awayTeam.name : game.homeTeam.name}（現在のチーム）</MenuItem>
             </Select>
           </FormControl>
           

@@ -26,6 +26,8 @@ interface AtBatHistoryProps {
   onEditAtBat?: (atBat: AtBat) => void;
   onDeleteAtBat?: (atBatId: string) => void;
   onDeleteRunEvent?: (eventId: string) => void;
+  currentTeamName?: string;  // 現在選択中のチーム名
+  opposingTeamName?: string; // 相手チーム名
 }
 
 // 打撃結果の表示名マッピング
@@ -71,7 +73,9 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
   runEvents = [],
   onEditAtBat,
   onDeleteAtBat,
-  onDeleteRunEvent
+  onDeleteRunEvent,
+  currentTeamName = '自チーム',
+  opposingTeamName = '相手チーム'
 }) => {
   // 指定されたイニングの打席結果のみをフィルタリング
   const filteredAtBats = atBats.filter(atBat => atBat.inning === inning);
@@ -231,7 +235,10 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                       />
                     </TableCell>
                     <TableCell>{event.runCount}点</TableCell>
-                    <TableCell>{event.isTop ? '表（相手）' : '裏（自）'}</TableCell>
+                    <TableCell>{event.isTop ? 
+                      `${opposingTeamName}（相手）` : 
+                      `${currentTeamName}（自チーム）`
+                    }</TableCell>
                     <TableCell>{event.note || '-'}</TableCell>
                     {onDeleteRunEvent && (
                       <TableCell>
