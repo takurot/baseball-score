@@ -343,8 +343,10 @@ const aggregatePlayerBattingStats = (teamStats: TeamStats, team: Team) => {
     if (aHasMinAtBats && !bHasMinAtBats) return -1;
     if (!aHasMinAtBats && bHasMinAtBats) return 1;
     
-    // 両方とも条件を満たす場合は打率で降順ソート
-    return b.battingAvg - a.battingAvg;
+    // 背番号でソート（数値変換して比較）
+    const aNumber = parseInt(a.playerNumber) || 0;
+    const bNumber = parseInt(b.playerNumber) || 0;
+    return aNumber - bNumber;
   });
 };
 
