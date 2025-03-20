@@ -335,7 +335,7 @@ const TeamStatsList: React.FC = () => {
                       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                           <Typography>
-                            #{player.playerNumber} {player.playerName}
+                            {player.playerNumber} {player.playerName}
                           </Typography>
                           <Typography variant="body2" sx={{ ml: 2, fontWeight: 'bold' }}>
                             打率 {formatBattingAvg(player.battingAvg)}
@@ -368,7 +368,7 @@ const TeamStatsList: React.FC = () => {
                 <Table size="small">
                   <TableHead>
                     <TableRow>
-                      <TableCell width="60px">背番号</TableCell>
+                      <TableCell width="60px">#</TableCell>
                       <TableCell sx={{ minWidth: '140px', width: '140px' }}>名前</TableCell>
                       <TableCell align="center">試合</TableCell>
                       <TableCell align="center">打数</TableCell>
@@ -398,7 +398,7 @@ const TeamStatsList: React.FC = () => {
                             backgroundColor: player.atBats >= MIN_PLAYER_AT_BATS ? 'rgba(232, 244, 253, 0.3)' : 'inherit'
                           }}
                         >
-                          <TableCell>#{player.playerNumber}</TableCell>
+                          <TableCell>{player.playerNumber}</TableCell>
                           <TableCell sx={{ minWidth: '140px', width: '140px' }}>{player.playerName}</TableCell>
                           <TableCell align="center">{player.gameCount}</TableCell>
                           <TableCell align="center">{player.atBats}</TableCell>
