@@ -335,7 +335,7 @@ const TeamStatsList: React.FC = () => {
                       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                           <Typography>
-                            {player.playerNumber} {player.playerName} ({player.playerPosition})
+                            {player.playerNumber} {player.playerName}
                           </Typography>
                           <Typography variant="body2" sx={{ ml: 2, fontWeight: 'bold' }}>
                             打率 {formatBattingAvg(player.battingAvg)}
@@ -369,8 +369,7 @@ const TeamStatsList: React.FC = () => {
                   <TableHead>
                     <TableRow>
                       <TableCell>背番号</TableCell>
-                      <TableCell>名前</TableCell>
-                      <TableCell>ポジション</TableCell>
+                      <TableCell sx={{ minWidth: '120px', width: '20%' }}>名前</TableCell>
                       <TableCell align="center">試合</TableCell>
                       <TableCell align="center">打数</TableCell>
                       <TableCell align="center">安打</TableCell>
@@ -389,7 +388,7 @@ const TeamStatsList: React.FC = () => {
                   <TableBody>
                     {teamStats[selectedTeamIndex].playerStats.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={16} align="center">選手の打撃成績はまだありません</TableCell>
+                        <TableCell colSpan={15} align="center">選手の打撃成績はまだありません</TableCell>
                       </TableRow>
                     ) : (
                       teamStats[selectedTeamIndex].playerStats.map((player) => (
@@ -400,8 +399,7 @@ const TeamStatsList: React.FC = () => {
                           }}
                         >
                           <TableCell>{player.playerNumber}</TableCell>
-                          <TableCell>{player.playerName}</TableCell>
-                          <TableCell>{player.playerPosition}</TableCell>
+                          <TableCell sx={{ minWidth: '120px', width: '20%' }}>{player.playerName}</TableCell>
                           <TableCell align="center">{player.gameCount}</TableCell>
                           <TableCell align="center">{player.atBats}</TableCell>
                           <TableCell align="center">{player.hits}</TableCell>
