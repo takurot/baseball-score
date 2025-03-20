@@ -39,6 +39,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import MenuIcon from '@mui/icons-material/Menu';
 import SportsBaseballIcon from '@mui/icons-material/SportsBaseball';
 import GroupsIcon from '@mui/icons-material/Groups';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import { v4 as uuidv4 } from 'uuid';
 import { Team, Player, AtBat, Game, TeamSetting, RunEvent, RunEventType } from './types';
 import TeamManager from './components/TeamManager';
@@ -48,6 +49,7 @@ import ScoreBoard from './components/ScoreBoard';
 import AtBatSummaryTable from './components/AtBatSummaryTable';
 import GameList from './components/GameList';
 import TeamList from './components/TeamList';
+import TeamStatsList from './components/TeamStatsList';
 import { saveGame, getGameById, getSharedGameById, saveGameAsNew } from './firebase/gameService';
 import { getUserTeams, getTeamById } from './firebase/teamService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -124,6 +126,9 @@ const MainApp: React.FC = () => {
   const [teamSelectionMode, setTeamSelectionMode] = useState<'home' | 'away'>('home');
   const [availableTeams, setAvailableTeams] = useState<TeamSetting[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
+  
+  // 通算成績関連の状態
+  const [showTeamStats, setShowTeamStats] = useState(false);
   
   // メニュー関連の状態
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
@@ -373,6 +378,15 @@ const MainApp: React.FC = () => {
     setShowTeamManagement(!showTeamManagement);
   };
 
+  // 通算成績画面の表示/非表示切り替え
+  const toggleTeamStats = () => {
+    setShowTeamStats(!showTeamStats);
+    // 他の画面を非表示にする
+    setShowGameList(false);
+    setShowTeamManagement(false);
+    handleMenuClose();
+  };
+
   // メニューを開く
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setMenuAnchorEl(event.currentTarget);
@@ -390,6 +404,10 @@ const MainApp: React.FC = () => {
     // チーム管理画面が表示されている場合は閉じる
     if (showTeamManagement) {
       setShowTeamManagement(false);
+    }
+    // 通算成績画面が表示されている場合は閉じる
+    if (showTeamStats) {
+      setShowTeamStats(false);
     }
     // チーム選択ダイアログを表示せず、直接新しい試合画面に遷移
     // showTeamSelectionDialog();
@@ -786,9 +804,11 @@ const MainApp: React.FC = () => {
       )}
       
       <Container sx={{ pt: 2 }}>
-        {/* 画面の優先順位: チーム管理画面 > ゲーム一覧 > 通常の試合画面 */}
+        {/* 画面の優先順位: チーム管理画面 > 通算成績 > ゲーム一覧 > 通常の試合画面 */}
         {showTeamManagement && !isSharedMode ? (
           <TeamList />
+        ) : showTeamStats && !isSharedMode ? (
+          <TeamStatsList />
         ) : showGameList && !isSharedMode ? (
           <GameList 
             onSelectGame={handleSelectGame} 
@@ -1083,35 +1103,45 @@ const MainApp: React.FC = () => {
       </Dialog>
       
       {/* メニュー */}
-      <Menu
-        anchorEl={menuAnchorEl}
-        open={menuOpen}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={handleNewGame}>新しい試合</MenuItem>
-        <Divider />
-        <MenuItem onClick={() => { 
-          // チーム管理画面を閉じてから試合一覧を表示/非表示切り替え
-          if (showTeamManagement) {
-            setShowTeamManagement(false);
-          }
-          toggleGameList(); 
-          handleMenuClose(); 
-        }}>
-          試合一覧を{showGameList ? '非表示' : '表示'}
-        </MenuItem>
-        <MenuItem onClick={() => { 
-          // 試合一覧が表示されている場合は閉じる
-          if (showGameList) {
-            setShowGameList(false);
-          }
-          toggleTeamManagement(); 
-          handleMenuClose(); 
-        }}>
-          <GroupsIcon sx={{ mr: 1, fontSize: '1.25rem' }} />
-          チーム・選手管理
-        </MenuItem>
-      </Menu>
+      {menuOpen && !isSharedMode && (
+        <Menu
+          anchorEl={menuAnchorEl}
+          open={menuOpen}
+          onClose={handleMenuClose}
+        >
+          <MenuItem onClick={handleNewGame}>
+            <ListItemIcon>
+              <SportsBaseballIcon fontSize="small" />
+            </ListItemIcon>
+            新しい試合
+          </MenuItem>
+          <MenuItem onClick={toggleGameList}>
+            <ListItemIcon>
+              <SportsBaseballIcon fontSize="small" />
+            </ListItemIcon>
+            試合一覧を表示
+          </MenuItem>
+          <MenuItem onClick={toggleTeamManagement}>
+            <ListItemIcon>
+              <GroupsIcon fontSize="small" />
+            </ListItemIcon>
+            チーム・選手管理
+          </MenuItem>
+          <MenuItem onClick={toggleTeamStats}>
+            <ListItemIcon>
+              <BarChartIcon fontSize="small" />
+            </ListItemIcon>
+            通算成績
+          </MenuItem>
+          <Divider />
+          <MenuItem onClick={() => setHelpDialogOpen(true)}>
+            <ListItemIcon>
+              <HelpIcon fontSize="small" />
+            </ListItemIcon>
+            ヘルプ
+          </MenuItem>
+        </Menu>
+      )}
       
       {/* スナックバー通知 */}
       <Snackbar 
