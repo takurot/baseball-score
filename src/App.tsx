@@ -31,7 +31,9 @@ import {
   ListItemText,
   InputLabel,
   Select,
-  FormControl
+  FormControl,
+  useMediaQuery,
+  Hidden
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -155,6 +157,10 @@ const MainApp: React.FC = () => {
   const [runType, setRunType] = useState<RunEventType>('押し出し');
   const [runCount, setRunCount] = useState<number>(1);
   const [runNote, setRunNote] = useState('');
+
+  // レスポンシブデザイン用のメディアクエリ
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isSmallMobile = useMediaQuery('(max-width:380px)');
 
   // URLから共有されたゲームIDを取得
   useEffect(() => {
@@ -654,75 +660,130 @@ const MainApp: React.FC = () => {
   return (
     <>
       <AppBar position="sticky">
-        <Toolbar>
+        <Toolbar sx={{ flexWrap: 'wrap', p: isMobile ? 1 : 2 }}>
           {!isSharedMode && (
             <IconButton
               edge="start"
               color="inherit"
               aria-label="menu"
               onClick={handleMenuOpen}
+              size={isMobile ? "small" : "medium"}
             >
               <MenuIcon />
             </IconButton>
           )}
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            <SportsBaseballIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+          <Typography 
+            variant={isMobile ? "body1" : "h6"} 
+            component="div" 
+            sx={{ 
+              flexGrow: 1, 
+              display: 'flex', 
+              alignItems: 'center',
+              fontSize: isSmallMobile ? '0.9rem' : undefined
+            }}
+            noWrap
+          >
+            <SportsBaseballIcon sx={{ mr: 0.5, fontSize: isMobile ? '1.1rem' : '1.5rem' }} />
             野球スコア {isSharedMode && '(共有モード)'}
           </Typography>
+          
           {!isSharedMode ? (
-            <>
+            <Box sx={{ 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              alignItems: 'center',
+              '& > button': { 
+                fontSize: isMobile ? '0.7rem' : undefined,
+                minWidth: isMobile ? 'auto' : undefined,
+                p: isMobile ? '4px 8px' : undefined
+              }
+            }}>
+              <Hidden smDown>
+                <Button 
+                  color="inherit" 
+                  onClick={handleOpenDateDialog}
+                  sx={{ mr: 1 }}
+                >
+                  {new Date(game.date).toLocaleDateString('ja-JP')}
+                </Button>
+              </Hidden>
+              
               <Button 
                 color="inherit" 
-                onClick={handleOpenDateDialog}
-                sx={{ mr: 1 }}
-              >
-                {new Date(game.date).toLocaleDateString('ja-JP')}
-              </Button>
-              <Button 
-                color="inherit" 
-                startIcon={<SaveIcon />}
+                startIcon={!isMobile && <SaveIcon />}
                 onClick={handleOpenSaveDialog}
+                sx={{ mr: isMobile ? 0.5 : 1 }}
               >
-                保存
+                {isMobile ? '保存' : '保存'}
               </Button>
+              
               <Button 
                 color="inherit" 
                 onClick={toggleViewMode}
+                sx={{ mr: isMobile ? 0.5 : 1 }}
               >
-                {viewMode === 'edit' ? '一覧表示' : '編集に戻る'}
+                {viewMode === 'edit' ? (isMobile ? '一覧' : '一覧表示') : (isMobile ? '編集' : '編集に戻る')}
               </Button>
+              
               <IconButton
                 color="inherit"
                 onClick={handleOpenHelpDialog}
                 aria-label="help"
                 title="ヘルプ"
+                size={isMobile ? "small" : "medium"}
+                sx={{ mr: isMobile ? 0.5 : 0 }}
               >
-                <HelpIcon />
+                <HelpIcon fontSize={isMobile ? "small" : "medium"} />
               </IconButton>
+              
               <UserProfile />
-            </>
+            </Box>
           ) : (
             // 共有モードでのボタン
-            <>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <IconButton
                 color="inherit"
                 onClick={handleOpenHelpDialog}
                 aria-label="help"
                 title="ヘルプ"
                 sx={{ mr: 1 }}
+                size={isMobile ? "small" : "medium"}
               >
-                <HelpIcon />
+                <HelpIcon fontSize={isMobile ? "small" : "medium"} />
               </IconButton>
               <Button 
                 color="inherit" 
                 onClick={() => window.location.href = window.location.origin}
+                sx={{ 
+                  fontSize: isMobile ? '0.7rem' : undefined,
+                  p: isMobile ? '4px 8px' : undefined
+                }}
               >
-                アプリに戻る
+                {isMobile ? 'ホーム' : 'アプリに戻る'}
               </Button>
-            </>
+            </Box>
           )}
         </Toolbar>
       </AppBar>
+      
+      {/* モバイル表示のみの日付ボタン（AppBarの下に配置） */}
+      {!isSharedMode && isMobile && (
+        <Box sx={{ 
+          backgroundColor: '#f5f5f5', 
+          p: 1, 
+          textAlign: 'center',
+          borderBottom: '1px solid #e0e0e0' 
+        }}>
+          <Button 
+            size="small"
+            onClick={handleOpenDateDialog}
+            startIcon={<span style={{ fontSize: '0.8rem' }}>📅</span>}
+            sx={{ fontSize: '0.8rem' }}
+          >
+            {new Date(game.date).toLocaleDateString('ja-JP')}
+          </Button>
+        </Box>
+      )}
       
       <Container sx={{ pt: 2 }}>
         {/* 画面の優先順位: チーム管理画面 > ゲーム一覧 > 通常の試合画面 */}

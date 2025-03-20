@@ -7,7 +7,9 @@ import {
   Menu, 
   MenuItem, 
   Divider,
-  CircularProgress
+  CircularProgress,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -16,6 +18,8 @@ const UserProfile: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [loading, setLoading] = useState(false);
   const open = Boolean(anchorEl);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -39,13 +43,20 @@ const UserProfile: React.FC = () => {
 
   if (!currentUser) return null;
 
+  // 表示名を短く調整
+  const displayName = currentUser.displayName || currentUser.email || '';
+  const shortName = isMobile 
+    ? displayName.split('@')[0]?.substring(0, 8) + (displayName.length > 8 ? '...' : '')
+    : displayName;
+
   return (
     <Box>
       <Button
         onClick={handleClick}
         sx={{ 
           borderRadius: '24px',
-          px: 1,
+          px: isMobile ? 0.5 : 1,
+          minWidth: 0,
           textTransform: 'none',
           color: 'inherit'
         }}
@@ -53,11 +64,23 @@ const UserProfile: React.FC = () => {
         <Avatar 
           src={currentUser.photoURL || undefined} 
           alt={currentUser.displayName || ''}
-          sx={{ width: 32, height: 32, mr: 1 }}
+          sx={{ 
+            width: isMobile ? 24 : 32, 
+            height: isMobile ? 24 : 32, 
+            mr: isMobile ? 0.5 : 1 
+          }}
         />
-        <Typography variant="body2">
-          {currentUser.displayName || currentUser.email}
-        </Typography>
+        {!isMobile && (
+          <Typography 
+            variant="body2" 
+            noWrap 
+            sx={{ 
+              maxWidth: { xs: '60px', sm: '120px', md: '200px' } 
+            }}
+          >
+            {shortName}
+          </Typography>
+        )}
       </Button>
       
       <Menu
@@ -77,7 +100,7 @@ const UserProfile: React.FC = () => {
           <Typography variant="subtitle1">
             {currentUser.displayName}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
             {currentUser.email}
           </Typography>
         </Box>
