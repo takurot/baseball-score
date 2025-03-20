@@ -219,7 +219,6 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                 <TableRow>
                   <TableCell>種類</TableCell>
                   <TableCell>得点</TableCell>
-                  <TableCell>攻撃</TableCell>
                   <TableCell>メモ</TableCell>
                   {onDeleteRunEvent && <TableCell>操作</TableCell>}
                 </TableRow>
@@ -235,10 +234,6 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                       />
                     </TableCell>
                     <TableCell>{event.runCount}点</TableCell>
-                    <TableCell>{event.isTop ? 
-                      `${opposingTeamName}（相手）` : 
-                      `${currentTeamName}（自チーム）`
-                    }</TableCell>
                     <TableCell>{event.note || '-'}</TableCell>
                     {onDeleteRunEvent && (
                       <TableCell>

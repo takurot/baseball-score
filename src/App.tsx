@@ -155,7 +155,6 @@ const MainApp: React.FC = () => {
   const [runType, setRunType] = useState<RunEventType>('押し出し');
   const [runCount, setRunCount] = useState<number>(1);
   const [runNote, setRunNote] = useState('');
-  const [isTopInning, setIsTopInning] = useState(false);
 
   // URLから共有されたゲームIDを取得
   useEffect(() => {
@@ -614,7 +613,6 @@ const MainApp: React.FC = () => {
     setRunType('押し出し');
     setRunCount(1);
     setRunNote('');
-    setIsTopInning(false); // デフォルトは裏（自チーム）
     setRunDialogOpen(true);
   };
   
@@ -628,7 +626,7 @@ const MainApp: React.FC = () => {
     const newRunEvent: RunEvent = {
       id: uuidv4(),
       inning: game.currentInning,
-      isTop: isTopInning,
+      isTop: tabIndex === 0, // 常に現在のタブのチームに得点を追加
       runType: runType,
       runCount: runCount,
       note: runNote || undefined,
@@ -1076,7 +1074,9 @@ const MainApp: React.FC = () => {
       
       {/* 得点追加ダイアログ */}
       <Dialog open={runDialogOpen} onClose={handleCloseRunDialog}>
-        <DialogTitle>得点追加（押し出し・ワイルドピッチなど）</DialogTitle>
+        <DialogTitle>
+          {tabIndex === 0 ? game.awayTeam.name : game.homeTeam.name}の得点追加
+        </DialogTitle>
         <DialogContent>
           <FormControl fullWidth sx={{ mt: 2 }}>
             <InputLabel>得点タイプ</InputLabel>
@@ -1107,17 +1107,9 @@ const MainApp: React.FC = () => {
             </Select>
           </FormControl>
           
-          <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel>攻撃</InputLabel>
-            <Select
-              value={isTopInning ? "相手" : "自チーム"}
-              onChange={(e) => setIsTopInning(e.target.value === "相手")}
-              label="攻撃"
-            >
-              <MenuItem value="相手">{tabIndex === 0 ? game.homeTeam.name : game.awayTeam.name}（相手チーム）</MenuItem>
-              <MenuItem value="自チーム">{tabIndex === 0 ? game.awayTeam.name : game.homeTeam.name}（現在のチーム）</MenuItem>
-            </Select>
-          </FormControl>
+          <Typography variant="body2" sx={{ mt: 2, mb: 1, color: 'text.secondary' }}>
+            {tabIndex === 0 ? game.awayTeam.name : game.homeTeam.name}の{game.currentInning}回の得点として記録します
+          </Typography>
           
           <TextField
             label="メモ（任意）"
