@@ -751,6 +751,7 @@ const MainApp: React.FC = () => {
               homeTeam={game.homeTeam} 
               awayTeam={game.awayTeam} 
               currentInning={game.currentInning} 
+              runEvents={game.runEvents || []}
             />
             
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
@@ -820,6 +821,13 @@ const MainApp: React.FC = () => {
                   runEvents={game.runEvents}
                   onEditAtBat={handleEditAtBat}
                   onDeleteAtBat={handleDeleteAtBat}
+                  onDeleteRunEvent={(eventId) => {
+                    const updatedRunEvents = (game.runEvents || []).filter(event => event.id !== eventId);
+                    setGame({
+                      ...game,
+                      runEvents: updatedRunEvents
+                    });
+                  }}
                 />
               </>
             )}

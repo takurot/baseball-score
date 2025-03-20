@@ -25,6 +25,7 @@ interface AtBatHistoryProps {
   runEvents?: RunEvent[];
   onEditAtBat?: (atBat: AtBat) => void;
   onDeleteAtBat?: (atBatId: string) => void;
+  onDeleteRunEvent?: (eventId: string) => void;
 }
 
 // 打撃結果の表示名マッピング
@@ -69,7 +70,8 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
   inning,
   runEvents = [],
   onEditAtBat,
-  onDeleteAtBat
+  onDeleteAtBat,
+  onDeleteRunEvent
 }) => {
   // 指定されたイニングの打席結果のみをフィルタリング
   const filteredAtBats = atBats.filter(atBat => atBat.inning === inning);
@@ -215,6 +217,7 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                   <TableCell>得点</TableCell>
                   <TableCell>攻撃</TableCell>
                   <TableCell>メモ</TableCell>
+                  {onDeleteRunEvent && <TableCell>操作</TableCell>}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -230,6 +233,19 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                     <TableCell>{event.runCount}点</TableCell>
                     <TableCell>{event.isTop ? '表（相手）' : '裏（自）'}</TableCell>
                     <TableCell>{event.note || '-'}</TableCell>
+                    {onDeleteRunEvent && (
+                      <TableCell>
+                        <Tooltip title="削除">
+                          <IconButton 
+                            size="small" 
+                            onClick={() => onDeleteRunEvent(event.id)}
+                            color="error"
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
