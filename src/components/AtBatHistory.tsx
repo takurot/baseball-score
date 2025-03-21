@@ -287,7 +287,7 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                     <TableCell>
                       <Chip 
                         label={event.outType} 
-                        color="error"
+                        color="secondary"
                         size="small"
                       />
                     </TableCell>
@@ -298,7 +298,7 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                           <IconButton 
                             size="small" 
                             onClick={() => onDeleteOutEvent(event.id)}
-                            color="error"
+                            color="secondary"
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>

@@ -77,7 +77,7 @@ const customColors = {
   walk: '#2196F3', // 青（四球系）
   error: '#9C27B0', // 紫（エラー）
   out: '#9E9E9E', // グレー（アウト）
-  outEvent: '#F44336' // 赤（その他のアウト）
+  outEvent: '#D32F2F' // 赤（その他のアウト）
 };
 
 // 結果に応じた色を返す関数
@@ -363,7 +363,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
   };
 
   // アウトイベントのチップ表示（デスクトップ用）
-  const renderOutEventCell = (outEvents: OutEvent[]) => {
+  const renderOutEventCell = (outEvents: OutEvent[], inning: number) => {
     if (!outEvents.length) {
       return null;
     }
@@ -372,7 +372,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
       <TableCell colSpan={innings.length + 7} sx={{ borderTop: '1px dashed rgba(224, 224, 224, 1)' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', py: 1 }}>
           <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: 120 }}>
-            その他のアウト:
+            {inning}回のアウト:
           </Typography>
           <Stack direction="row" spacing={0.5} flexWrap="wrap">
             {outEvents.map((event) => (
@@ -399,7 +399,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
   };
 
   // アウトイベントのチップ表示（モバイル用）
-  const renderOutEventChips = (outEvents: OutEvent[]) => {
+  const renderOutEventChips = (outEvents: OutEvent[], inning: number) => {
     if (!outEvents.length) {
       return null;
     }
@@ -407,7 +407,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
     return (
       <Box sx={{ mt: 1 }}>
         <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-          その他のアウト:
+          {inning}回のアウト:
         </Typography>
         <Stack direction="row" spacing={0.5} flexWrap="wrap">
           {outEvents.map((event) => (
@@ -482,7 +482,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
                         </Box>
                       </Box>
                       {/* その回のアウトイベントを表示 */}
-                      {player.order === 1 && renderOutEventChips(getOutEventsForInning(inning, true))}
+                      {player.order === 1 && renderOutEventChips(getOutEventsForInning(inning, true), inning)}
                     </Grid>
                   ))}
                 </Grid>
@@ -525,7 +525,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
             return (
               <Box key={inning} sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" gutterBottom>{inning}回のアウト:</Typography>
-                {renderOutEventChips(inningOutEvents)}
+                {renderOutEventChips(inningOutEvents, inning)}
               </Box>
             );
           })}
@@ -593,7 +593,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
                     
                     return (
                       <TableRow key={`out-${inning}`}>
-                        {renderOutEventCell(inningOutEvents)}
+                        {renderOutEventCell(inningOutEvents, inning)}
                       </TableRow>
                     );
                   })}

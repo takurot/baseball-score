@@ -933,7 +933,7 @@ const MainApp: React.FC = () => {
                     </Button>
                     <Button 
                       variant="outlined"
-                      color="error"
+                      color="secondary"
                       onClick={handleOpenOutDialog}
                       sx={{ mr: 2 }}
                     >
@@ -1332,7 +1332,7 @@ const MainApp: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseOutDialog}>キャンセル</Button>
-          <Button onClick={handleSaveOut} variant="contained" color="error">追加</Button>
+          <Button onClick={handleSaveOut} variant="contained" color="secondary">追加</Button>
         </DialogActions>
       </Dialog>
     </>
