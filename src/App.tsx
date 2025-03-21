@@ -41,7 +41,7 @@ import SportsBaseballIcon from '@mui/icons-material/SportsBaseball';
 import GroupsIcon from '@mui/icons-material/Groups';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import { v4 as uuidv4 } from 'uuid';
-import { Team, Player, AtBat, Game, TeamSetting, RunEvent, RunEventType } from './types';
+import { Team, Player, AtBat, Game, TeamSetting, RunEvent, RunEventType, OutEvent, OutEventType } from './types';
 import TeamManager from './components/TeamManager';
 import AtBatForm from './components/AtBatForm';
 import AtBatHistory from './components/AtBatHistory';
@@ -162,6 +162,11 @@ const MainApp: React.FC = () => {
   const [runType, setRunType] = useState<RunEventType>('押し出し');
   const [runCount, setRunCount] = useState<number>(1);
   const [runNote, setRunNote] = useState('');
+
+  // アウト追加ダイアログの状態
+  const [outDialogOpen, setOutDialogOpen] = useState(false);
+  const [outType, setOutType] = useState<OutEventType>('牽制アウト');
+  const [outNote, setOutNote] = useState('');
 
   // レスポンシブデザイン用のメディアクエリ
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -687,6 +692,46 @@ const MainApp: React.FC = () => {
     handleCloseRunDialog();
   };
 
+  // アウト追加ダイアログを開く
+  const handleOpenOutDialog = () => {
+    setOutType('牽制アウト');
+    setOutNote('');
+    setOutDialogOpen(true);
+  };
+  
+  // アウト追加ダイアログを閉じる
+  const handleCloseOutDialog = () => {
+    setOutDialogOpen(false);
+  };
+  
+  // アウト追加の保存
+  const handleSaveOut = () => {
+    const newOutEvent: OutEvent = {
+      id: uuidv4(),
+      inning: game.currentInning,
+      isTop: tabIndex === 0, // 常に現在のタブのチームにアウトを追加
+      outType: outType,
+      note: outNote || undefined,
+      timestamp: new Date()
+    };
+    
+    // 現在のゲームにアウトイベントを追加
+    const updatedGame = { 
+      ...game, 
+      outEvents: [...(game.outEvents || []), newOutEvent] 
+    };
+    
+    setGame(updatedGame);
+    
+    // Firebase Analyticsにイベントを送信
+    sendAnalyticsEvent('add_out_event', {
+      out_type: outType,
+      inning: game.currentInning
+    });
+    
+    handleCloseOutDialog();
+  };
+
   return (
     <>
       <AppBar position="sticky">
@@ -881,9 +926,17 @@ const MainApp: React.FC = () => {
                       variant="outlined"
                       color="secondary"
                       onClick={handleOpenRunDialog}
-                      sx={{ mr: 2 }}
+                      sx={{ mr: 1 }}
                     >
                       得点追加
+                    </Button>
+                    <Button 
+                      variant="outlined"
+                      color="error"
+                      onClick={handleOpenOutDialog}
+                      sx={{ mr: 2 }}
+                    >
+                      アウト追加
                     </Button>
                     <ButtonGroup>
                       <Button 
@@ -912,6 +965,7 @@ const MainApp: React.FC = () => {
                   players={currentTeam.players}
                   inning={game.currentInning}
                   runEvents={game.runEvents}
+                  outEvents={game.outEvents}
                   onEditAtBat={handleEditAtBat}
                   onDeleteAtBat={handleDeleteAtBat}
                   onDeleteRunEvent={(eventId) => {
@@ -919,6 +973,13 @@ const MainApp: React.FC = () => {
                     setGame({
                       ...game,
                       runEvents: updatedRunEvents
+                    });
+                  }}
+                  onDeleteOutEvent={(eventId) => {
+                    const updatedOutEvents = (game.outEvents || []).filter(event => event.id !== eventId);
+                    setGame({
+                      ...game,
+                      outEvents: updatedOutEvents
                     });
                   }}
                   currentTeamName={currentTeam.name}
@@ -1227,6 +1288,50 @@ const MainApp: React.FC = () => {
         <DialogActions>
           <Button onClick={handleCloseRunDialog}>キャンセル</Button>
           <Button onClick={handleSaveRun} variant="contained" color="primary">追加</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* アウト追加ダイアログ */}
+      <Dialog open={outDialogOpen} onClose={handleCloseOutDialog}>
+        <DialogTitle>
+          {tabIndex === 0 ? game.awayTeam.name : game.homeTeam.name}のアウト追加
+        </DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>アウトタイプ</InputLabel>
+            <Select
+              value={outType}
+              onChange={(e) => setOutType(e.target.value as OutEventType)}
+              label="アウトタイプ"
+            >
+              <MenuItem value="牽制アウト">牽制アウト</MenuItem>
+              <MenuItem value="盗塁死">盗塁死</MenuItem>
+              <MenuItem value="タッチアウト">タッチアウト</MenuItem>
+              <MenuItem value="フォースアウト">フォースアウト</MenuItem>
+              <MenuItem value="飛球失策">飛球失策</MenuItem>
+              <MenuItem value="打順間違い">打順間違い</MenuItem>
+              <MenuItem value="その他">その他</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <Typography variant="body2" sx={{ mt: 2, mb: 1, color: 'text.secondary' }}>
+            {tabIndex === 0 ? game.awayTeam.name : game.homeTeam.name}の{game.currentInning}回のアウトとして記録します
+          </Typography>
+          
+          <TextField
+            label="メモ（任意）"
+            fullWidth
+            multiline
+            rows={2}
+            sx={{ mt: 2 }}
+            value={outNote}
+            onChange={(e) => setOutNote(e.target.value)}
+            placeholder="例: 二塁ランナーが三塁への進塁時にタッチアウト"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseOutDialog}>キャンセル</Button>
+          <Button onClick={handleSaveOut} variant="contained" color="error">追加</Button>
         </DialogActions>
       </Dialog>
     </>

@@ -16,16 +16,18 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { AtBat, Player, HitResult, RunEvent } from '../types';
+import { AtBat, Player, HitResult, RunEvent, OutEvent } from '../types';
 
 interface AtBatHistoryProps {
   atBats: AtBat[];
   players: Player[];
   inning: number;
   runEvents?: RunEvent[];
+  outEvents?: OutEvent[];
   onEditAtBat?: (atBat: AtBat) => void;
   onDeleteAtBat?: (atBatId: string) => void;
   onDeleteRunEvent?: (eventId: string) => void;
+  onDeleteOutEvent?: (eventId: string) => void;
   currentTeamName?: string;  // 現在選択中のチーム名
   opposingTeamName?: string; // 相手チーム名
 }
@@ -72,9 +74,11 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
   players, 
   inning,
   runEvents = [],
+  outEvents = [],
   onEditAtBat,
   onDeleteAtBat,
   onDeleteRunEvent,
+  onDeleteOutEvent,
   currentTeamName = '自チーム',
   opposingTeamName = '相手チーム'
 }) => {
@@ -84,8 +88,11 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
   // 指定されたイニングの得点イベントのみをフィルタリング
   const filteredRunEvents = runEvents.filter(event => event.inning === inning);
   
-  // 打席結果も得点イベントもない場合
-  if (filteredAtBats.length === 0 && filteredRunEvents.length === 0) {
+  // 指定されたイニングのアウトイベントのみをフィルタリング
+  const filteredOutEvents = outEvents.filter(event => event.inning === inning);
+  
+  // 打席結果も得点イベントもアウトイベントもない場合
+  if (filteredAtBats.length === 0 && filteredRunEvents.length === 0 && filteredOutEvents.length === 0) {
     return (
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
@@ -209,7 +216,7 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
       {/* 得点イベントがある場合に表示 */}
       {filteredRunEvents.length > 0 && (
         <>
-          {filteredAtBats.length > 0 && <Divider sx={{ my: 2 }} />}
+          {(filteredAtBats.length > 0 || filteredOutEvents.length > 0) && <Divider sx={{ my: 2 }} />}
           
           <Typography variant="subtitle1" gutterBottom>
             その他の得点
@@ -242,6 +249,55 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                           <IconButton 
                             size="small" 
                             onClick={() => onDeleteRunEvent(event.id)}
+                            color="error"
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
+
+      {/* アウトイベントがある場合に表示 */}
+      {filteredOutEvents.length > 0 && (
+        <>
+          {(filteredAtBats.length > 0 || filteredRunEvents.length > 0) && <Divider sx={{ my: 2 }} />}
+          
+          <Typography variant="subtitle1" gutterBottom>
+            その他のアウト
+          </Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>種類</TableCell>
+                  <TableCell>メモ</TableCell>
+                  {onDeleteOutEvent && <TableCell>操作</TableCell>}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredOutEvents.map((event) => (
+                  <TableRow key={event.id}>
+                    <TableCell>
+                      <Chip 
+                        label={event.outType} 
+                        color="error"
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>{event.note || '-'}</TableCell>
+                    {onDeleteOutEvent && (
+                      <TableCell>
+                        <Tooltip title="削除">
+                          <IconButton 
+                            size="small" 
+                            onClick={() => onDeleteOutEvent(event.id)}
                             color="error"
                           >
                             <DeleteIcon fontSize="small" />
