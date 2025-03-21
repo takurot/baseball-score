@@ -913,6 +913,7 @@ const MainApp: React.FC = () => {
               <AtBatSummaryTable 
                 team={currentTeam} 
                 maxInning={game.currentInning}
+                outEvents={game.outEvents}
               />
             ) : (
               // 編集モード（共有モードでは表示しない）
