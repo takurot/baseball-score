@@ -130,7 +130,7 @@ const TeamList: React.FC = () => {
   // 初回読み込み
   useEffect(() => {
     loadTeams();
-  }, [currentUser]);
+  }, [currentUser, loadTeams]);
   
   // タブ変更ハンドラー
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {

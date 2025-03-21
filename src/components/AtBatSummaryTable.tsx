@@ -14,8 +14,6 @@ import {
   Stack,
   useMediaQuery,
   useTheme,
-  Card,
-  CardContent,
   Grid,
   Accordion,
   AccordionSummary,

@@ -16,13 +16,11 @@ import {
   DialogContentText,
   DialogActions,
   Button,
-  ListItemSecondaryAction,
   Switch,
   Tooltip,
   TextField
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import ShareIcon from '@mui/icons-material/Share';
 import PublicIcon from '@mui/icons-material/Public';
 import PublicOffIcon from '@mui/icons-material/PublicOff';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -107,14 +105,6 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
     }
   };
 
-  // シェアボタンのクリックハンドラー
-  const handleShareGame = (gameId: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (onShareGame) {
-      onShareGame(gameId);
-    }
-  };
-
   // 公開状態の切り替え
   const handleTogglePublic = async (gameId: string, currentPublicStatus: boolean, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -152,6 +142,14 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
     } catch (err) {
       console.error('Failed to copy:', err);
       alert('URLのコピーに失敗しました。手動でコピーしてください。');
+    }
+  };
+
+  // シェアボタンのクリックハンドラー
+  const handleShareGame = (gameId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (onShareGame) {
+      onShareGame(gameId);
     }
   };
 

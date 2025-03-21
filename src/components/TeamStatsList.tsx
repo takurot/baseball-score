@@ -27,7 +27,7 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { getAllTeamStats, TeamStats, PlayerBattingStats } from '../firebase/statsService';
+import { getAllTeamStats, TeamStats } from '../firebase/statsService';
 
 interface TabPanelProps {
   children?: React.ReactNode;

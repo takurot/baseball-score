@@ -25,10 +25,6 @@ import {
   CircularProgress,
   Divider,
   ListItemIcon,
-  Drawer,
-  List,
-  ListItem,
-  ListItemText,
   InputLabel,
   Select,
   FormControl,
@@ -51,7 +47,7 @@ import GameList from './components/GameList';
 import TeamList from './components/TeamList';
 import TeamStatsList from './components/TeamStatsList';
 import { saveGame, getGameById, getSharedGameById, saveGameAsNew } from './firebase/gameService';
-import { getUserTeams, getTeamById } from './firebase/teamService';
+import { getTeamById } from './firebase/teamService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import UserProfile from './components/UserProfile';
