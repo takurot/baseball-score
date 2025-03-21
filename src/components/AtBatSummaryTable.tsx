@@ -270,6 +270,11 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
     return outEvents.filter(event => event.inning === inning && event.isTop === isTop);
   };
 
+  // イニングごとにアウトイベントがあるかどうかを確認
+  const hasOutEventsForInning = (inning: number): boolean => {
+    return getOutEventsForInning(inning, true).length > 0;
+  };
+
   // 打席結果を表示するセル（複数の結果に対応）
   const renderAtBatCell = (atBats: AtBat[]) => {
     if (!atBats.length) {
@@ -316,6 +321,49 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
     );
   };
 
+  // アウトイベントを表示する行（デスクトップ表示用）
+  const renderOutEventRow = (inning: number) => {
+    const outEvents = getOutEventsForInning(inning, true);
+    if (!outEvents.length) return null;
+
+    return (
+      <TableRow key={`out-events-${inning}`} sx={{ backgroundColor: '#f8f8f8' }}>
+        <TableCell />
+        <TableCell>
+          <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+            その他のアウト
+          </Typography>
+        </TableCell>
+        {innings.map(i => (
+          <TableCell key={i} align="center">
+            {i === inning ? (
+              <Stack direction="row" spacing={0.5} justifyContent="center" flexWrap="wrap">
+                {outEvents.map((event) => (
+                  <Tooltip 
+                    key={event.id}
+                    title={`${event.outType}${event.note ? ` - ${event.note}` : ''}`}
+                  >
+                    <Chip 
+                      label={event.outType} 
+                      size="small"
+                      sx={{ 
+                        backgroundColor: customColors.outEvent,
+                        color: '#FFFFFF',
+                        fontSize: '0.7rem',
+                        margin: '2px'
+                      }}
+                    />
+                  </Tooltip>
+                ))}
+              </Stack>
+            ) : null}
+          </TableCell>
+        ))}
+        <TableCell colSpan={5} />
+      </TableRow>
+    );
+  };
+
   // モバイル向けの結果チップ表示
   const renderAtBatChips = (atBats: AtBat[]) => {
     if (!atBats.length) {
@@ -357,77 +405,6 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
           );
         })}
       </Stack>
-    );
-  };
-
-  // アウトイベントのチップ表示（デスクトップ用）
-  const renderOutEventCell = (outEvents: OutEvent[], inning: number) => {
-    if (!outEvents.length) {
-      return null;
-    }
-
-    return (
-      <TableCell colSpan={innings.length + 7} sx={{ borderTop: '1px dashed rgba(224, 224, 224, 1)' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', py: 1 }}>
-          <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: 120 }}>
-            {inning}回のアウト:
-          </Typography>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap">
-            {outEvents.map((event) => (
-              <Tooltip 
-                key={event.id}
-                title={`${event.outType}${event.note ? ` - ${event.note}` : ''}`}
-              >
-                <Chip 
-                  label={event.outType} 
-                  size="small"
-                  sx={{ 
-                    backgroundColor: customColors.outEvent,
-                    color: '#FFFFFF',
-                    fontSize: '0.7rem',
-                    margin: '2px'
-                  }}
-                />
-              </Tooltip>
-            ))}
-          </Stack>
-        </Box>
-      </TableCell>
-    );
-  };
-
-  // アウトイベントのチップ表示（モバイル用）
-  const renderOutEventChips = (outEvents: OutEvent[], inning: number) => {
-    if (!outEvents.length) {
-      return null;
-    }
-
-    return (
-      <Box sx={{ mt: 1 }}>
-        <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-          {inning}回のアウト:
-        </Typography>
-        <Stack direction="row" spacing={0.5} flexWrap="wrap">
-          {outEvents.map((event) => (
-            <Tooltip 
-              key={event.id}
-              title={`${event.outType}${event.note ? ` - ${event.note}` : ''}`}
-            >
-              <Chip 
-                label={event.outType} 
-                size="small"
-                sx={{ 
-                  backgroundColor: customColors.outEvent,
-                  color: '#FFFFFF',
-                  fontSize: '0.65rem',
-                  height: '22px',
-                  margin: '2px'
-                }}
-              />
-            </Tooltip>
-          ))}
-        </Stack>
-      </Box>
     );
   };
 
@@ -479,8 +456,34 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
                           {renderAtBatChips(getPlayerAtBatsForInning(player.id, inning))}
                         </Box>
                       </Box>
-                      {/* その回のアウトイベントを表示 */}
-                      {player.order === 1 && renderOutEventChips(getOutEventsForInning(inning, true), inning)}
+                      {/* その回のアウトイベントを表示するが、一番最初の選手の場合のみ */}
+                      {player.order === 1 && hasOutEventsForInning(inning) && (
+                        <Box sx={{ ml: 4, mt: 1, mb: 2, pb: 1, borderLeft: '2px solid #f0f0f0', pl: 2 }}>
+                          <Typography variant="body2" sx={{ fontStyle: 'italic', mb: 0.5 }}>
+                            その他のアウト:
+                          </Typography>
+                          <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                            {getOutEventsForInning(inning, true).map((event) => (
+                              <Tooltip 
+                                key={event.id}
+                                title={`${event.outType}${event.note ? ` - ${event.note}` : ''}`}
+                              >
+                                <Chip 
+                                  label={event.outType} 
+                                  size="small"
+                                  sx={{ 
+                                    backgroundColor: customColors.outEvent,
+                                    color: '#FFFFFF',
+                                    fontSize: '0.65rem',
+                                    height: '22px',
+                                    margin: '2px'
+                                  }}
+                                />
+                              </Tooltip>
+                            ))}
+                          </Stack>
+                        </Box>
+                      )}
                     </Grid>
                   ))}
                 </Grid>
@@ -512,25 +515,6 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
             </Accordion>
           );
         })}
-
-        {/* すべてのイニングのアウトイベントをまとめて表示（モバイル版の最後） */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>その他のアウトイベント</Typography>
-          {innings.map((inning) => {
-            const inningOutEvents = getOutEventsForInning(inning, true);
-            if (inningOutEvents.length === 0) return null;
-            
-            return (
-              <Box key={inning} sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>{inning}回のアウト:</Typography>
-                {renderOutEventChips(inningOutEvents, inning)}
-              </Box>
-            );
-          })}
-          {!innings.some(inning => getOutEventsForInning(inning, true).length > 0) && (
-            <Typography variant="body2">記録なし</Typography>
-          )}
-        </Paper>
       </>
     );
   };
@@ -580,27 +564,8 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
               );
             })}
             
-            {/* アウトイベント行を追加 */}
-            <TableRow>
-              <TableCell colSpan={innings.length + 8} sx={{ padding: 0 }}>
-                <Box sx={{ p: 1, backgroundColor: '#f5f5f5' }}>
-                  <Typography variant="subtitle2" gutterBottom>その他のアウトイベント</Typography>
-                  {innings.map((inning) => {
-                    const inningOutEvents = getOutEventsForInning(inning, true);
-                    if (inningOutEvents.length === 0) return null;
-                    
-                    return (
-                      <TableRow key={`out-${inning}`}>
-                        {renderOutEventCell(inningOutEvents, inning)}
-                      </TableRow>
-                    );
-                  })}
-                  {!innings.some(inning => getOutEventsForInning(inning, true).length > 0) && (
-                    <Typography variant="body2" sx={{ ml: 2 }}>記録なし</Typography>
-                  )}
-                </Box>
-              </TableCell>
-            </TableRow>
+            {/* アウトイベント行を各イニングごとに表示 */}
+            {innings.map(inning => renderOutEventRow(inning))}
           </TableBody>
         </Table>
       </TableContainer>
