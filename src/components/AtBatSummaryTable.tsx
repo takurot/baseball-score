@@ -412,6 +412,77 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
   const renderMobileView = (): React.ReactNode => {
     return (
       <>
+        {/* インニング毎のアウトイベントをまとめて表示するセクションを追加 */}
+        {innings.map(inning => {
+          if (hasOutEventsForInning(inning)) {
+            return (
+              <Box 
+                key={`out-events-${inning}`} 
+                sx={{ 
+                  mb: 2, 
+                  mt: 1, 
+                  backgroundColor: '#f8f8f8', 
+                  p: 1.5, 
+                  borderRadius: 1,
+                  borderLeft: `4px solid ${customColors.outEvent}`
+                }}
+              >
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, display: 'flex', alignItems: 'center' }}>
+                  <Box component="span" sx={{ 
+                    backgroundColor: customColors.outEvent,
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '24px',
+                    height: '24px',
+                    display: 'inline-flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginRight: 1
+                  }}>
+                    {inning}
+                  </Box>
+                  回のその他のアウト:
+                </Typography>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                  {getOutEventsForInning(inning, true).map((event) => (
+                    <Tooltip 
+                      key={event.id}
+                      title={`${event.outType}${event.note ? ` - ${event.note}` : ''}`}
+                    >
+                      <Chip 
+                        label={event.outType} 
+                        size="small"
+                        sx={{ 
+                          backgroundColor: customColors.outEvent,
+                          color: '#FFFFFF',
+                          fontSize: '0.75rem',
+                          height: '24px',
+                          margin: '2px',
+                          fontWeight: 'medium'
+                        }}
+                      />
+                    </Tooltip>
+                  ))}
+                </Stack>
+                {/* 注記があれば表示 */}
+                {getOutEventsForInning(inning, true).some(event => event.note) && (
+                  <Box sx={{ mt: 1, pl: 1, borderLeft: '2px solid #e0e0e0' }}>
+                    {getOutEventsForInning(inning, true)
+                      .filter(event => event.note)
+                      .map(event => (
+                        <Typography key={`note-${event.id}`} variant="caption" sx={{ display: 'block', fontStyle: 'italic' }}>
+                          {event.outType}: {event.note}
+                        </Typography>
+                      ))
+                    }
+                  </Box>
+                )}
+              </Box>
+            );
+          }
+          return null;
+        })}
+        
         {sortedPlayers.map((player) => {
           const playerAtBats = getPlayerAllAtBats(player.id);
           const stats = calculateBattingStats(playerAtBats);
@@ -456,34 +527,6 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({ team, maxInning, 
                           {renderAtBatChips(getPlayerAtBatsForInning(player.id, inning))}
                         </Box>
                       </Box>
-                      {/* その回のアウトイベントを表示するが、一番最初の選手の場合のみ */}
-                      {player.order === 1 && hasOutEventsForInning(inning) && (
-                        <Box sx={{ ml: 4, mt: 1, mb: 2, pb: 1, borderLeft: '2px solid #f0f0f0', pl: 2 }}>
-                          <Typography variant="body2" sx={{ fontStyle: 'italic', mb: 0.5 }}>
-                            その他のアウト:
-                          </Typography>
-                          <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                            {getOutEventsForInning(inning, true).map((event) => (
-                              <Tooltip 
-                                key={event.id}
-                                title={`${event.outType}${event.note ? ` - ${event.note}` : ''}`}
-                              >
-                                <Chip 
-                                  label={event.outType} 
-                                  size="small"
-                                  sx={{ 
-                                    backgroundColor: customColors.outEvent,
-                                    color: '#FFFFFF',
-                                    fontSize: '0.65rem',
-                                    height: '22px',
-                                    margin: '2px'
-                                  }}
-                                />
-                              </Tooltip>
-                            ))}
-                          </Stack>
-                        </Box>
-                      )}
                     </Grid>
                   ))}
                 </Grid>
