@@ -388,7 +388,14 @@ const MainApp: React.FC = () => {
 
   // チーム管理画面の表示/非表示切り替え
   const toggleTeamManagement = () => {
-    setShowTeamManagement(!showTeamManagement);
+    // 他の画面を閉じる
+    setShowGameList(false);
+    setShowTeamStats(false);
+    // 遅延を追加してレンダリングの問題を回避
+    setTimeout(() => {
+      setShowTeamManagement(!showTeamManagement);
+    }, 10);
+    handleMenuClose();
   };
 
   // 通算成績画面の表示/非表示切り替え

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Button, 
@@ -54,6 +54,20 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   const [availableTeams, setAvailableTeams] = useState<TeamSetting[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [teamSelectionError, setTeamSelectionError] = useState<string | null>(null);
+
+  // teamプロップが変更されたらチーム名の状態を更新
+  useEffect(() => {
+    setTeamName(team.name);
+  }, [team.name]);
+
+  // コンポーネントマウント時にダイアログの状態をリセット
+  useEffect(() => {
+    setOpenPlayerDialog(false);
+    setOpenTeamNameDialog(false);
+    setOpenTeamSelectionDialog(false);
+    setLoadingTeams(false);
+    setTeamSelectionError(null);
+  }, []);
 
   // 選手追加ダイアログを開く
   const handleOpenAddPlayerDialog = () => {
@@ -159,11 +173,13 @@ const TeamManager: React.FC<TeamManagerProps> = ({
       setLoadingTeams(true);
       setTeamSelectionError(null);
       const teams = await getUserTeams();
-      setAvailableTeams(teams);
+      setAvailableTeams(teams || []);
       setOpenTeamSelectionDialog(true);
     } catch (error: any) {
       console.error('チームの読み込みに失敗しました:', error);
-      setTeamSelectionError(`チームの読み込みに失敗しました: ${error.message}`);
+      setTeamSelectionError(`チームの読み込みに失敗しました: ${error.message || 'Unknown error'}`);
+      // エラーが発生してもダイアログは開く
+      setOpenTeamSelectionDialog(true);
     } finally {
       setLoadingTeams(false);
     }
@@ -172,11 +188,17 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   // チーム選択ダイアログを閉じる
   const handleCloseTeamSelectionDialog = () => {
     setOpenTeamSelectionDialog(false);
-    setTeamSelectionError(null);
+    // ダイアログを閉じるときに状態をリセット
+    setTimeout(() => {
+      setTeamSelectionError(null);
+      setAvailableTeams([]);
+    }, 300); // ダイアログのアニメーション終了後にリセット
   };
 
   // 選択したチームでデータを更新
   const handleSelectTeam = async (teamSettingId: string) => {
+    if (!teamSettingId) return;
+    
     try {
       setLoadingTeams(true);
       setTeamSelectionError(null);
@@ -191,14 +213,14 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         ...team,
         id: teamSetting.id,
         name: teamSetting.name,
-        players: teamSetting.players.map(player => ({
+        players: teamSetting.players?.map(player => ({
           id: player.id,
           name: player.name,
           number: player.number,
           position: player.position,
           isActive: true,
           order: 0 // 初期値は0に設定
-        }))
+        })) || []
         // 注意: atBatsは維持されます
       };
       
@@ -206,7 +228,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
       handleCloseTeamSelectionDialog();
     } catch (error: any) {
       console.error('チームの選択に失敗しました:', error);
-      setTeamSelectionError(`チームの選択に失敗しました: ${error.message}`);
+      setTeamSelectionError(`チームの選択に失敗しました: ${error.message || 'Unknown error'}`);
     } finally {
       setLoadingTeams(false);
     }
@@ -343,9 +365,18 @@ const TeamManager: React.FC<TeamManagerProps> = ({
               <CircularProgress />
             </Box>
           ) : teamSelectionError ? (
-            <Typography color="error" sx={{ p: 2 }}>
-              {teamSelectionError}
-            </Typography>
+            <Box sx={{ p: 2 }}>
+              <Typography color="error" sx={{ mb: 2 }}>
+                {teamSelectionError}
+              </Typography>
+              <Button 
+                variant="outlined" 
+                color="primary" 
+                onClick={() => setTeamSelectionError(null)}
+              >
+                再試行
+              </Button>
+            </Box>
           ) : availableTeams.length === 0 ? (
             <Typography sx={{ p: 2 }}>
               登録済みのチームがありません。メニューの「チーム・選手管理」からチームを登録してください。

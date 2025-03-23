@@ -43,7 +43,11 @@ const PlayerList: React.FC<PlayerListProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
-  const sortedPlayers = [...players].sort((a, b) => a.order - b.order);
+  // playersが未定義またはnullの場合は空配列を使用
+  const playersList = players || [];
+  
+  // 打順でソート
+  const sortedPlayers = [...playersList].sort((a, b) => a.order - b.order);
   
   // 出場中の選手と控えの選手を分ける
   const activePlayers = sortedPlayers.filter(player => player.isActive);

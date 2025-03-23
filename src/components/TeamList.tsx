@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Typography, 
   Button, 
@@ -110,27 +110,49 @@ const TeamList: React.FC = () => {
     }));
   };
   
-  // チームデータの読み込み
-  const loadTeams = async () => {
+  // チームデータの読み込み - useCallbackでメモ化
+  const loadTeams = useCallback(async () => {
     if (!currentUser) return;
     
     try {
       setLoading(true);
       setError(null);
       const teamsData = await getUserTeams();
-      setTeams(teamsData);
+      setTeams(teamsData || []);
     } catch (err: any) {
       console.error('Failed to load teams:', err);
-      setError('チームデータの読み込みに失敗しました: ' + err.message);
+      setError('チームデータの読み込みに失敗しました: ' + (err.message || 'エラーが発生しました'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
   
   // 初回読み込み
   useEffect(() => {
-    loadTeams();
-  }, [currentUser, loadTeams]);
+    let mounted = true;
+    
+    const fetchTeams = async () => {
+      try {
+        setLoading(true);
+        await loadTeams();
+      } catch (error) {
+        console.error("Failed to load teams:", error);
+        if (mounted) {
+          setError("チームの読み込みに失敗しました");
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    fetchTeams();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [loadTeams]); // loadTeamsが変更されたときだけ実行
   
   // タブ変更ハンドラー
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
@@ -404,9 +426,12 @@ const TeamList: React.FC = () => {
   // ローディング表示
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-        <CircularProgress />
-      </Box>
+      <Paper sx={{ p: 2, m: 2 }}>
+        <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="200px">
+          <CircularProgress sx={{ mb: 2 }} />
+          <Typography>チーム情報を読み込み中...</Typography>
+        </Box>
+      </Paper>
     );
   }
   
