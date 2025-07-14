@@ -33,6 +33,12 @@ cd baseball-score
 npm install
 ```
 
+コード整形には Prettier を使用しています。以下で自動整形できます。
+
+```
+npx prettier -w .
+```
+
 3. 環境変数を設定します
    `.env.example`ファイルを`.env`としてコピーし、Firebase の設定情報を入力します。
 
@@ -40,6 +46,12 @@ npm install
 
 ```
 npm start
+```
+
+### テスト
+
+```
+npm test
 ```
 
 ## 環境変数
