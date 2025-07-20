@@ -1,0 +1,18 @@
+# Blog articles and documentation that don't need formatting
+qiita.md
+
+# Build output
+build/
+dist/
+
+# Dependencies
+node_modules/
+
+# Log files
+*.log
+
+# macOS hidden files
+._*
+
+# Git files
+.git/ 

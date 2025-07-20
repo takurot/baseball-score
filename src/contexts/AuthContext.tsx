@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
-import { 
-  onAuthStateChange, 
-  signInWithGoogle, 
-  signOut, 
+import {
+  onAuthStateChange,
+  signInWithGoogle,
+  signOut,
   loginWithEmailAndPassword,
   registerWithEmailAndPassword,
-  sendPasswordReset
+  sendPasswordReset,
 } from '../firebase/authService';
 
 // Contextの型定義
@@ -16,7 +16,11 @@ interface AuthContextType {
   signIn: () => Promise<User | null>;
   logOut: () => Promise<void>;
   loginWithEmailAndPassword: (email: string, password: string) => Promise<User>;
-  registerWithEmailAndPassword: (email: string, password: string, displayName: string) => Promise<User>;
+  registerWithEmailAndPassword: (
+    email: string,
+    password: string,
+    displayName: string
+  ) => Promise<User>;
   sendPasswordReset: (email: string) => Promise<void>;
 }
 
@@ -26,9 +30,15 @@ const defaultAuthContext: AuthContextType = {
   isLoading: true,
   signIn: async () => null,
   logOut: async () => {},
-  loginWithEmailAndPassword: async () => { throw new Error('Not implemented') },
-  registerWithEmailAndPassword: async () => { throw new Error('Not implemented') },
-  sendPasswordReset: async () => { throw new Error('Not implemented') }
+  loginWithEmailAndPassword: async () => {
+    throw new Error('Not implemented');
+  },
+  registerWithEmailAndPassword: async () => {
+    throw new Error('Not implemented');
+  },
+  sendPasswordReset: async () => {
+    throw new Error('Not implemented');
+  },
 };
 
 // Context作成
@@ -86,14 +96,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logOut,
     loginWithEmailAndPassword,
     registerWithEmailAndPassword,
-    sendPasswordReset
+    sendPasswordReset,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export default AuthContext; 
+export default AuthContext;

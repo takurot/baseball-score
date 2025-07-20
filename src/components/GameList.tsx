@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Paper, 
-  Typography, 
-  List, 
-  ListItem, 
-  ListItemText, 
+import {
+  Paper,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
   ListItemButton,
   Divider,
   CircularProgress,
@@ -18,13 +18,17 @@ import {
   Button,
   Switch,
   Tooltip,
-  TextField
+  TextField,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PublicIcon from '@mui/icons-material/Public';
 import PublicOffIcon from '@mui/icons-material/PublicOff';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { getAllGames, deleteGame, updateGamePublicStatus } from '../firebase/gameService';
+import {
+  getAllGames,
+  deleteGame,
+  updateGamePublicStatus,
+} from '../firebase/gameService';
 import { Game } from '../types';
 
 interface GameListProps {
@@ -33,7 +37,11 @@ interface GameListProps {
   onShareGame?: (gameId: string) => void;
 }
 
-const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShareGame }) => {
+const GameList: React.FC<GameListProps> = ({
+  onSelectGame,
+  onGameDeleted,
+  onShareGame,
+}) => {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +49,9 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
   const [gameToDelete, setGameToDelete] = useState<string | null>(null);
   const [shareUrlDialogOpen, setShareUrlDialogOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
-  const [updatingPublicStatus, setUpdatingPublicStatus] = useState<string | null>(null);
+  const [updatingPublicStatus, setUpdatingPublicStatus] = useState<
+    string | null
+  >(null);
 
   const fetchGames = async () => {
     try {
@@ -68,7 +78,7 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-      weekday: 'short'
+      weekday: 'short',
     });
   };
 
@@ -88,7 +98,7 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
   // 試合を削除する
   const handleDeleteGame = async () => {
     if (!gameToDelete) return;
-    
+
     try {
       await deleteGame(gameToDelete);
       // 削除後にリストを更新
@@ -106,17 +116,23 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
   };
 
   // 公開状態の切り替え
-  const handleTogglePublic = async (gameId: string, currentPublicStatus: boolean, event: React.MouseEvent) => {
+  const handleTogglePublic = async (
+    gameId: string,
+    currentPublicStatus: boolean,
+    event: React.MouseEvent
+  ) => {
     event.stopPropagation();
     try {
       setUpdatingPublicStatus(gameId);
       await updateGamePublicStatus(gameId, !currentPublicStatus);
       // 状態を更新
-      setGames(games.map(game => 
-        game.id === gameId 
-          ? { ...game, isPublic: !currentPublicStatus } 
-          : game
-      ));
+      setGames(
+        games.map((game) =>
+          game.id === gameId
+            ? { ...game, isPublic: !currentPublicStatus }
+            : game
+        )
+      );
     } catch (err) {
       console.error('Failed to update public status:', err);
       setError('公開設定の更新に失敗しました。');
@@ -186,16 +202,18 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
         {games.map((game, index) => (
           <React.Fragment key={game.id}>
             {index > 0 && <Divider />}
-            <ListItem 
+            <ListItem
               disablePadding
               secondaryAction={
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Tooltip title={game.isPublic ? "公開中" : "非公開"}>
+                  <Tooltip title={game.isPublic ? '公開中' : '非公開'}>
                     <span>
                       <Switch
                         checked={Boolean(game.isPublic)}
                         onChange={(e) => {}}
-                        onClick={(e) => handleTogglePublic(game.id, Boolean(game.isPublic), e)}
+                        onClick={(e) =>
+                          handleTogglePublic(game.id, Boolean(game.isPublic), e)
+                        }
                         disabled={updatingPublicStatus === game.id}
                         color="primary"
                         size="small"
@@ -204,7 +222,7 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
                       />
                     </span>
                   </Tooltip>
-                  
+
                   {game.isPublic && (
                     <Tooltip title="共有URLを表示">
                       <IconButton
@@ -216,9 +234,9 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
                       </IconButton>
                     </Tooltip>
                   )}
-                  
-                  <IconButton 
-                    edge="end" 
+
+                  <IconButton
+                    edge="end"
                     aria-label="delete"
                     onClick={(e) => handleOpenDeleteDialog(game.id, e)}
                     size="small"
@@ -248,10 +266,7 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
       </List>
 
       {/* 削除確認ダイアログ */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={handleCloseDeleteDialog}
-      >
+      <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
         <DialogTitle>試合データの削除</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -267,8 +282,8 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
       </Dialog>
 
       {/* 共有URL表示ダイアログ */}
-      <Dialog 
-        open={shareUrlDialogOpen} 
+      <Dialog
+        open={shareUrlDialogOpen}
         onClose={() => setShareUrlDialogOpen(false)}
         maxWidth="md"
         fullWidth
@@ -278,7 +293,7 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
           <Typography paragraph>
             以下のURLを共有することで、この試合結果を他の人に共有できます。
           </Typography>
-          
+
           <TextField
             value={shareUrl}
             fullWidth
@@ -291,20 +306,18 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted, onShar
           />
         </DialogContent>
         <DialogActions>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={handleCopyToClipboard}
             color="primary"
           >
             URLをコピー
           </Button>
-          <Button onClick={() => setShareUrlDialogOpen(false)}>
-            閉じる
-          </Button>
+          <Button onClick={() => setShareUrlDialogOpen(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
     </Paper>
   );
 };
 
-export default GameList; 
+export default GameList;

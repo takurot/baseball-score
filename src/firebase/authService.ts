@@ -1,14 +1,14 @@
-import { 
-  getAuth, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword as firebaseSignInWithEmailAndPassword,
   sendPasswordResetEmail,
-  updateProfile
+  updateProfile,
 } from 'firebase/auth';
 import { app } from './config';
 
@@ -29,8 +29,8 @@ export const signInWithGoogle = async () => {
 
 // メールアドレスとパスワードで新規ユーザー登録
 export const registerWithEmailAndPassword = async (
-  email: string, 
-  password: string, 
+  email: string,
+  password: string,
   displayName: string
 ) => {
   try {
@@ -38,7 +38,7 @@ export const registerWithEmailAndPassword = async (
     // ユーザー表示名を設定
     if (displayName) {
       await updateProfile(result.user, {
-        displayName: displayName
+        displayName: displayName,
       });
     }
     return result.user;
@@ -50,11 +50,15 @@ export const registerWithEmailAndPassword = async (
 
 // メールアドレスとパスワードでログイン
 export const loginWithEmailAndPassword = async (
-  email: string, 
+  email: string,
   password: string
 ): Promise<User> => {
   try {
-    const result = await firebaseSignInWithEmailAndPassword(auth, email, password);
+    const result = await firebaseSignInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
     return result.user;
   } catch (error) {
     console.error('Email login error:', error);
@@ -90,4 +94,4 @@ export const getCurrentUser = (): User | null => {
 // 認証状態の変更を監視
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
-}; 
+};

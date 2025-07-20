@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Button, 
-  Dialog, 
-  DialogActions, 
-  DialogContent, 
-  DialogTitle, 
-  TextField, 
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
   Typography,
   Paper,
   Grid,
@@ -16,7 +16,7 @@ import {
   List,
   ListItem,
   ListItemText,
-  Divider
+  Divider,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -33,10 +33,10 @@ interface TeamManagerProps {
   onRegisterAtBat?: (player: Player) => void;
 }
 
-const TeamManager: React.FC<TeamManagerProps> = ({ 
-  team, 
+const TeamManager: React.FC<TeamManagerProps> = ({
+  team,
   onTeamUpdate,
-  onRegisterAtBat
+  onRegisterAtBat,
 }) => {
   const [openPlayerDialog, setOpenPlayerDialog] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
@@ -44,7 +44,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   const [playerNumber, setPlayerNumber] = useState('');
   const [playerPosition, setPlayerPosition] = useState('');
   const [playerOrder, setPlayerOrder] = useState('');
-  
+
   // チーム名編集用の状態
   const [openTeamNameDialog, setOpenTeamNameDialog] = useState(false);
   const [teamName, setTeamName] = useState(team.name);
@@ -53,7 +53,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   const [openTeamSelectionDialog, setOpenTeamSelectionDialog] = useState(false);
   const [availableTeams, setAvailableTeams] = useState<TeamSetting[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
-  const [teamSelectionError, setTeamSelectionError] = useState<string | null>(null);
+  const [teamSelectionError, setTeamSelectionError] = useState<string | null>(
+    null
+  );
 
   // teamプロップが変更されたらチーム名の状態を更新
   useEffect(() => {
@@ -81,7 +83,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
 
   // 選手編集ダイアログを開く
   const handleEditPlayer = (playerId: string) => {
-    const player = team.players.find(p => p.id === playerId);
+    const player = team.players.find((p) => p.id === playerId);
     if (player) {
       setEditingPlayer(player);
       setPlayerName(player.name);
@@ -110,9 +112,15 @@ const TeamManager: React.FC<TeamManagerProps> = ({
 
     if (editingPlayer) {
       // 既存の選手を更新
-      const updatedPlayers = team.players.map(p => 
-        p.id === editingPlayer.id 
-          ? { ...p, name: playerName, number: playerNumber, position: playerPosition, order }
+      const updatedPlayers = team.players.map((p) =>
+        p.id === editingPlayer.id
+          ? {
+              ...p,
+              name: playerName,
+              number: playerNumber,
+              position: playerPosition,
+              order,
+            }
           : p
       );
       onTeamUpdate({ ...team, players: updatedPlayers });
@@ -124,7 +132,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         number: playerNumber,
         position: playerPosition,
         isActive: true,
-        order
+        order,
       };
       onTeamUpdate({ ...team, players: [...team.players, newPlayer] });
     }
@@ -134,7 +142,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
 
   // 選手の状態を切り替える（出場中 <-> 控え）
   const handleTogglePlayerStatus = (playerId: string) => {
-    const updatedPlayers = team.players.map(p => 
+    const updatedPlayers = team.players.map((p) =>
       p.id === playerId ? { ...p, isActive: !p.isActive } : p
     );
     onTeamUpdate({ ...team, players: updatedPlayers });
@@ -142,7 +150,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
 
   // 選手の打順を更新する
   const handleUpdatePlayerOrder = (playerId: string, order: number) => {
-    const updatedPlayers = team.players.map(p => 
+    const updatedPlayers = team.players.map((p) =>
       p.id === playerId ? { ...p, order } : p
     );
     onTeamUpdate({ ...team, players: updatedPlayers });
@@ -177,7 +185,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({
       setOpenTeamSelectionDialog(true);
     } catch (error: any) {
       console.error('チームの読み込みに失敗しました:', error);
-      setTeamSelectionError(`チームの読み込みに失敗しました: ${error.message || 'Unknown error'}`);
+      setTeamSelectionError(
+        `チームの読み込みに失敗しました: ${error.message || 'Unknown error'}`
+      );
       // エラーが発生してもダイアログは開く
       setOpenTeamSelectionDialog(true);
     } finally {
@@ -198,37 +208,40 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   // 選択したチームでデータを更新
   const handleSelectTeam = async (teamSettingId: string) => {
     if (!teamSettingId) return;
-    
+
     try {
       setLoadingTeams(true);
       setTeamSelectionError(null);
-      
+
       const teamSetting = await getTeamById(teamSettingId);
       if (!teamSetting) {
         throw new Error('チームデータの取得に失敗しました');
       }
-      
+
       // 登録済みのチーム情報から現在の試合用のチームデータを作成
       const updatedTeam: Team = {
         ...team,
         id: teamSetting.id,
         name: teamSetting.name,
-        players: teamSetting.players?.map(player => ({
-          id: player.id,
-          name: player.name,
-          number: player.number,
-          position: player.position,
-          isActive: true,
-          order: 0 // 初期値は0に設定
-        })) || []
+        players:
+          teamSetting.players?.map((player) => ({
+            id: player.id,
+            name: player.name,
+            number: player.number,
+            position: player.position,
+            isActive: true,
+            order: 0, // 初期値は0に設定
+          })) || [],
         // 注意: atBatsは維持されます
       };
-      
+
       onTeamUpdate(updatedTeam);
       handleCloseTeamSelectionDialog();
     } catch (error: any) {
       console.error('チームの選択に失敗しました:', error);
-      setTeamSelectionError(`チームの選択に失敗しました: ${error.message || 'Unknown error'}`);
+      setTeamSelectionError(
+        `チームの選択に失敗しました: ${error.message || 'Unknown error'}`
+      );
     } finally {
       setLoadingTeams(false);
     }
@@ -241,23 +254,27 @@ const TeamManager: React.FC<TeamManagerProps> = ({
           <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="h5">{team.name}</Typography>
             <Tooltip title="チーム名を編集">
-              <IconButton onClick={handleOpenTeamNameDialog} size="small" sx={{ ml: 1 }}>
+              <IconButton
+                onClick={handleOpenTeamNameDialog}
+                size="small"
+                sx={{ ml: 1 }}
+              >
                 <EditIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           </Grid>
           <Grid item>
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button 
-                variant="outlined" 
+              <Button
+                variant="outlined"
                 startIcon={<GroupsIcon />}
                 onClick={handleOpenTeamSelectionDialog}
                 color="secondary"
               >
                 チームを選択
               </Button>
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 startIcon={<AddIcon />}
                 onClick={handleOpenAddPlayerDialog}
               >
@@ -268,8 +285,8 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         </Grid>
       </Paper>
 
-      <PlayerList 
-        players={team.players} 
+      <PlayerList
+        players={team.players}
         onRegisterAtBat={onRegisterAtBat}
         onToggleStatus={handleTogglePlayerStatus}
         onEditPlayer={handleEditPlayer}
@@ -349,8 +366,8 @@ const TeamManager: React.FC<TeamManagerProps> = ({
       </Dialog>
 
       {/* チーム選択ダイアログ */}
-      <Dialog 
-        open={openTeamSelectionDialog} 
+      <Dialog
+        open={openTeamSelectionDialog}
         onClose={handleCloseTeamSelectionDialog}
         maxWidth="sm"
         fullWidth
@@ -369,9 +386,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({
               <Typography color="error" sx={{ mb: 2 }}>
                 {teamSelectionError}
               </Typography>
-              <Button 
-                variant="outlined" 
-                color="primary" 
+              <Button
+                variant="outlined"
+                color="primary"
                 onClick={() => setTeamSelectionError(null)}
               >
                 再試行
@@ -385,13 +402,13 @@ const TeamManager: React.FC<TeamManagerProps> = ({
             <List>
               {availableTeams.map((teamSetting) => (
                 <React.Fragment key={teamSetting.id}>
-                  <ListItem 
+                  <ListItem
                     component="div"
                     sx={{ cursor: 'pointer' }}
                     onClick={() => handleSelectTeam(teamSetting.id)}
                   >
-                    <ListItemText 
-                      primary={teamSetting.name} 
+                    <ListItemText
+                      primary={teamSetting.name}
                       secondary={`選手数: ${teamSetting.players?.length || 0}人`}
                     />
                   </ListItem>
@@ -402,13 +419,11 @@ const TeamManager: React.FC<TeamManagerProps> = ({
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseTeamSelectionDialog}>
-            キャンセル
-          </Button>
+          <Button onClick={handleCloseTeamSelectionDialog}>キャンセル</Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
 };
 
-export default TeamManager; 
+export default TeamManager;

@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  Box, 
-  Button, 
-  Typography, 
-  Avatar, 
-  Menu, 
-  MenuItem, 
+import {
+  Box,
+  Button,
+  Typography,
+  Avatar,
+  Menu,
+  MenuItem,
   Divider,
   CircularProgress,
   useMediaQuery,
-  useTheme
+  useTheme,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -45,44 +45,45 @@ const UserProfile: React.FC = () => {
 
   // 表示名を短く調整
   const displayName = currentUser.displayName || currentUser.email || '';
-  const shortName = isMobile 
-    ? displayName.split('@')[0]?.substring(0, 8) + (displayName.length > 8 ? '...' : '')
+  const shortName = isMobile
+    ? displayName.split('@')[0]?.substring(0, 8) +
+      (displayName.length > 8 ? '...' : '')
     : displayName;
 
   return (
     <Box>
       <Button
         onClick={handleClick}
-        sx={{ 
+        sx={{
           borderRadius: '24px',
           px: isMobile ? 0.5 : 1,
           minWidth: 0,
           textTransform: 'none',
-          color: 'inherit'
+          color: 'inherit',
         }}
       >
-        <Avatar 
-          src={currentUser.photoURL || undefined} 
+        <Avatar
+          src={currentUser.photoURL || undefined}
           alt={currentUser.displayName || ''}
-          sx={{ 
-            width: isMobile ? 24 : 32, 
-            height: isMobile ? 24 : 32, 
-            mr: isMobile ? 0.5 : 1 
+          sx={{
+            width: isMobile ? 24 : 32,
+            height: isMobile ? 24 : 32,
+            mr: isMobile ? 0.5 : 1,
           }}
         />
         {!isMobile && (
-          <Typography 
-            variant="body2" 
-            noWrap 
-            sx={{ 
-              maxWidth: { xs: '60px', sm: '120px', md: '200px' } 
+          <Typography
+            variant="body2"
+            noWrap
+            sx={{
+              maxWidth: { xs: '60px', sm: '120px', md: '200px' },
             }}
           >
             {shortName}
           </Typography>
         )}
       </Button>
-      
+
       <Menu
         anchorEl={anchorEl}
         open={open}
@@ -97,28 +98,29 @@ const UserProfile: React.FC = () => {
         }}
       >
         <Box sx={{ px: 2, py: 1 }}>
-          <Typography variant="subtitle1">
-            {currentUser.displayName}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+          <Typography variant="subtitle1">{currentUser.displayName}</Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ wordBreak: 'break-all' }}
+          >
             {currentUser.email}
           </Typography>
         </Box>
         <Divider />
-        <MenuItem 
-          onClick={handleLogout}
-          disabled={loading}
-        >
+        <MenuItem onClick={handleLogout} disabled={loading}>
           {loading ? (
             <>
               <CircularProgress size={16} sx={{ mr: 1 }} />
               ログアウト中...
             </>
-          ) : 'ログアウト'}
+          ) : (
+            'ログアウト'
+          )}
         </MenuItem>
       </Menu>
     </Box>
   );
 };
 
-export default UserProfile; 
+export default UserProfile;

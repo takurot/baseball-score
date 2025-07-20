@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { 
-  Button, 
-  Paper, 
-  Typography, 
-  Box, 
+import {
+  Button,
+  Paper,
+  Typography,
+  Box,
   CircularProgress,
   Alert,
   TextField,
   Divider,
   Tab,
   Tabs,
-  Link
+  Link,
 } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import EmailIcon from '@mui/icons-material/Email';
@@ -37,21 +37,22 @@ const TabPanel = (props: TabPanelProps) => {
       aria-labelledby={`auth-tab-${index}`}
       {...other}
     >
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          {children}
-        </Box>
-      )}
+      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
     </div>
   );
 };
 
 const Login: React.FC = () => {
-  const { signIn, loginWithEmailAndPassword, registerWithEmailAndPassword, sendPasswordReset } = useAuth();
+  const {
+    signIn,
+    loginWithEmailAndPassword,
+    registerWithEmailAndPassword,
+    sendPasswordReset,
+  } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
-  
+
   // フォーム入力
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -94,14 +95,18 @@ const Login: React.FC = () => {
     } catch (err: any) {
       console.error('Email login failed:', err);
       let errorMsg = 'ログインに失敗しました。';
-      
+
       // Firebase Auth のエラーメッセージをより分かりやすく翻訳
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+      if (
+        err.code === 'auth/user-not-found' ||
+        err.code === 'auth/wrong-password'
+      ) {
         errorMsg = 'メールアドレスまたはパスワードが正しくありません';
       } else if (err.code === 'auth/too-many-requests') {
-        errorMsg = 'ログイン試行回数が多すぎます。しばらく時間をおいてから再度お試しください';
+        errorMsg =
+          'ログイン試行回数が多すぎます。しばらく時間をおいてから再度お試しください';
       }
-      
+
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -130,15 +135,16 @@ const Login: React.FC = () => {
     } catch (err: any) {
       console.error('Registration failed:', err);
       let errorMsg = '登録に失敗しました。';
-      
+
       if (err.code === 'auth/email-already-in-use') {
         errorMsg = 'このメールアドレスは既に使用されています';
       } else if (err.code === 'auth/invalid-email') {
         errorMsg = '有効なメールアドレスを入力してください';
       } else if (err.code === 'auth/weak-password') {
-        errorMsg = 'パスワードが弱すぎます。より強力なパスワードを設定してください';
+        errorMsg =
+          'パスワードが弱すぎます。より強力なパスワードを設定してください';
       }
-      
+
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -157,17 +163,19 @@ const Login: React.FC = () => {
       setLoading(true);
       setError(null);
       await sendPasswordReset(email);
-      setError('パスワードリセットのリンクを送信しました。メールを確認してください');
+      setError(
+        'パスワードリセットのリンクを送信しました。メールを確認してください'
+      );
     } catch (err: any) {
       console.error('Password reset failed:', err);
       let errorMsg = 'パスワードリセットに失敗しました。';
-      
+
       if (err.code === 'auth/user-not-found') {
         errorMsg = 'このメールアドレスに関連するアカウントが見つかりません';
       } else if (err.code === 'auth/invalid-email') {
         errorMsg = '有効なメールアドレスを入力してください';
       }
-      
+
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -175,28 +183,28 @@ const Login: React.FC = () => {
   };
 
   return (
-    <Paper 
-      sx={{ 
-        p: 2, 
-        display: 'flex', 
-        flexDirection: 'column', 
+    <Paper
+      sx={{
+        p: 2,
+        display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         maxWidth: 500,
         mx: 'auto',
-        mt: 4
+        mt: 4,
       }}
     >
       <Typography variant="h5" component="h1" gutterBottom>
         野球スコアアプリ
       </Typography>
-      
+
       <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
         データを保存したり、過去の試合を見るには、ログインまたは登録してください。
       </Typography>
-      
+
       {error && (
-        <Alert 
-          severity={error.includes('送信しました') ? 'success' : 'error'} 
+        <Alert
+          severity={error.includes('送信しました') ? 'success' : 'error'}
           sx={{ width: '100%', mb: 2 }}
         >
           {error}
@@ -205,9 +213,9 @@ const Login: React.FC = () => {
 
       <Box sx={{ width: '100%' }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs 
-            value={tabValue} 
-            onChange={handleTabChange} 
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
             centered
             variant="fullWidth"
           >
@@ -229,7 +237,7 @@ const Login: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 InputProps={{
-                  startAdornment: <EmailIcon color="action" sx={{ mr: 1 }} />
+                  startAdornment: <EmailIcon color="action" sx={{ mr: 1 }} />,
                 }}
                 disabled={loading}
               />
@@ -242,7 +250,7 @@ const Login: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 InputProps={{
-                  startAdornment: <LockIcon color="action" sx={{ mr: 1 }} />
+                  startAdornment: <LockIcon color="action" sx={{ mr: 1 }} />,
                 }}
                 disabled={loading}
               />
@@ -271,7 +279,7 @@ const Login: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 InputProps={{
-                  startAdornment: <EmailIcon color="action" sx={{ mr: 1 }} />
+                  startAdornment: <EmailIcon color="action" sx={{ mr: 1 }} />,
                 }}
                 disabled={loading}
               />
@@ -283,7 +291,11 @@ const Login: React.FC = () => {
                 type="submit"
                 disabled={loading}
               >
-                {loading ? <CircularProgress size={24} /> : 'パスワードをリセット'}
+                {loading ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  'パスワードをリセット'
+                )}
               </Button>
               <Button
                 variant="text"
@@ -300,9 +312,9 @@ const Login: React.FC = () => {
 
           {!showResetForm && (
             <Box sx={{ mt: 2, textAlign: 'center' }}>
-              <Link 
-                component="button" 
-                variant="body2" 
+              <Link
+                component="button"
+                variant="body2"
                 onClick={() => setShowResetForm(true)}
                 disabled={loading}
               >
@@ -310,9 +322,9 @@ const Login: React.FC = () => {
               </Link>
             </Box>
           )}
-          
+
           <Divider sx={{ my: 3 }}>または</Divider>
-          
+
           <Button
             variant="outlined"
             fullWidth
@@ -336,7 +348,7 @@ const Login: React.FC = () => {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               InputProps={{
-                startAdornment: <PersonIcon color="action" sx={{ mr: 1 }} />
+                startAdornment: <PersonIcon color="action" sx={{ mr: 1 }} />,
               }}
               disabled={loading}
             />
@@ -349,7 +361,7 @@ const Login: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               InputProps={{
-                startAdornment: <EmailIcon color="action" sx={{ mr: 1 }} />
+                startAdornment: <EmailIcon color="action" sx={{ mr: 1 }} />,
               }}
               disabled={loading}
             />
@@ -362,7 +374,7 @@ const Login: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               InputProps={{
-                startAdornment: <LockIcon color="action" sx={{ mr: 1 }} />
+                startAdornment: <LockIcon color="action" sx={{ mr: 1 }} />,
               }}
               disabled={loading}
             />
@@ -377,9 +389,9 @@ const Login: React.FC = () => {
               {loading ? <CircularProgress size={24} /> : 'アカウントを作成'}
             </Button>
           </form>
-          
+
           <Divider sx={{ my: 3 }}>または</Divider>
-          
+
           <Button
             variant="outlined"
             fullWidth
@@ -391,7 +403,7 @@ const Login: React.FC = () => {
           </Button>
         </TabPanel>
       </Box>
-      
+
       <Box sx={{ mt: 3 }}>
         <Typography variant="body2" color="text.secondary" align="center">
           ※ログインすることで、あなたのデータが安全に保存されます。
@@ -401,4 +413,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login; 
+export default Login;

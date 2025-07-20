@@ -1,5 +1,5 @@
 // 打撃結果の種類
-export type HitResult = 
+export type HitResult =
   // ヒット
   | 'IH' // 内野安打 (Infield Hit)
   | 'LH' // レフトヒット (Left Hit)
@@ -8,7 +8,7 @@ export type HitResult =
   | '2B' // 二塁打 (Double)
   | '3B' // 三塁打 (Triple)
   | 'HR' // ホームラン (Home Run)
-  
+
   // アウト
   | 'GO_P' // ピッチャーゴロ (Ground Out to Pitcher)
   | 'GO_C' // キャッチャーゴロ (Ground Out to Catcher)
@@ -23,7 +23,7 @@ export type HitResult =
   | 'FO_IF' // 内野フライ (Infield Fly)
   | 'LO' // ライナーアウト (Line Out)
   | 'DP' // 併殺打 (Double Play)
-  
+
   // その他
   | 'SAC' // 犠打 (Sacrifice Bunt)
   | 'SF' // 犠飛 (Sacrifice Fly)
@@ -80,12 +80,12 @@ export interface Game {
 }
 
 // 得点イベントの種類
-export type RunEventType = 
-  | '押し出し' 
-  | 'ワイルドピッチ' 
-  | 'パスボール' 
-  | '盗塁' 
-  | '投手エラー' 
+export type RunEventType =
+  | '押し出し'
+  | 'ワイルドピッチ'
+  | 'パスボール'
+  | '盗塁'
+  | '投手エラー'
   | 'その他';
 
 // 打席以外での得点イベント
@@ -100,12 +100,12 @@ export interface RunEvent {
 }
 
 // アウトイベントの種類
-export type OutEventType = 
-  | '牽制アウト' 
-  | '盗塁死' 
-  | 'タッチアウト' 
+export type OutEventType =
+  | '牽制アウト'
+  | '盗塁死'
+  | 'タッチアウト'
   | 'フォースアウト'
-  | '飛球失策' 
+  | '飛球失策'
   | '打順間違い'
   | 'その他';
 
@@ -137,4 +137,4 @@ export interface TeamSetting {
   userEmail?: string;
   createdAt?: any; // Firestore timestamp
   updatedAt?: any; // Firestore timestamp
-} 
+}
