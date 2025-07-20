@@ -1,15 +1,15 @@
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  doc, 
-  getDoc, 
-  query, 
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  getDoc,
+  query,
   orderBy,
   serverTimestamp,
   deleteDoc,
   where,
-  updateDoc
+  updateDoc,
 } from 'firebase/firestore';
 import { db } from './config';
 import { Game } from '../types';
@@ -27,7 +27,7 @@ export const saveGame = async (game: Game): Promise<string> => {
 
     // 保存前にデータを整形（循環参照を避けるため、JSONに変換してから再度パースする）
     const gameClone = JSON.parse(JSON.stringify(game));
-    
+
     // タイムスタンプを追加
     const gameToSave = {
       ...gameClone,
@@ -35,20 +35,22 @@ export const saveGame = async (game: Game): Promise<string> => {
       userEmail: user.email, // ユーザーのメールアドレスを追加
       isPublic: game.isPublic ?? false, // 公開状態を追加
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
-    
+
     // データサイズをチェック
     const gameDataSize = new Blob([JSON.stringify(gameToSave)]).size;
     console.log(`Game data size: ${gameDataSize} bytes`);
-    
+
     // Firestoreのドキュメントサイズ制限は1MB
     if (gameDataSize > 1000000) {
-      throw new Error(`データサイズが大きすぎます (${Math.round(gameDataSize/1024)} KB)。1MB以下にしてください。`);
+      throw new Error(
+        `データサイズが大きすぎます (${Math.round(gameDataSize / 1024)} KB)。1MB以下にしてください。`
+      );
     }
-    
+
     let docRef;
-    
+
     if (game.id) {
       // 既存のドキュメントを更新
       docRef = doc(db, GAMES_COLLECTION, game.id);
@@ -80,10 +82,10 @@ export const saveGameAsNew = async (game: Game): Promise<string> => {
 
     // 保存前にデータを整形（循環参照を避けるため、JSONに変換してから再度パースする）
     const gameClone = JSON.parse(JSON.stringify(game));
-    
+
     // IDをリセットして新しいゲームとして保存
     delete gameClone.id;
-    
+
     // タイムスタンプを追加
     const gameToSave = {
       ...gameClone,
@@ -91,18 +93,20 @@ export const saveGameAsNew = async (game: Game): Promise<string> => {
       userEmail: user.email, // ユーザーのメールアドレスを追加
       isPublic: game.isPublic ?? false, // 公開状態を追加
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
-    
+
     // データサイズをチェック
     const gameDataSize = new Blob([JSON.stringify(gameToSave)]).size;
     console.log(`Game data size: ${gameDataSize} bytes`);
-    
+
     // Firestoreのドキュメントサイズ制限は1MB
     if (gameDataSize > 1000000) {
-      throw new Error(`データサイズが大きすぎます (${Math.round(gameDataSize/1024)} KB)。1MB以下にしてください。`);
+      throw new Error(
+        `データサイズが大きすぎます (${Math.round(gameDataSize / 1024)} KB)。1MB以下にしてください。`
+      );
     }
-    
+
     // 常に新しいドキュメントを作成
     const docRef = await addDoc(collection(db, GAMES_COLLECTION), gameToSave);
     console.log('Game saved as new with ID:', docRef.id);
@@ -123,14 +127,14 @@ export const getAllGames = async (): Promise<Game[]> => {
 
     // ユーザーIDでフィルタリングしたクエリを作成
     const q = query(
-      collection(db, GAMES_COLLECTION), 
+      collection(db, GAMES_COLLECTION),
       where('userId', '==', user.uid),
       orderBy('date', 'desc')
     );
-    
+
     const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(doc => {
+
+    return querySnapshot.docs.map((doc) => {
       const data = doc.data() as Game;
       return { ...data, id: doc.id };
     });
@@ -145,16 +149,16 @@ export const getGameById = async (gameId: string): Promise<Game | null> => {
   try {
     const docRef = doc(db, GAMES_COLLECTION, gameId);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       const data = docSnap.data() as Game;
-      
+
       // 自分のデータかチェック
       const user = getCurrentUser();
       if (!user || data.userId !== user.uid) {
         throw new Error('このデータにアクセスする権限がありません');
       }
-      
+
       return { ...data, id: docSnap.id };
     } else {
       return null;
@@ -166,20 +170,22 @@ export const getGameById = async (gameId: string): Promise<Game | null> => {
 };
 
 // 特定の試合データを取得（パブリックに共有されたゲーム用）
-export const getSharedGameById = async (gameId: string): Promise<Game | null> => {
+export const getSharedGameById = async (
+  gameId: string
+): Promise<Game | null> => {
   try {
     const docRef = doc(db, GAMES_COLLECTION, gameId);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       const data = docSnap.data() as Game;
-      
+
       // 公開設定されているかチェック
       if (!data.isPublic) {
         console.error('This game is not public:', gameId);
         throw new Error('この試合データは公開されていません');
       }
-      
+
       return { ...data, id: docSnap.id };
     } else {
       console.error('Game not found:', gameId);
@@ -199,7 +205,7 @@ export const deleteGame = async (gameId: string): Promise<void> => {
     if (!game) {
       throw new Error('データが見つかりません');
     }
-    
+
     const docRef = doc(db, GAMES_COLLECTION, gameId);
     await deleteDoc(docRef);
     console.log('Game deleted successfully with ID:', gameId);
@@ -210,7 +216,10 @@ export const deleteGame = async (gameId: string): Promise<void> => {
 };
 
 // 試合の公開設定を更新
-export const updateGamePublicStatus = async (gameId: string, isPublic: boolean): Promise<void> => {
+export const updateGamePublicStatus = async (
+  gameId: string,
+  isPublic: boolean
+): Promise<void> => {
   try {
     const user = getCurrentUser();
     if (!user) {
@@ -222,16 +231,16 @@ export const updateGamePublicStatus = async (gameId: string, isPublic: boolean):
     if (!game) {
       throw new Error('データが見つかりません');
     }
-    
+
     const docRef = doc(db, GAMES_COLLECTION, gameId);
     await updateDoc(docRef, {
       isPublic: isPublic,
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
-    
+
     console.log(`Game public status updated to ${isPublic} for ID:`, gameId);
   } catch (error) {
     console.error('Error updating game public status:', error);
     throw error;
   }
-}; 
+};

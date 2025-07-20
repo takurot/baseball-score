@@ -828,9 +828,10 @@ const MainApp: React.FC = () => {
                 flexWrap: 'wrap',
                 alignItems: 'center',
                 '& > button': {
-                  fontSize: isMobile ? '0.7rem' : undefined,
-                  minWidth: isMobile ? 'auto' : undefined,
-                  p: isMobile ? '4px 8px' : undefined,
+                  fontSize: isMobile ? '0.8rem' : undefined,
+                  minWidth: isMobile ? '44px' : undefined,
+                  minHeight: isMobile ? '44px' : undefined,
+                  padding: isMobile ? '8px 12px' : undefined,
                 },
               }}
             >
@@ -872,10 +873,14 @@ const MainApp: React.FC = () => {
                 onClick={handleOpenHelpDialog}
                 aria-label="help"
                 title="ヘルプ"
-                size={isMobile ? 'small' : 'medium'}
-                sx={{ mr: isMobile ? 0.5 : 0 }}
+                size={isMobile ? 'medium' : 'medium'}
+                sx={{ 
+                  mr: isMobile ? 0.5 : 0,
+                  minWidth: isMobile ? '44px' : undefined,
+                  minHeight: isMobile ? '44px' : undefined,
+                }}
               >
-                <HelpIcon fontSize={isMobile ? 'small' : 'medium'} />
+                <HelpIcon fontSize={isMobile ? 'medium' : 'medium'} />
               </IconButton>
 
               <UserProfile />
@@ -984,15 +989,28 @@ const MainApp: React.FC = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: isMobile ? 1 : 0,
                   }}
                 >
                   <Typography variant="h6">{game.currentInning}回</Typography>
-                  <Box>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: isMobile ? 1 : 1,
+                    }}
+                  >
                     <Button
                       variant="outlined"
                       color="secondary"
                       onClick={handleOpenRunDialog}
-                      sx={{ mr: 1 }}
+                      sx={{ 
+                        minWidth: isMobile ? '80px' : undefined,
+                        minHeight: isMobile ? '48px' : '36px',
+                        fontSize: isMobile ? '0.9rem' : undefined,
+                      }}
                     >
                       得点追加
                     </Button>
@@ -1000,7 +1018,11 @@ const MainApp: React.FC = () => {
                       variant="outlined"
                       color="secondary"
                       onClick={handleOpenOutDialog}
-                      sx={{ mr: 2 }}
+                      sx={{ 
+                        minWidth: isMobile ? '80px' : undefined,
+                        minHeight: isMobile ? '48px' : '36px',
+                        fontSize: isMobile ? '0.9rem' : undefined,
+                      }}
                     >
                       アウト追加
                     </Button>
@@ -1008,10 +1030,20 @@ const MainApp: React.FC = () => {
                       <Button
                         onClick={() => handleInningChange(-1)}
                         disabled={game.currentInning <= 1}
+                        sx={{ 
+                          minHeight: isMobile ? '44px' : '36px',
+                          fontSize: isMobile ? '0.8rem' : undefined,
+                        }}
                       >
                         前の回
                       </Button>
-                      <Button onClick={() => handleInningChange(1)}>
+                      <Button 
+                        onClick={() => handleInningChange(1)}
+                        sx={{ 
+                          minHeight: isMobile ? '44px' : '36px',
+                          fontSize: isMobile ? '0.8rem' : undefined,
+                        }}
+                      >
                         次の回
                       </Button>
                     </ButtonGroup>

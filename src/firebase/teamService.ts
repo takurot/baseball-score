@@ -1,15 +1,15 @@
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  doc, 
-  getDoc, 
-  query, 
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  getDoc,
+  query,
   orderBy,
   updateDoc,
   deleteDoc,
   serverTimestamp,
-  where
+  where,
 } from 'firebase/firestore';
 import { db } from './config';
 import { TeamSetting, PlayerSetting } from '../types';
@@ -18,7 +18,12 @@ import { getCurrentUser } from './authService';
 const TEAMS_COLLECTION = 'teams';
 
 // チームデータを保存（新規作成）
-export const createTeam = async (team: Omit<TeamSetting, 'id' | 'userId' | 'userEmail' | 'createdAt' | 'updatedAt'>): Promise<string> => {
+export const createTeam = async (
+  team: Omit<
+    TeamSetting,
+    'id' | 'userId' | 'userEmail' | 'createdAt' | 'updatedAt'
+  >
+): Promise<string> => {
   try {
     const user = getCurrentUser();
     if (!user) {
@@ -31,9 +36,9 @@ export const createTeam = async (team: Omit<TeamSetting, 'id' | 'userId' | 'user
       userId: user.uid,
       userEmail: user.email,
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
-    
+
     // 保存処理
     const docRef = await addDoc(collection(db, TEAMS_COLLECTION), teamToSave);
     console.log('Team saved successfully with ID:', docRef.id);
@@ -45,29 +50,32 @@ export const createTeam = async (team: Omit<TeamSetting, 'id' | 'userId' | 'user
 };
 
 // チームデータを更新
-export const updateTeam = async (teamId: string, teamData: Partial<TeamSetting>): Promise<void> => {
+export const updateTeam = async (
+  teamId: string,
+  teamData: Partial<TeamSetting>
+): Promise<void> => {
   try {
     const user = getCurrentUser();
     if (!user) {
       throw new Error('ログインが必要です');
     }
-    
+
     // 権限チェック
     const team = await getTeamById(teamId);
     if (!team) {
       throw new Error('チームデータが見つかりません');
     }
-    
+
     if (team.userId !== user.uid) {
       throw new Error('このデータを編集する権限がありません');
     }
-    
+
     // 更新データを準備
     const updateData = {
       ...teamData,
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
-    
+
     // 更新処理
     const teamRef = doc(db, TEAMS_COLLECTION, teamId);
     await updateDoc(teamRef, updateData);
@@ -85,17 +93,17 @@ export const deleteTeam = async (teamId: string): Promise<void> => {
     if (!user) {
       throw new Error('ログインが必要です');
     }
-    
+
     // 権限チェック
     const team = await getTeamById(teamId);
     if (!team) {
       throw new Error('チームデータが見つかりません');
     }
-    
+
     if (team.userId !== user.uid) {
       throw new Error('このデータを削除する権限がありません');
     }
-    
+
     // 削除処理
     const teamRef = doc(db, TEAMS_COLLECTION, teamId);
     await deleteDoc(teamRef);
@@ -107,11 +115,13 @@ export const deleteTeam = async (teamId: string): Promise<void> => {
 };
 
 // チームデータを取得（単一）
-export const getTeamById = async (teamId: string): Promise<TeamSetting | null> => {
+export const getTeamById = async (
+  teamId: string
+): Promise<TeamSetting | null> => {
   try {
     const docRef = doc(db, TEAMS_COLLECTION, teamId);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       const data = docSnap.data() as TeamSetting;
       return { ...data, id: docSnap.id };
@@ -131,17 +141,17 @@ export const getUserTeams = async (): Promise<TeamSetting[]> => {
     if (!user) {
       throw new Error('ログインが必要です');
     }
-    
+
     // ユーザーIDでフィルタリングしたクエリを作成
     const q = query(
-      collection(db, TEAMS_COLLECTION), 
+      collection(db, TEAMS_COLLECTION),
       where('userId', '==', user.uid),
       orderBy('name', 'asc')
     );
-    
+
     const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(doc => {
+
+    return querySnapshot.docs.map((doc) => {
       const data = doc.data() as TeamSetting;
       return { ...data, id: doc.id };
     });
@@ -152,33 +162,36 @@ export const getUserTeams = async (): Promise<TeamSetting[]> => {
 };
 
 // 選手データをチームに追加
-export const addPlayerToTeam = async (teamId: string, player: Omit<PlayerSetting, 'id' | 'createdAt'>): Promise<void> => {
+export const addPlayerToTeam = async (
+  teamId: string,
+  player: Omit<PlayerSetting, 'id' | 'createdAt'>
+): Promise<void> => {
   try {
     const user = getCurrentUser();
     if (!user) {
       throw new Error('ログインが必要です');
     }
-    
+
     // チームを取得して権限チェック
     const team = await getTeamById(teamId);
     if (!team) {
       throw new Error('チームデータが見つかりません');
     }
-    
+
     if (team.userId !== user.uid) {
       throw new Error('このデータを編集する権限がありません');
     }
-    
+
     // 新しい選手データを準備
     const newPlayer: PlayerSetting = {
       ...player,
       id: crypto.randomUUID(), // クライアントサイドでIDを生成
-      createdAt: new Date().toISOString() // サーバータイムスタンプの代わりに現在時刻を文字列で保存
+      createdAt: new Date().toISOString(), // サーバータイムスタンプの代わりに現在時刻を文字列で保存
     };
-    
+
     // 既存の選手リストに追加
     const updatedPlayers = [...team.players, newPlayer];
-    
+
     // チームデータを更新
     await updateTeam(teamId, { players: updatedPlayers });
     console.log('Player added to team successfully');
@@ -189,26 +202,31 @@ export const addPlayerToTeam = async (teamId: string, player: Omit<PlayerSetting
 };
 
 // チームから選手データを削除
-export const removePlayerFromTeam = async (teamId: string, playerId: string): Promise<void> => {
+export const removePlayerFromTeam = async (
+  teamId: string,
+  playerId: string
+): Promise<void> => {
   try {
     const user = getCurrentUser();
     if (!user) {
       throw new Error('ログインが必要です');
     }
-    
+
     // チームを取得して権限チェック
     const team = await getTeamById(teamId);
     if (!team) {
       throw new Error('チームデータが見つかりません');
     }
-    
+
     if (team.userId !== user.uid) {
       throw new Error('このデータを編集する権限がありません');
     }
-    
+
     // 選手を除外
-    const updatedPlayers = team.players.filter(player => player.id !== playerId);
-    
+    const updatedPlayers = team.players.filter(
+      (player) => player.id !== playerId
+    );
+
     // チームデータを更新
     await updateTeam(teamId, { players: updatedPlayers });
     console.log('Player removed from team successfully');
@@ -219,31 +237,35 @@ export const removePlayerFromTeam = async (teamId: string, playerId: string): Pr
 };
 
 // チーム内の選手データを更新
-export const updatePlayerInTeam = async (teamId: string, playerId: string, playerData: Partial<Omit<PlayerSetting, 'id' | 'createdAt'>>): Promise<void> => {
+export const updatePlayerInTeam = async (
+  teamId: string,
+  playerId: string,
+  playerData: Partial<Omit<PlayerSetting, 'id' | 'createdAt'>>
+): Promise<void> => {
   try {
     const user = getCurrentUser();
     if (!user) {
       throw new Error('ログインが必要です');
     }
-    
+
     // チームを取得して権限チェック
     const team = await getTeamById(teamId);
     if (!team) {
       throw new Error('チームデータが見つかりません');
     }
-    
+
     if (team.userId !== user.uid) {
       throw new Error('このデータを編集する権限がありません');
     }
-    
+
     // 選手データを更新
-    const updatedPlayers = team.players.map(player => {
+    const updatedPlayers = team.players.map((player) => {
       if (player.id === playerId) {
         return { ...player, ...playerData };
       }
       return player;
     });
-    
+
     // チームデータを更新
     await updateTeam(teamId, { players: updatedPlayers });
     console.log('Player updated in team successfully');
@@ -251,4 +273,4 @@ export const updatePlayerInTeam = async (teamId: string, playerId: string, playe
     console.error('Error updating player in team:', error);
     throw error;
   }
-}; 
+};

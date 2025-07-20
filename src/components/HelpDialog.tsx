@@ -14,7 +14,7 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  IconButton
+  IconButton,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
@@ -43,11 +43,7 @@ function TabPanel(props: TabPanelProps) {
       aria-labelledby={`help-tab-${index}`}
       {...other}
     >
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          {children}
-        </Box>
-      )}
+      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
     </div>
   );
 }
@@ -65,14 +61,21 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
   };
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={onClose}
       fullWidth
       maxWidth="md"
       aria-labelledby="help-dialog-title"
     >
-      <DialogTitle id="help-dialog-title" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <DialogTitle
+        id="help-dialog-title"
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
         <Typography variant="h6" component="div">
           <SportsBaseballIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
           野球スコア アプリの使い方
@@ -83,7 +86,11 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
       </DialogTitle>
       <DialogContent dividers>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="help topics tabs">
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            aria-label="help topics tabs"
+          >
             <Tab label="はじめに" />
             <Tab label="チーム・選手管理" />
             <Tab label="試合スコア入力" />
@@ -102,20 +109,40 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
           <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
             <List>
               <ListItem>
-                <ListItemIcon><GroupsIcon /></ListItemIcon>
-                <ListItemText primary="1. チームと選手を登録する" secondary="メニューから「チーム・選手管理」を選択し、チームと選手を登録します" />
+                <ListItemIcon>
+                  <GroupsIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="1. チームと選手を登録する"
+                  secondary="メニューから「チーム・選手管理」を選択し、チームと選手を登録します"
+                />
               </ListItem>
               <ListItem>
-                <ListItemIcon><EditIcon /></ListItemIcon>
-                <ListItemText primary="2. 試合データを入力する" secondary="各イニングの打席結果を記録します" />
+                <ListItemIcon>
+                  <EditIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="2. 試合データを入力する"
+                  secondary="各イニングの打席結果を記録します"
+                />
               </ListItem>
               <ListItem>
-                <ListItemIcon><SaveIcon /></ListItemIcon>
-                <ListItemText primary="3. 試合データを保存する" secondary="入力したデータはクラウドに保存され、後で編集できます" />
+                <ListItemIcon>
+                  <SaveIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="3. 試合データを保存する"
+                  secondary="入力したデータはクラウドに保存され、後で編集できます"
+                />
               </ListItem>
               <ListItem>
-                <ListItemIcon><ShareIcon /></ListItemIcon>
-                <ListItemText primary="4. 試合結果を共有する" secondary="公開設定を有効にして、URLで試合結果を共有できます" />
+                <ListItemIcon>
+                  <ShareIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="4. 試合結果を共有する"
+                  secondary="公開設定を有効にして、URLで試合結果を共有できます"
+                />
               </ListItem>
             </List>
           </Paper>
@@ -134,16 +161,31 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
             </Typography>
             <List>
               <ListItem>
-                <ListItemIcon><MenuIcon sx={{ fontSize: '1.25rem' }} /></ListItemIcon>
-                <ListItemText primary="1. メニューアイコンをクリック" secondary="画面左上のメニューアイコンをクリックします" />
+                <ListItemIcon>
+                  <MenuIcon sx={{ fontSize: '1.25rem' }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="1. メニューアイコンをクリック"
+                  secondary="画面左上のメニューアイコンをクリックします"
+                />
               </ListItem>
               <ListItem>
-                <ListItemIcon><GroupsIcon sx={{ fontSize: '1.25rem' }} /></ListItemIcon>
-                <ListItemText primary="2. 「チーム・選手管理」を選択" secondary="メニューから「チーム・選手管理」を選択します" />
+                <ListItemIcon>
+                  <GroupsIcon sx={{ fontSize: '1.25rem' }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="2. 「チーム・選手管理」を選択"
+                  secondary="メニューから「チーム・選手管理」を選択します"
+                />
               </ListItem>
               <ListItem>
-                <ListItemIcon><AddIcon sx={{ fontSize: '1.25rem' }} /></ListItemIcon>
-                <ListItemText primary="3. 「新規チーム作成」ボタンをクリック" secondary="チーム名を入力して新しいチームを作成します" />
+                <ListItemIcon>
+                  <AddIcon sx={{ fontSize: '1.25rem' }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="3. 「新規チーム作成」ボタンをクリック"
+                  secondary="チーム名を入力して新しいチームを作成します"
+                />
               </ListItem>
             </List>
           </Paper>
@@ -154,13 +196,22 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
             </Typography>
             <List>
               <ListItem>
-                <ListItemText primary="1. チームを選択" secondary="編集したいチームの「編集」ボタンをクリックします" />
+                <ListItemText
+                  primary="1. チームを選択"
+                  secondary="編集したいチームの「編集」ボタンをクリックします"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="2. 「選手を追加」ボタンをクリック" secondary="名前、背番号、ポジションを入力します" />
+                <ListItemText
+                  primary="2. 「選手を追加」ボタンをクリック"
+                  secondary="名前、背番号、ポジションを入力します"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="3. 登録完了" secondary="「追加」ボタンをクリックして選手を登録します" />
+                <ListItemText
+                  primary="3. 登録完了"
+                  secondary="「追加」ボタンをクリックして選手を登録します"
+                />
               </ListItem>
             </List>
           </Paper>
@@ -174,20 +225,29 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
           <Typography variant="h6" gutterBottom>
             試合スコアの入力方法
           </Typography>
-          
+
           <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
             <Typography variant="subtitle1" gutterBottom>
               基本的な試合データの設定
             </Typography>
             <List>
               <ListItem>
-                <ListItemText primary="1. トップページで日付をクリック" secondary="試合日を設定できます" />
+                <ListItemText
+                  primary="1. トップページで日付をクリック"
+                  secondary="試合日を設定できます"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="2. 「大会名をクリックして設定」をクリック" secondary="大会名と球場・場所を入力できます" />
+                <ListItemText
+                  primary="2. 「大会名をクリックして設定」をクリック"
+                  secondary="大会名と球場・場所を入力できます"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="3. 「前の回」「次の回」ボタンでイニングを変更" secondary="現在入力中のイニングを変更できます" />
+                <ListItemText
+                  primary="3. 「前の回」「次の回」ボタンでイニングを変更"
+                  secondary="現在入力中のイニングを変更できます"
+                />
               </ListItem>
             </List>
           </Paper>
@@ -198,16 +258,28 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
             </Typography>
             <List>
               <ListItem>
-                <ListItemText primary="1. チームタブを選択" secondary="先攻/後攻のどちらのチームかタブで選択します" />
+                <ListItemText
+                  primary="1. チームタブを選択"
+                  secondary="先攻/後攻のどちらのチームかタブで選択します"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="2. 選手名の横の「打席登録」ボタンをクリック" secondary="打席に入る選手を選びます" />
+                <ListItemText
+                  primary="2. 選手名の横の「打席登録」ボタンをクリック"
+                  secondary="打席に入る選手を選びます"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="3. 打席結果を入力" secondary="結果の種類、詳細、打点などを入力し「登録」ボタンをクリックします" />
+                <ListItemText
+                  primary="3. 打席結果を入力"
+                  secondary="結果の種類、詳細、打点などを入力し「登録」ボタンをクリックします"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="4. 打席履歴の確認" secondary="入力した打席結果は下部の履歴に表示され、編集や削除が可能です" />
+                <ListItemText
+                  primary="4. 打席履歴の確認"
+                  secondary="入力した打席結果は下部の履歴に表示され、編集や削除が可能です"
+                />
               </ListItem>
             </List>
           </Paper>
@@ -218,17 +290,31 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
             </Typography>
             <List>
               <ListItem>
-                <ListItemIcon><AddCircleIcon sx={{ fontSize: '1.25rem' }} /></ListItemIcon>
-                <ListItemText primary="1. 「得点追加」ボタンをクリック" secondary="打席結果に関連しない得点を追加する場合に使用します" />
+                <ListItemIcon>
+                  <AddCircleIcon sx={{ fontSize: '1.25rem' }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="1. 「得点追加」ボタンをクリック"
+                  secondary="打席結果に関連しない得点を追加する場合に使用します"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="2. 得点理由を選択" secondary="四球、死球、暴投/パスボール、ボーク、エラー、その他から選択します" />
+                <ListItemText
+                  primary="2. 得点理由を選択"
+                  secondary="四球、死球、暴投/パスボール、ボーク、エラー、その他から選択します"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="3. 「追加」ボタンをクリック" secondary="得点が記録され、打席履歴に表示されます" />
+                <ListItemText
+                  primary="3. 「追加」ボタンをクリック"
+                  secondary="得点が記録され、打席履歴に表示されます"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="使用例" secondary="盗塁や暴投による得点、四球後の得点など、打撃結果に直接紐づかない得点を記録できます" />
+                <ListItemText
+                  primary="使用例"
+                  secondary="盗塁や暴投による得点、四球後の得点など、打撃結果に直接紐づかない得点を記録できます"
+                />
               </ListItem>
             </List>
           </Paper>
@@ -239,7 +325,10 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
             </Typography>
             <List>
               <ListItem>
-                <ListItemText primary="「一覧表示」ボタンをクリック" secondary="選手ごとの打席結果一覧を表示します。再度クリックすると編集モードに戻ります" />
+                <ListItemText
+                  primary="「一覧表示」ボタンをクリック"
+                  secondary="選手ごとの打席結果一覧を表示します。再度クリックすると編集モードに戻ります"
+                />
               </ListItem>
             </List>
           </Paper>
@@ -249,18 +338,26 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
           <Typography variant="h6" gutterBottom>
             試合データの保存と共有
           </Typography>
-          
+
           <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
             <Typography variant="subtitle1" gutterBottom>
               試合データの保存方法
             </Typography>
             <List>
               <ListItem>
-                <ListItemIcon><SaveIcon sx={{ fontSize: '1.25rem' }} /></ListItemIcon>
-                <ListItemText primary="1. 「保存」ボタンをクリック" secondary="画面上部の保存ボタンをクリックします" />
+                <ListItemIcon>
+                  <SaveIcon sx={{ fontSize: '1.25rem' }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="1. 「保存」ボタンをクリック"
+                  secondary="画面上部の保存ボタンをクリックします"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="2. 保存確認ダイアログで「保存」をクリック" secondary="初回は「保存」、2回目以降は「上書き保存」または「新規保存」を選択できます" />
+                <ListItemText
+                  primary="2. 保存確認ダイアログで「保存」をクリック"
+                  secondary="初回は「保存」、2回目以降は「上書き保存」または「新規保存」を選択できます"
+                />
               </ListItem>
             </List>
           </Paper>
@@ -271,14 +368,25 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
             </Typography>
             <List>
               <ListItem>
-                <ListItemIcon><MenuIcon sx={{ fontSize: '1.25rem' }} /></ListItemIcon>
-                <ListItemText primary="1. メニューアイコンをクリック" secondary="画面左上のメニューアイコンをクリックします" />
+                <ListItemIcon>
+                  <MenuIcon sx={{ fontSize: '1.25rem' }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="1. メニューアイコンをクリック"
+                  secondary="画面左上のメニューアイコンをクリックします"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="2. 「試合一覧を表示」を選択" secondary="保存済みの試合一覧が表示されます" />
+                <ListItemText
+                  primary="2. 「試合一覧を表示」を選択"
+                  secondary="保存済みの試合一覧が表示されます"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="3. 読み込みたい試合をクリック" secondary="選択した試合データが読み込まれます" />
+                <ListItemText
+                  primary="3. 読み込みたい試合をクリック"
+                  secondary="選択した試合データが読み込まれます"
+                />
               </ListItem>
             </List>
           </Paper>
@@ -289,21 +397,35 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
             </Typography>
             <List>
               <ListItem>
-                <ListItemText primary="1. 試合一覧から共有したい試合を見つける" secondary="「試合一覧を表示」から対象の試合を探します" />
+                <ListItemText
+                  primary="1. 試合一覧から共有したい試合を見つける"
+                  secondary="「試合一覧を表示」から対象の試合を探します"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="2. 公開設定をオンにする" secondary="「公開」スイッチをオンにします" />
+                <ListItemText
+                  primary="2. 公開設定をオンにする"
+                  secondary="「公開」スイッチをオンにします"
+                />
               </ListItem>
               <ListItem>
-                <ListItemIcon><ShareIcon sx={{ fontSize: '1.25rem' }} /></ListItemIcon>
-                <ListItemText primary="3. 「共有URL」ボタンをクリック" secondary="URLがコピーされます" />
+                <ListItemIcon>
+                  <ShareIcon sx={{ fontSize: '1.25rem' }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="3. 「共有URL」ボタンをクリック"
+                  secondary="URLがコピーされます"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="4. URLを共有" secondary="コピーしたURLをメッセージやSNSで共有します" />
+                <ListItemText
+                  primary="4. URLを共有"
+                  secondary="コピーしたURLをメッセージやSNSで共有します"
+                />
               </ListItem>
             </List>
           </Paper>
-          
+
           <Typography paragraph>
             共有された試合データは、閲覧者がアプリにログインしていなくても表示できます。
           </Typography>
@@ -313,13 +435,14 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
           <Typography variant="h6" gutterBottom>
             よくある質問
           </Typography>
-          
+
           <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
             <Typography variant="subtitle1" gutterBottom>
               Q: 試合データは誰でも見られますか？
             </Typography>
             <Typography paragraph>
-              A: いいえ、試合データは初期設定では非公開です。「試合一覧」画面で明示的に公開設定をオンにした試合のみが共有URLで閲覧可能になります。
+              A:
+              いいえ、試合データは初期設定では非公開です。「試合一覧」画面で明示的に公開設定をオンにした試合のみが共有URLで閲覧可能になります。
             </Typography>
           </Paper>
 
@@ -328,7 +451,8 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
               Q: 一度共有した試合データを非公開に戻せますか？
             </Typography>
             <Typography paragraph>
-              A: はい、いつでも「試合一覧」画面から公開設定をオフにすることで非公開に戻せます。既に共有したURLは無効になります。
+              A:
+              はい、いつでも「試合一覧」画面から公開設定をオフにすることで非公開に戻せます。既に共有したURLは無効になります。
             </Typography>
           </Paper>
 
@@ -337,7 +461,8 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
               Q: 編集中のデータは自動保存されますか？
             </Typography>
             <Typography paragraph>
-              A: いいえ、データは「保存」ボタンを押した時のみ保存されます。アプリを閉じる前に必ず保存してください。
+              A:
+              いいえ、データは「保存」ボタンを押した時のみ保存されます。アプリを閉じる前に必ず保存してください。
             </Typography>
           </Paper>
 
@@ -346,7 +471,8 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
               Q: 試合データを削除するにはどうすればいいですか？
             </Typography>
             <Typography paragraph>
-              A: 「試合一覧」画面で削除したい試合の「削除」ボタンをクリックすることで削除できます。削除したデータは元に戻せませんのでご注意ください。
+              A:
+              「試合一覧」画面で削除したい試合の「削除」ボタンをクリックすることで削除できます。削除したデータは元に戻せませんのでご注意ください。
             </Typography>
           </Paper>
 
@@ -355,7 +481,8 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
               Q: オフラインでも使用できますか？
             </Typography>
             <Typography paragraph>
-              A: 基本的な機能はオフラインでも使用できますが、データの保存と読み込みにはインターネット接続が必要です。オフライン時に入力したデータは、接続復旧後に保存してください。
+              A:
+              基本的な機能はオフラインでも使用できますが、データの保存と読み込みにはインターネット接続が必要です。オフライン時に入力したデータは、接続復旧後に保存してください。
             </Typography>
           </Paper>
         </TabPanel>
@@ -367,4 +494,4 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
   );
 };
 
-export default HelpDialog; 
+export default HelpDialog;
