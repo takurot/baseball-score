@@ -15,6 +15,32 @@ import {
 import { HitResult, Player, AtBat } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
+// カスタムカラー定義
+const customColors = {
+  hit: '#4CAF50', // 緑（ヒット）
+  out: '#9E9E9E', // グレー（アウト）
+  walk: '#2196F3', // 青（四球系）
+  other: '#607D8B', // 青灰色（その他）
+};
+
+// 結果に応じた色を返す関数
+const getResultColor = (result: HitResult): string => {
+  const hitPatterns = ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'];
+  const outPatterns = ['GO_P', 'GO_C', 'GO_1B', 'GO_2B', 'GO_3B', 'GO_SS', 'GO_RF', 'FO_LF', 'FO_CF', 'FO_RF', 'FO_IF', 'LO', 'DP', 'SO', 'SAC', 'SF'];
+  const walkPatterns = ['BB', 'HBP'];
+
+  if (hitPatterns.includes(result)) {
+    return customColors.hit;
+  }
+  if (outPatterns.includes(result)) {
+    return customColors.out;
+  }
+  if (walkPatterns.includes(result)) {
+    return customColors.walk;
+  }
+  return customColors.other;
+};
+
 interface AtBatFormProps {
   player: Player | null;
   inning: number;
@@ -234,6 +260,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
                           display: 'flex',
                           justifyContent: 'space-between',
                           width: '100%',
+                          color: getResultColor(hit), // <--- This line is added
                         }}
                       >
                         <span>{hitResultLabels[hit]}</span>
