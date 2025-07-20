@@ -26,7 +26,24 @@ const customColors = {
 // 結果に応じた色を返す関数
 const getResultColor = (result: HitResult): string => {
   const hitPatterns = ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'];
-  const outPatterns = ['GO_P', 'GO_C', 'GO_1B', 'GO_2B', 'GO_3B', 'GO_SS', 'GO_RF', 'FO_LF', 'FO_CF', 'FO_RF', 'FO_IF', 'LO', 'DP', 'SO', 'SAC', 'SF'];
+  const outPatterns = [
+    'GO_P',
+    'GO_C',
+    'GO_1B',
+    'GO_2B',
+    'GO_3B',
+    'GO_SS',
+    'GO_RF',
+    'FO_LF',
+    'FO_CF',
+    'FO_RF',
+    'FO_IF',
+    'LO',
+    'DP',
+    'SO',
+    'SAC',
+    'SF',
+  ];
   const walkPatterns = ['BB', 'HBP'];
 
   if (hitPatterns.includes(result)) {

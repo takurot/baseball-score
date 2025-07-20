@@ -874,7 +874,7 @@ const MainApp: React.FC = () => {
                 aria-label="help"
                 title="ヘルプ"
                 size={isMobile ? 'medium' : 'medium'}
-                sx={{ 
+                sx={{
                   mr: isMobile ? 0.5 : 0,
                   minWidth: isMobile ? '44px' : undefined,
                   minHeight: isMobile ? '44px' : undefined,
@@ -1006,7 +1006,7 @@ const MainApp: React.FC = () => {
                       variant="outlined"
                       color="secondary"
                       onClick={handleOpenRunDialog}
-                      sx={{ 
+                      sx={{
                         minWidth: isMobile ? '80px' : undefined,
                         minHeight: isMobile ? '48px' : '36px',
                         fontSize: isMobile ? '0.9rem' : undefined,
@@ -1018,7 +1018,7 @@ const MainApp: React.FC = () => {
                       variant="outlined"
                       color="secondary"
                       onClick={handleOpenOutDialog}
-                      sx={{ 
+                      sx={{
                         minWidth: isMobile ? '80px' : undefined,
                         minHeight: isMobile ? '48px' : '36px',
                         fontSize: isMobile ? '0.9rem' : undefined,
@@ -1030,16 +1030,16 @@ const MainApp: React.FC = () => {
                       <Button
                         onClick={() => handleInningChange(-1)}
                         disabled={game.currentInning <= 1}
-                        sx={{ 
+                        sx={{
                           minHeight: isMobile ? '44px' : '36px',
                           fontSize: isMobile ? '0.8rem' : undefined,
                         }}
                       >
                         前の回
                       </Button>
-                      <Button 
+                      <Button
                         onClick={() => handleInningChange(1)}
-                        sx={{ 
+                        sx={{
                           minHeight: isMobile ? '44px' : '36px',
                           fontSize: isMobile ? '0.8rem' : undefined,
                         }}
