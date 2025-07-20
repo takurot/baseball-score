@@ -8,6 +8,8 @@ import {
   TableHead,
   TableRow,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Team, RunEvent } from '../types';
 
@@ -24,6 +26,9 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
   currentInning,
   runEvents = [],
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   // 少年野球なので最大7回まで
   const maxInning = 7;
   const displayInnings = Math.min(currentInning, maxInning);
@@ -101,50 +106,159 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
 
   return (
     <Paper sx={{ mb: 3, mt: 3 }}>
-      <TableContainer>
-        <Table size="small">
+      <TableContainer 
+        sx={{ 
+          overflowX: 'auto',
+          '&::-webkit-scrollbar': {
+            height: 8,
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: '#f1f1f1',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: '#888',
+            borderRadius: 4,
+          },
+        }}
+      >
+        <Table 
+          size={isMobile ? "small" : "medium"}
+          sx={{ 
+            minWidth: isMobile ? 300 : 'auto',
+            '& .MuiTableCell-root': {
+              fontSize: isMobile ? '0.8rem' : '0.875rem',
+              padding: isMobile ? '6px 8px' : '8px 16px',
+            }
+          }}
+        >
           <TableHead>
             <TableRow>
-              <TableCell>チーム</TableCell>
+              <TableCell 
+                sx={{ 
+                  fontWeight: 'bold',
+                  minWidth: isMobile ? '60px' : '80px',
+                  position: 'sticky',
+                  left: 0,
+                  backgroundColor: theme.palette.background.paper,
+                  zIndex: 1,
+                }}
+              >
+                チーム
+              </TableCell>
               {innings.map((inning) => (
-                <TableCell key={inning} align="center">
+                <TableCell 
+                  key={inning} 
+                  align="center"
+                  sx={{ 
+                    fontWeight: inning === currentInning ? 'bold' : 'normal',
+                    backgroundColor: inning === currentInning ? 
+                      theme.palette.action.selected : 'transparent',
+                    minWidth: isMobile ? '32px' : '40px',
+                  }}
+                >
                   {inning}
                 </TableCell>
               ))}
-              <TableCell align="center">R</TableCell>
+              <TableCell 
+                align="center"
+                sx={{ 
+                  fontWeight: 'bold',
+                  minWidth: isMobile ? '40px' : '50px',
+                  position: 'sticky',
+                  right: 0,
+                  backgroundColor: theme.palette.background.paper,
+                  zIndex: 1,
+                }}
+              >
+                R
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {/* 先攻チーム */}
             <TableRow>
-              <TableCell>
-                <Typography variant="body2" fontWeight="bold">
+              <TableCell
+                sx={{ 
+                  position: 'sticky',
+                  left: 0,
+                  backgroundColor: theme.palette.background.paper,
+                  zIndex: 1,
+                }}
+              >
+                <Typography 
+                  variant="body2" 
+                  fontWeight="bold"
+                  sx={{ fontSize: isMobile ? '0.8rem' : '0.875rem' }}
+                >
                   {awayTeam.name}
                 </Typography>
               </TableCell>
               {innings.map((inning) => (
-                <TableCell key={inning} align="center">
+                <TableCell 
+                  key={inning} 
+                  align="center"
+                  sx={{ 
+                    backgroundColor: inning === currentInning ? 
+                      theme.palette.action.selected : 'transparent',
+                  }}
+                >
                   {calculateScore(awayTeam, inning, true)}
                 </TableCell>
               ))}
-              <TableCell align="center" sx={{ fontWeight: 'bold' }}>
+              <TableCell 
+                align="center" 
+                sx={{ 
+                  fontWeight: 'bold',
+                  position: 'sticky',
+                  right: 0,
+                  backgroundColor: theme.palette.background.paper,
+                  zIndex: 1,
+                }}
+              >
                 {calculateTotalScore(awayTeam, true)}
               </TableCell>
             </TableRow>
 
             {/* 後攻チーム */}
             <TableRow>
-              <TableCell>
-                <Typography variant="body2" fontWeight="bold">
+              <TableCell
+                sx={{ 
+                  position: 'sticky',
+                  left: 0,
+                  backgroundColor: theme.palette.background.paper,
+                  zIndex: 1,
+                }}
+              >
+                <Typography 
+                  variant="body2" 
+                  fontWeight="bold"
+                  sx={{ fontSize: isMobile ? '0.8rem' : '0.875rem' }}
+                >
                   {homeTeam.name}
                 </Typography>
               </TableCell>
               {innings.map((inning) => (
-                <TableCell key={inning} align="center">
+                <TableCell 
+                  key={inning} 
+                  align="center"
+                  sx={{ 
+                    backgroundColor: inning === currentInning ? 
+                      theme.palette.action.selected : 'transparent',
+                  }}
+                >
                   {calculateScore(homeTeam, inning, false)}
                 </TableCell>
               ))}
-              <TableCell align="center" sx={{ fontWeight: 'bold' }}>
+              <TableCell 
+                align="center" 
+                sx={{ 
+                  fontWeight: 'bold',
+                  position: 'sticky',
+                  right: 0,
+                  backgroundColor: theme.palette.background.paper,
+                  zIndex: 1,
+                }}
+              >
                 {calculateTotalScore(homeTeam, false)}
               </TableCell>
             </TableRow>

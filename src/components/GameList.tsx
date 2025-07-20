@@ -19,6 +19,8 @@ import {
   Switch,
   Tooltip,
   TextField,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PublicIcon from '@mui/icons-material/Public';
@@ -42,6 +44,9 @@ const GameList: React.FC<GameListProps> = ({
   onGameDeleted,
   onShareGame,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -248,15 +253,45 @@ const GameList: React.FC<GameListProps> = ({
             >
               <ListItemButton onClick={() => onSelectGame(game.id)}>
                 <ListItemText
-                  primary={`${game.awayTeam.name} vs ${game.homeTeam.name}`}
+                  primary={
+                    <Box>
+                      <Typography 
+                        variant={isMobile ? "body1" : "h6"} 
+                        component="div"
+                        sx={{ 
+                          fontWeight: 'bold',
+                          fontSize: isMobile ? '1.1rem' : '1.25rem',
+                          lineHeight: 1.2,
+                          mb: isMobile ? 0.5 : 0,
+                        }}
+                      >
+                        {game.awayTeam.name} vs {game.homeTeam.name}
+                      </Typography>
+                      {isMobile && (
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                          sx={{ fontSize: '0.9rem', lineHeight: 1.3 }}
+                        >
+                          {formatDate(game.date)}
+                          {game.tournament && ` | ${game.tournament}`}
+                          {game.venue && ` @ ${game.venue}`}
+                          {game.currentInning && ` | ${game.currentInning}回`}
+                          {game.isPublic && ' | 公開中'}
+                        </Typography>
+                      )}
+                    </Box>
+                  }
                   secondary={
-                    <>
-                      {formatDate(game.date)}
-                      {game.tournament && ` | ${game.tournament}`}
-                      {game.venue && ` @ ${game.venue}`}
-                      {game.currentInning && ` | ${game.currentInning}回`}
-                      {game.isPublic && ' | 公開中'}
-                    </>
+                    !isMobile ? (
+                      <>
+                        {formatDate(game.date)}
+                        {game.tournament && ` | ${game.tournament}`}
+                        {game.venue && ` @ ${game.venue}`}
+                        {game.currentInning && ` | ${game.currentInning}回`}
+                        {game.isPublic && ' | 公開中'}
+                      </>
+                    ) : null
                   }
                 />
               </ListItemButton>
