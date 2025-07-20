@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Container, 
-  CssBaseline, 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Box, 
-  Tabs, 
-  Tab, 
-  Button, 
+import {
+  Container,
+  CssBaseline,
+  AppBar,
+  Toolbar,
+  Typography,
+  Box,
+  Tabs,
+  Tab,
+  Button,
   ButtonGroup,
   ThemeProvider,
   createTheme,
@@ -29,7 +29,7 @@ import {
   Select,
   FormControl,
   useMediaQuery,
-  Hidden
+  Hidden,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -37,7 +37,17 @@ import SportsBaseballIcon from '@mui/icons-material/SportsBaseball';
 import GroupsIcon from '@mui/icons-material/Groups';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import { v4 as uuidv4 } from 'uuid';
-import { Team, Player, AtBat, Game, TeamSetting, RunEvent, RunEventType, OutEvent, OutEventType } from './types';
+import {
+  Team,
+  Player,
+  AtBat,
+  Game,
+  TeamSetting,
+  RunEvent,
+  RunEventType,
+  OutEvent,
+  OutEventType,
+} from './types';
 import TeamManager from './components/TeamManager';
 import AtBatForm from './components/AtBatForm';
 import AtBatHistory from './components/AtBatHistory';
@@ -46,7 +56,13 @@ import AtBatSummaryTable from './components/AtBatSummaryTable';
 import GameList from './components/GameList';
 import TeamList from './components/TeamList';
 import TeamStatsList from './components/TeamStatsList';
-import { saveGame, getGameById, getSharedGameById, saveGameAsNew } from './firebase/gameService';
+import TournamentVenue from './components/TournamentVenue';
+import {
+  saveGame,
+  getGameById,
+  getSharedGameById,
+  saveGameAsNew,
+} from './firebase/gameService';
 import { getTeamById } from './firebase/teamService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
@@ -73,14 +89,14 @@ const initialHomeTeam: Team = {
   id: uuidv4(),
   name: '後攻チーム',
   players: [],
-  atBats: []
+  atBats: [],
 };
 
 const initialAwayTeam: Team = {
   id: uuidv4(),
   name: '先攻チーム',
   players: [],
-  atBats: []
+  atBats: [],
 };
 
 const initialGame: Game = {
@@ -90,11 +106,14 @@ const initialGame: Game = {
   awayTeam: initialAwayTeam,
   currentInning: 1,
   venue: '', // 球場・場所
-  tournament: '' // 大会名
+  tournament: '', // 大会名
 };
 
 // アナリティクスイベントを送信するヘルパー関数
-const sendAnalyticsEvent = (eventName: string, eventParams?: Record<string, any>) => {
+const sendAnalyticsEvent = (
+  eventName: string,
+  eventParams?: Record<string, any>
+) => {
   if (analytics) {
     logEvent(analytics, eventName, eventParams);
     console.log(`Analytics event sent: ${eventName}`, eventParams);
@@ -108,37 +127,41 @@ const MainApp: React.FC = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [viewMode, setViewMode] = useState<'edit' | 'summary'>('edit');
-  
+
   // 試合保存・読み込み関連の状態
   const [showGameList, setShowGameList] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('success');
-  
+  const [snackbarSeverity, setSnackbarSeverity] = useState<
+    'success' | 'error' | 'info' | 'warning'
+  >('success');
+
   // チーム管理関連の状態
   const [showTeamManagement, setShowTeamManagement] = useState(false);
   const [teamSelectionDialogOpen, setTeamSelectionDialogOpen] = useState(false);
-  const [teamSelectionMode, setTeamSelectionMode] = useState<'home' | 'away'>('home');
+  const [teamSelectionMode, setTeamSelectionMode] = useState<'home' | 'away'>(
+    'home'
+  );
   const [availableTeams, setAvailableTeams] = useState<TeamSetting[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
-  
+
   // 通算成績関連の状態
   const [showTeamStats, setShowTeamStats] = useState(false);
-  
+
   // メニュー関連の状態
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchorEl);
 
   // 日付設定関連の状態
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
-  
+
   // 場所と大会名設定関連の状態
   const [venueDialogOpen, setVenueDialogOpen] = useState(false);
-  
+
   // 現在選択されているチーム
   const currentTeam = tabIndex === 0 ? game.awayTeam : game.homeTeam;
-  
+
   // 打席結果の編集関連の状態
   const [editingAtBat, setEditingAtBat] = useState<AtBat | null>(null);
 
@@ -173,7 +196,7 @@ const MainApp: React.FC = () => {
     const checkSharedGame = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const sharedGameId = urlParams.get('gameId');
-      
+
       if (sharedGameId) {
         console.log('Found gameId in URL:', sharedGameId);
         try {
@@ -185,11 +208,11 @@ const MainApp: React.FC = () => {
             setIsSharedMode(true);
             setViewMode('summary'); // 共有リンクでは自動的に一覧表示モードに
             setSharedGameError(null);
-            
+
             // 共有モードの場合はアナリティクスイベントを送信
-            sendAnalyticsEvent('shared_game_view', { 
+            sendAnalyticsEvent('shared_game_view', {
               gameId: sharedGameId,
-              gameTitle: `${sharedGame.awayTeam.name} vs ${sharedGame.homeTeam.name}`
+              gameTitle: `${sharedGame.awayTeam.name} vs ${sharedGame.homeTeam.name}`,
             });
           } else {
             console.error('Game not found:', sharedGameId);
@@ -197,7 +220,9 @@ const MainApp: React.FC = () => {
           }
         } catch (error: any) {
           console.error('Error loading shared game:', error);
-          setSharedGameError(error.message || '試合データの読み込みに失敗しました。');
+          setSharedGameError(
+            error.message || '試合データの読み込みに失敗しました。'
+          );
         } finally {
           setSharedGameLoading(false);
         }
@@ -206,14 +231,21 @@ const MainApp: React.FC = () => {
         sendAnalyticsEvent('page_view', { page_title: 'Home' });
       }
     };
-    
+
     checkSharedGame();
   }, []);
 
   // ローディング中表示
   if (sharedGameLoading || isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+        }}
+      >
         <CircularProgress />
       </Box>
     );
@@ -222,15 +254,24 @@ const MainApp: React.FC = () => {
   // 共有リンクのエラー表示
   if (sharedGameError) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', p: 3 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          p: 3,
+        }}
+      >
         <Typography variant="h5" color="error" gutterBottom>
           エラー
         </Typography>
         <Typography>{sharedGameError}</Typography>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           sx={{ mt: 3 }}
-          onClick={() => window.location.href = window.location.origin}
+          onClick={() => (window.location.href = window.location.origin)}
         >
           トップページに戻る
         </Button>
@@ -253,7 +294,10 @@ const MainApp: React.FC = () => {
   const handleInningChange = (increment: number) => {
     // 少年野球なので最大7回まで
     const maxInning = 7;
-    const newInning = Math.max(1, Math.min(maxInning, game.currentInning + increment));
+    const newInning = Math.max(
+      1,
+      Math.min(maxInning, game.currentInning + increment)
+    );
     setGame({ ...game, currentInning: newInning });
   };
 
@@ -264,10 +308,12 @@ const MainApp: React.FC = () => {
     } else {
       setGame({ ...game, homeTeam: updatedTeam });
     }
-    
+
     // 選手が更新された場合、選択中の選手も更新する
     if (selectedPlayer) {
-      const updatedPlayer = updatedTeam.players.find(p => p.id === selectedPlayer.id);
+      const updatedPlayer = updatedTeam.players.find(
+        (p) => p.id === selectedPlayer.id
+      );
       setSelectedPlayer(updatedPlayer || null);
     }
   };
@@ -275,22 +321,22 @@ const MainApp: React.FC = () => {
   // 打席結果追加ハンドラー
   const handleAddAtBat = (atBat: AtBat) => {
     const updatedAtBats = [...currentTeam.atBats, atBat];
-    
+
     if (tabIndex === 0) {
       setGame({
         ...game,
         awayTeam: {
           ...game.awayTeam,
-          atBats: updatedAtBats
-        }
+          atBats: updatedAtBats,
+        },
       });
     } else {
       setGame({
         ...game,
         homeTeam: {
           ...game.homeTeam,
-          atBats: updatedAtBats
-        }
+          atBats: updatedAtBats,
+        },
       });
     }
     setSelectedPlayer(null);
@@ -304,28 +350,28 @@ const MainApp: React.FC = () => {
 
   // 打席結果の更新ハンドラー
   const handleUpdateAtBat = (updatedAtBat: AtBat) => {
-    const updatedAtBats = currentTeam.atBats.map(ab => 
+    const updatedAtBats = currentTeam.atBats.map((ab) =>
       ab.id === updatedAtBat.id ? updatedAtBat : ab
     );
-    
+
     if (tabIndex === 0) {
       setGame({
         ...game,
         awayTeam: {
           ...game.awayTeam,
-          atBats: updatedAtBats
-        }
+          atBats: updatedAtBats,
+        },
       });
     } else {
       setGame({
         ...game,
         homeTeam: {
           ...game.homeTeam,
-          atBats: updatedAtBats
-        }
+          atBats: updatedAtBats,
+        },
       });
     }
-    
+
     setEditingAtBat(null);
   };
 
@@ -336,23 +382,23 @@ const MainApp: React.FC = () => {
 
   // 打席結果の削除ハンドラー
   const handleDeleteAtBat = (atBatId: string) => {
-    const updatedAtBats = currentTeam.atBats.filter(ab => ab.id !== atBatId);
-    
+    const updatedAtBats = currentTeam.atBats.filter((ab) => ab.id !== atBatId);
+
     if (tabIndex === 0) {
       setGame({
         ...game,
         awayTeam: {
           ...game.awayTeam,
-          atBats: updatedAtBats
-        }
+          atBats: updatedAtBats,
+        },
       });
     } else {
       setGame({
         ...game,
         homeTeam: {
           ...game.homeTeam,
-          atBats: updatedAtBats
-        }
+          atBats: updatedAtBats,
+        },
       });
     }
   };
@@ -372,17 +418,17 @@ const MainApp: React.FC = () => {
   // 試合一覧の表示/非表示切り替え
   const toggleGameList = () => {
     setShowGameList(!showGameList);
-    
+
     // 他の画面を非表示にする
     if (showTeamManagement) {
       setShowTeamManagement(false);
     }
-    
+
     // 通算成績画面が表示されている場合は閉じる
     if (showTeamStats) {
       setShowTeamStats(false);
     }
-    
+
     handleMenuClose();
   };
 
@@ -437,7 +483,7 @@ const MainApp: React.FC = () => {
   const toggleViewMode = () => {
     const newMode = viewMode === 'edit' ? 'summary' : 'edit';
     setViewMode(newMode);
-    
+
     // アナリティクスイベント：表示モード切り替え
     sendAnalyticsEvent('view_mode_change', { mode: newMode });
   };
@@ -446,7 +492,7 @@ const MainApp: React.FC = () => {
   const handleOpenSaveDialog = () => {
     setSaveDialogOpen(true);
   };
-  
+
   // 保存ダイアログを閉じる
   const handleCloseSaveDialog = () => {
     setSaveDialogOpen(false);
@@ -464,39 +510,39 @@ const MainApp: React.FC = () => {
       // ゲームオブジェクトに最新のデータを設定
       const gameToSave = {
         ...game,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       };
 
       // Firestoreに保存
       let gameId: string;
       let message: string;
-      
+
       if (saveAsNew) {
         // 新しい試合データとして保存
         gameId = await saveGameAsNew(gameToSave);
-        setGame(prev => ({ ...prev, id: gameId }));
+        setGame((prev) => ({ ...prev, id: gameId }));
         message = '新しい試合データとして保存しました';
-        
+
         // アナリティクスイベントを送信
-        sendAnalyticsEvent('game_save_new', { 
+        sendAnalyticsEvent('game_save_new', {
           gameId,
-          teams: `${game.awayTeam.name} vs ${game.homeTeam.name}`
+          teams: `${game.awayTeam.name} vs ${game.homeTeam.name}`,
         });
       } else {
         // 既存の試合データを更新または新規に保存
         gameId = await saveGame(gameToSave);
         if (!game.id) {
-          setGame(prev => ({ ...prev, id: gameId }));
+          setGame((prev) => ({ ...prev, id: gameId }));
           // 新規保存の場合
-          sendAnalyticsEvent('game_save_new', { 
+          sendAnalyticsEvent('game_save_new', {
             gameId,
-            teams: `${game.awayTeam.name} vs ${game.homeTeam.name}`
+            teams: `${game.awayTeam.name} vs ${game.homeTeam.name}`,
           });
         } else {
           // 上書き保存の場合
-          sendAnalyticsEvent('game_save_update', { 
+          sendAnalyticsEvent('game_save_update', {
             gameId,
-            teams: `${game.awayTeam.name} vs ${game.homeTeam.name}`
+            teams: `${game.awayTeam.name} vs ${game.homeTeam.name}`,
           });
         }
         message = '試合データを保存しました';
@@ -504,16 +550,20 @@ const MainApp: React.FC = () => {
 
       setSnackbarOpen(true);
       setSnackbarMessage(message);
-      
+
       // 最後に保存した試合のIDをローカルストレージに保存
       localStorage.setItem('lastGameId', gameId);
-      
+
       // 保存ダイアログを閉じる
       setSaveDialogOpen(false);
     } catch (error) {
       console.error('Error saving game:', error);
       setSnackbarOpen(true);
-      setSnackbarMessage(error instanceof Error ? `保存中にエラーが発生しました: ${error.message}` : '保存中に不明なエラーが発生しました');
+      setSnackbarMessage(
+        error instanceof Error
+          ? `保存中にエラーが発生しました: ${error.message}`
+          : '保存中に不明なエラーが発生しました'
+      );
       setSnackbarSeverity('error');
     }
   };
@@ -528,11 +578,11 @@ const MainApp: React.FC = () => {
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
         setShowGameList(false);
-        
+
         // アナリティクスイベント：試合データ読み込み
-        sendAnalyticsEvent('game_load', { 
+        sendAnalyticsEvent('game_load', {
           gameId,
-          teams: `${loadedGame.awayTeam.name} vs ${loadedGame.homeTeam.name}`
+          teams: `${loadedGame.awayTeam.name} vs ${loadedGame.homeTeam.name}`,
         });
       }
     } catch (error: any) {
@@ -555,37 +605,39 @@ const MainApp: React.FC = () => {
       if (!teamSetting) {
         throw new Error('チームデータの取得に失敗しました');
       }
-      
+
       // 保存済みのチーム情報からゲーム用のチームデータを作成
       const gameTeam: Team = {
         id: teamSetting.id,
         name: teamSetting.name,
-        players: teamSetting.players.map(player => ({
+        players: teamSetting.players.map((player) => ({
           id: player.id,
           name: player.name,
           number: player.number,
           position: player.position,
           isActive: true,
-          order: 0 // 初期値は0に設定
+          order: 0, // 初期値は0に設定
         })),
-        atBats: []
+        atBats: [],
       };
-      
+
       // ホームチームかアウェイチームのどちらを更新するか
       if (teamSelectionMode === 'home') {
-        setGame(prevGame => ({
+        setGame((prevGame) => ({
           ...prevGame,
-          homeTeam: gameTeam
+          homeTeam: gameTeam,
         }));
       } else {
-        setGame(prevGame => ({
+        setGame((prevGame) => ({
           ...prevGame,
-          awayTeam: gameTeam
+          awayTeam: gameTeam,
         }));
       }
-      
+
       closeTeamSelectionDialog();
-      setSnackbarMessage(`${teamSetting.name}を${teamSelectionMode === 'home' ? '後攻' : '先攻'}チームに設定しました`);
+      setSnackbarMessage(
+        `${teamSetting.name}を${teamSelectionMode === 'home' ? '後攻' : '先攻'}チームに設定しました`
+      );
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error: any) {
@@ -610,7 +662,7 @@ const MainApp: React.FC = () => {
   const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setGame({
       ...game,
-      date: event.target.value
+      date: event.target.value,
     });
   };
 
@@ -628,21 +680,23 @@ const MainApp: React.FC = () => {
   const handleVenueChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setGame({
       ...game,
-      venue: event.target.value
+      venue: event.target.value,
     });
   };
 
-  const handleTournamentChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTournamentChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     setGame({
       ...game,
-      tournament: event.target.value
+      tournament: event.target.value,
     });
   };
 
   // ヘルプダイアログを開く
   const handleOpenHelpDialog = () => {
     setHelpDialogOpen(true);
-    
+
     // アナリティクスイベント：ヘルプ表示
     sendAnalyticsEvent('help_view', { screen: 'main' });
   };
@@ -659,12 +713,12 @@ const MainApp: React.FC = () => {
     setRunNote('');
     setRunDialogOpen(true);
   };
-  
+
   // 得点追加ダイアログを閉じる
   const handleCloseRunDialog = () => {
     setRunDialogOpen(false);
   };
-  
+
   // 得点追加の保存
   const handleSaveRun = () => {
     const newRunEvent: RunEvent = {
@@ -674,24 +728,24 @@ const MainApp: React.FC = () => {
       runType: runType,
       runCount: runCount,
       note: runNote || undefined,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
-    
+
     // 現在のゲームに得点イベントを追加
-    const updatedGame = { 
-      ...game, 
-      runEvents: [...(game.runEvents || []), newRunEvent] 
+    const updatedGame = {
+      ...game,
+      runEvents: [...(game.runEvents || []), newRunEvent],
     };
-    
+
     setGame(updatedGame);
-    
+
     // Firebase Analyticsにイベントを送信
     sendAnalyticsEvent('add_run_event', {
       run_type: runType,
       run_count: runCount,
-      inning: game.currentInning
+      inning: game.currentInning,
     });
-    
+
     handleCloseRunDialog();
   };
 
@@ -701,12 +755,12 @@ const MainApp: React.FC = () => {
     setOutNote('');
     setOutDialogOpen(true);
   };
-  
+
   // アウト追加ダイアログを閉じる
   const handleCloseOutDialog = () => {
     setOutDialogOpen(false);
   };
-  
+
   // アウト追加の保存
   const handleSaveOut = () => {
     const newOutEvent: OutEvent = {
@@ -715,23 +769,23 @@ const MainApp: React.FC = () => {
       isTop: tabIndex === 0, // 常に現在のタブのチームにアウトを追加
       outType: outType,
       note: outNote || undefined,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
-    
+
     // 現在のゲームにアウトイベントを追加
-    const updatedGame = { 
-      ...game, 
-      outEvents: [...(game.outEvents || []), newOutEvent] 
+    const updatedGame = {
+      ...game,
+      outEvents: [...(game.outEvents || []), newOutEvent],
     };
-    
+
     setGame(updatedGame);
-    
+
     // Firebase Analyticsにイベントを送信
     sendAnalyticsEvent('add_out_event', {
       out_type: outType,
-      inning: game.currentInning
+      inning: game.currentInning,
     });
-    
+
     handleCloseOutDialog();
   };
 
@@ -745,75 +799,85 @@ const MainApp: React.FC = () => {
               color="inherit"
               aria-label="menu"
               onClick={handleMenuOpen}
-              size={isMobile ? "small" : "medium"}
+              size={isMobile ? 'small' : 'medium'}
             >
               <MenuIcon />
             </IconButton>
           )}
-          <Typography 
-            variant={isMobile ? "body1" : "h6"} 
-            component="div" 
-            sx={{ 
-              flexGrow: 1, 
-              display: 'flex', 
+          <Typography
+            variant={isMobile ? 'body1' : 'h6'}
+            component="div"
+            sx={{
+              flexGrow: 1,
+              display: 'flex',
               alignItems: 'center',
-              fontSize: isSmallMobile ? '0.9rem' : undefined
+              fontSize: isSmallMobile ? '0.9rem' : undefined,
             }}
             noWrap
           >
-            <SportsBaseballIcon sx={{ mr: 0.5, fontSize: isMobile ? '1.1rem' : '1.5rem' }} />
+            <SportsBaseballIcon
+              sx={{ mr: 0.5, fontSize: isMobile ? '1.1rem' : '1.5rem' }}
+            />
             野球スコア {isSharedMode && '(共有モード)'}
           </Typography>
-          
+
           {!isSharedMode ? (
-            <Box sx={{ 
-              display: 'flex', 
-              flexWrap: 'wrap', 
-              alignItems: 'center',
-              '& > button': { 
-                fontSize: isMobile ? '0.7rem' : undefined,
-                minWidth: isMobile ? 'auto' : undefined,
-                p: isMobile ? '4px 8px' : undefined
-              }
-            }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                '& > button': {
+                  fontSize: isMobile ? '0.7rem' : undefined,
+                  minWidth: isMobile ? 'auto' : undefined,
+                  p: isMobile ? '4px 8px' : undefined,
+                },
+              }}
+            >
               <Hidden smDown>
-                <Button 
-                  color="inherit" 
+                <Button
+                  color="inherit"
                   onClick={handleOpenDateDialog}
                   sx={{ mr: 1 }}
                 >
                   {new Date(game.date).toLocaleDateString('ja-JP')}
                 </Button>
               </Hidden>
-              
-              <Button 
-                color="inherit" 
+
+              <Button
+                color="inherit"
                 startIcon={!isMobile && <SaveIcon />}
                 onClick={handleOpenSaveDialog}
                 sx={{ mr: isMobile ? 0.5 : 1 }}
               >
                 {isMobile ? '保存' : '保存'}
               </Button>
-              
-              <Button 
-                color="inherit" 
+
+              <Button
+                color="inherit"
                 onClick={toggleViewMode}
                 sx={{ mr: isMobile ? 0.5 : 1 }}
               >
-                {viewMode === 'edit' ? (isMobile ? '一覧' : '一覧表示') : (isMobile ? '編集' : '編集に戻る')}
+                {viewMode === 'edit'
+                  ? isMobile
+                    ? '一覧'
+                    : '一覧表示'
+                  : isMobile
+                    ? '編集'
+                    : '編集に戻る'}
               </Button>
-              
+
               <IconButton
                 color="inherit"
                 onClick={handleOpenHelpDialog}
                 aria-label="help"
                 title="ヘルプ"
-                size={isMobile ? "small" : "medium"}
+                size={isMobile ? 'small' : 'medium'}
                 sx={{ mr: isMobile ? 0.5 : 0 }}
               >
-                <HelpIcon fontSize={isMobile ? "small" : "medium"} />
+                <HelpIcon fontSize={isMobile ? 'small' : 'medium'} />
               </IconButton>
-              
+
               <UserProfile />
             </Box>
           ) : (
@@ -825,16 +889,16 @@ const MainApp: React.FC = () => {
                 aria-label="help"
                 title="ヘルプ"
                 sx={{ mr: 1 }}
-                size={isMobile ? "small" : "medium"}
+                size={isMobile ? 'small' : 'medium'}
               >
-                <HelpIcon fontSize={isMobile ? "small" : "medium"} />
+                <HelpIcon fontSize={isMobile ? 'small' : 'medium'} />
               </IconButton>
-              <Button 
-                color="inherit" 
-                onClick={() => window.location.href = window.location.origin}
-                sx={{ 
+              <Button
+                color="inherit"
+                onClick={() => (window.location.href = window.location.origin)}
+                sx={{
                   fontSize: isMobile ? '0.7rem' : undefined,
-                  p: isMobile ? '4px 8px' : undefined
+                  p: isMobile ? '4px 8px' : undefined,
                 }}
               >
                 {isMobile ? 'ホーム' : 'アプリに戻る'}
@@ -843,16 +907,18 @@ const MainApp: React.FC = () => {
           )}
         </Toolbar>
       </AppBar>
-      
+
       {/* モバイル表示のみの日付ボタン（AppBarの下に配置） */}
       {!isSharedMode && isMobile && (
-        <Box sx={{ 
-          backgroundColor: '#f5f5f5', 
-          p: 1, 
-          textAlign: 'center',
-          borderBottom: '1px solid #e0e0e0' 
-        }}>
-          <Button 
+        <Box
+          sx={{
+            backgroundColor: '#f5f5f5',
+            p: 1,
+            textAlign: 'center',
+            borderBottom: '1px solid #e0e0e0',
+          }}
+        >
+          <Button
             size="small"
             onClick={handleOpenDateDialog}
             startIcon={<span style={{ fontSize: '0.8rem' }}>📅</span>}
@@ -862,7 +928,7 @@ const MainApp: React.FC = () => {
           </Button>
         </Box>
       )}
-      
+
       <Container sx={{ pt: 2 }}>
         {/* 画面の優先順位: チーム管理画面 > 通算成績 > ゲーム一覧 > 通常の試合画面 */}
         {showTeamManagement && !isSharedMode ? (
@@ -870,8 +936,8 @@ const MainApp: React.FC = () => {
         ) : showTeamStats && !isSharedMode ? (
           <TeamStatsList />
         ) : showGameList && !isSharedMode ? (
-          <GameList 
-            onSelectGame={handleSelectGame} 
+          <GameList
+            onSelectGame={handleSelectGame}
             onGameDeleted={() => {
               setSnackbarMessage('試合データを削除しました');
               setSnackbarSeverity('success');
@@ -881,29 +947,20 @@ const MainApp: React.FC = () => {
         ) : (
           <>
             {/* 場所と大会名の表示 */}
-            <Box 
-              sx={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                mb: 2,
-                cursor: isSharedMode ? 'default' : 'pointer' 
-              }}
-              onClick={!isSharedMode ? handleOpenVenueDialog : undefined}
-            >
-              <Typography variant="subtitle1" align="center">
-                {game.tournament ? game.tournament : isSharedMode ? '' : '大会名をクリックして設定'} 
-                {game.venue && ` @ ${game.venue}`}
-              </Typography>
-            </Box>
-            
-            <ScoreBoard 
-              homeTeam={game.homeTeam} 
-              awayTeam={game.awayTeam} 
-              currentInning={game.currentInning} 
+            <TournamentVenue
+              tournament={game.tournament}
+              venue={game.venue}
+              isSharedMode={isSharedMode}
+              onClick={handleOpenVenueDialog}
+            />
+
+            <ScoreBoard
+              homeTeam={game.homeTeam}
+              awayTeam={game.awayTeam}
+              currentInning={game.currentInning}
               runEvents={game.runEvents || []}
             />
-            
+
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
               <Tabs value={tabIndex} onChange={handleTabChange}>
                 <Tab label={game.awayTeam.name} />
@@ -913,20 +970,25 @@ const MainApp: React.FC = () => {
 
             {viewMode === 'summary' || isSharedMode ? (
               // 打席結果一覧表示モード
-              <AtBatSummaryTable 
-                team={currentTeam} 
+              <AtBatSummaryTable
+                team={currentTeam}
                 maxInning={game.currentInning}
                 outEvents={game.outEvents}
               />
             ) : (
               // 編集モード（共有モードでは表示しない）
               <>
-                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="h6">
-                    {game.currentInning}回
-                  </Typography>
+                <Box
+                  sx={{
+                    mb: 2,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Typography variant="h6">{game.currentInning}回</Typography>
                   <Box>
-                    <Button 
+                    <Button
                       variant="outlined"
                       color="secondary"
                       onClick={handleOpenRunDialog}
@@ -934,7 +996,7 @@ const MainApp: React.FC = () => {
                     >
                       得点追加
                     </Button>
-                    <Button 
+                    <Button
                       variant="outlined"
                       color="secondary"
                       onClick={handleOpenOutDialog}
@@ -943,29 +1005,27 @@ const MainApp: React.FC = () => {
                       アウト追加
                     </Button>
                     <ButtonGroup>
-                      <Button 
+                      <Button
                         onClick={() => handleInningChange(-1)}
                         disabled={game.currentInning <= 1}
                       >
                         前の回
                       </Button>
-                      <Button 
-                        onClick={() => handleInningChange(1)}
-                      >
+                      <Button onClick={() => handleInningChange(1)}>
                         次の回
                       </Button>
                     </ButtonGroup>
                   </Box>
                 </Box>
-                
-                <TeamManager 
-                  team={currentTeam} 
-                  onTeamUpdate={handleTeamUpdate} 
+
+                <TeamManager
+                  team={currentTeam}
+                  onTeamUpdate={handleTeamUpdate}
                   onRegisterAtBat={handleRegisterAtBat}
                 />
-                
-                <AtBatHistory 
-                  atBats={currentTeam.atBats} 
+
+                <AtBatHistory
+                  atBats={currentTeam.atBats}
                   players={currentTeam.players}
                   inning={game.currentInning}
                   runEvents={game.runEvents}
@@ -973,36 +1033,42 @@ const MainApp: React.FC = () => {
                   onEditAtBat={handleEditAtBat}
                   onDeleteAtBat={handleDeleteAtBat}
                   onDeleteRunEvent={(eventId) => {
-                    const updatedRunEvents = (game.runEvents || []).filter(event => event.id !== eventId);
+                    const updatedRunEvents = (game.runEvents || []).filter(
+                      (event) => event.id !== eventId
+                    );
                     setGame({
                       ...game,
-                      runEvents: updatedRunEvents
+                      runEvents: updatedRunEvents,
                     });
                   }}
                   onDeleteOutEvent={(eventId) => {
-                    const updatedOutEvents = (game.outEvents || []).filter(event => event.id !== eventId);
+                    const updatedOutEvents = (game.outEvents || []).filter(
+                      (event) => event.id !== eventId
+                    );
                     setGame({
                       ...game,
-                      outEvents: updatedOutEvents
+                      outEvents: updatedOutEvents,
                     });
                   }}
                   currentTeamName={currentTeam.name}
-                  opposingTeamName={tabIndex === 0 ? game.homeTeam.name : game.awayTeam.name}
+                  opposingTeamName={
+                    tabIndex === 0 ? game.homeTeam.name : game.awayTeam.name
+                  }
                 />
 
                 {/* 打席登録ダイアログ */}
-                <Dialog 
-                  open={atBatDialogOpen} 
+                <Dialog
+                  open={atBatDialogOpen}
                   onClose={handleCloseAtBatDialog}
                   maxWidth="md"
                   fullWidth
                 >
                   <DialogTitle>
-                    {editingAtBat ? "打席結果の編集" : "打席結果の登録"}
+                    {editingAtBat ? '打席結果の編集' : '打席結果の登録'}
                   </DialogTitle>
                   <DialogContent>
-                    <AtBatForm 
-                      player={selectedPlayer} 
+                    <AtBatForm
+                      player={selectedPlayer}
                       inning={game.currentInning}
                       onAddAtBat={(atBat) => {
                         handleAddAtBat(atBat);
@@ -1020,7 +1086,9 @@ const MainApp: React.FC = () => {
                     />
                   </DialogContent>
                   <DialogActions>
-                    <Button onClick={handleCloseAtBatDialog} color="inherit">閉じる</Button>
+                    <Button onClick={handleCloseAtBatDialog} color="inherit">
+                      閉じる
+                    </Button>
                   </DialogActions>
                 </Dialog>
               </>
@@ -1028,27 +1096,21 @@ const MainApp: React.FC = () => {
           </>
         )}
       </Container>
-      
+
       {/* 試合保存ダイアログ */}
       <Dialog open={saveDialogOpen} onClose={handleCloseSaveDialog}>
         <DialogTitle>試合データを保存</DialogTitle>
         <DialogContent>
-          <Typography>
-            現在の試合データを保存しますか？
-          </Typography>
+          <Typography>現在の試合データを保存しますか？</Typography>
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2">
               日付: {new Date(game.date).toLocaleDateString('ja-JP')}
             </Typography>
             {game.tournament && (
-              <Typography variant="body2">
-                大会名: {game.tournament}
-              </Typography>
+              <Typography variant="body2">大会名: {game.tournament}</Typography>
             )}
             {game.venue && (
-              <Typography variant="body2">
-                場所: {game.venue}
-              </Typography>
+              <Typography variant="body2">場所: {game.venue}</Typography>
             )}
             <Typography variant="body2">
               対戦: {game.awayTeam.name} vs {game.homeTeam.name}
@@ -1079,7 +1141,7 @@ const MainApp: React.FC = () => {
           )}
         </DialogActions>
       </Dialog>
-      
+
       {/* 日付設定ダイアログ */}
       <Dialog open={dateDialogOpen} onClose={handleCloseDateDialog}>
         <DialogTitle>試合日を設定</DialogTitle>
@@ -1103,7 +1165,7 @@ const MainApp: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       {/* 場所と大会名設定ダイアログ */}
       <Dialog open={venueDialogOpen} onClose={handleCloseVenueDialog}>
         <DialogTitle>場所と大会名を設定</DialogTitle>
@@ -1134,10 +1196,10 @@ const MainApp: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       {/* チーム選択ダイアログ */}
-      <Dialog 
-        open={teamSelectionDialogOpen} 
+      <Dialog
+        open={teamSelectionDialogOpen}
         onClose={closeTeamSelectionDialog}
         maxWidth="md"
         fullWidth
@@ -1155,9 +1217,11 @@ const MainApp: React.FC = () => {
               登録済みのチームがありません。先に「チーム・選手管理」からチームを作成してください。
             </Typography>
           ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-              {availableTeams.map(team => (
-                <Button 
+            <Box
+              sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
+            >
+              {availableTeams.map((team) => (
+                <Button
                   key={team.id}
                   variant="outlined"
                   onClick={() => handleSelectTeamForGame(team.id)}
@@ -1178,14 +1242,10 @@ const MainApp: React.FC = () => {
           <Button onClick={closeTeamSelectionDialog}>キャンセル</Button>
         </DialogActions>
       </Dialog>
-      
+
       {/* メニュー */}
       {menuOpen && !isSharedMode && (
-        <Menu
-          anchorEl={menuAnchorEl}
-          open={menuOpen}
-          onClose={handleMenuClose}
-        >
+        <Menu anchorEl={menuAnchorEl} open={menuOpen} onClose={handleMenuClose}>
           <MenuItem onClick={handleNewGame}>
             <ListItemIcon>
               <SportsBaseballIcon fontSize="small" />
@@ -1219,16 +1279,16 @@ const MainApp: React.FC = () => {
           </MenuItem>
         </Menu>
       )}
-      
+
       {/* スナックバー通知 */}
-      <Snackbar 
-        open={snackbarOpen} 
-        autoHideDuration={snackbarSeverity === 'info' ? null : 6000} 
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={snackbarSeverity === 'info' ? null : 6000}
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert 
-          onClose={() => setSnackbarOpen(false)} 
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
           severity={snackbarSeverity}
           sx={{ width: '100%' }}
           variant="filled"
@@ -1236,10 +1296,10 @@ const MainApp: React.FC = () => {
           {snackbarMessage}
         </Alert>
       </Snackbar>
-      
+
       {/* ヘルプダイアログ */}
       <HelpDialog open={helpDialogOpen} onClose={handleCloseHelpDialog} />
-      
+
       {/* 得点追加ダイアログ */}
       <Dialog open={runDialogOpen} onClose={handleCloseRunDialog}>
         <DialogTitle>
@@ -1261,7 +1321,7 @@ const MainApp: React.FC = () => {
               <MenuItem value="その他">その他</MenuItem>
             </Select>
           </FormControl>
-          
+
           <FormControl fullWidth sx={{ mt: 2 }}>
             <InputLabel>得点数</InputLabel>
             <Select
@@ -1274,11 +1334,15 @@ const MainApp: React.FC = () => {
               <MenuItem value={3}>3点</MenuItem>
             </Select>
           </FormControl>
-          
-          <Typography variant="body2" sx={{ mt: 2, mb: 1, color: 'text.secondary' }}>
-            {tabIndex === 0 ? game.awayTeam.name : game.homeTeam.name}の{game.currentInning}回の得点として記録します
+
+          <Typography
+            variant="body2"
+            sx={{ mt: 2, mb: 1, color: 'text.secondary' }}
+          >
+            {tabIndex === 0 ? game.awayTeam.name : game.homeTeam.name}の
+            {game.currentInning}回の得点として記録します
           </Typography>
-          
+
           <TextField
             label="メモ（任意）"
             fullWidth
@@ -1291,7 +1355,9 @@ const MainApp: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseRunDialog}>キャンセル</Button>
-          <Button onClick={handleSaveRun} variant="contained" color="primary">追加</Button>
+          <Button onClick={handleSaveRun} variant="contained" color="primary">
+            追加
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -1317,11 +1383,15 @@ const MainApp: React.FC = () => {
               <MenuItem value="その他">その他</MenuItem>
             </Select>
           </FormControl>
-          
-          <Typography variant="body2" sx={{ mt: 2, mb: 1, color: 'text.secondary' }}>
-            {tabIndex === 0 ? game.awayTeam.name : game.homeTeam.name}の{game.currentInning}回のアウトとして記録します
+
+          <Typography
+            variant="body2"
+            sx={{ mt: 2, mb: 1, color: 'text.secondary' }}
+          >
+            {tabIndex === 0 ? game.awayTeam.name : game.homeTeam.name}の
+            {game.currentInning}回のアウトとして記録します
           </Typography>
-          
+
           <TextField
             label="メモ（任意）"
             fullWidth
@@ -1335,7 +1405,9 @@ const MainApp: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseOutDialog}>キャンセル</Button>
-          <Button onClick={handleSaveOut} variant="contained" color="secondary">追加</Button>
+          <Button onClick={handleSaveOut} variant="contained" color="secondary">
+            追加
+          </Button>
         </DialogActions>
       </Dialog>
     </>
