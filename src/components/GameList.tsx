@@ -46,7 +46,7 @@ const GameList: React.FC<GameListProps> = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +167,7 @@ const GameList: React.FC<GameListProps> = ({
   };
 
   // シェアボタンのクリックハンドラー
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleShareGame = (gameId: string, event: React.MouseEvent) => {
     event.stopPropagation();
     if (onShareGame) {
@@ -255,10 +256,10 @@ const GameList: React.FC<GameListProps> = ({
                 <ListItemText
                   primary={
                     <Box>
-                      <Typography 
-                        variant={isMobile ? "body1" : "h6"} 
+                      <Typography
+                        variant={isMobile ? 'body1' : 'h6'}
                         component="div"
-                        sx={{ 
+                        sx={{
                           fontWeight: 'bold',
                           fontSize: isMobile ? '1.1rem' : '1.25rem',
                           lineHeight: 1.2,
@@ -268,8 +269,8 @@ const GameList: React.FC<GameListProps> = ({
                         {game.awayTeam.name} vs {game.homeTeam.name}
                       </Typography>
                       {isMobile && (
-                        <Typography 
-                          variant="body2" 
+                        <Typography
+                          variant="body2"
                           color="text.secondary"
                           sx={{ fontSize: '0.9rem', lineHeight: 1.3 }}
                         >

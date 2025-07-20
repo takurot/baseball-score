@@ -28,7 +28,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+
   // 少年野球なので最大7回まで
   const maxInning = 7;
   const displayInnings = Math.min(currentInning, maxInning);
@@ -106,8 +106,8 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
 
   return (
     <Paper sx={{ mb: 3, mt: 3 }}>
-      <TableContainer 
-        sx={{ 
+      <TableContainer
+        sx={{
           overflowX: 'auto',
           '&::-webkit-scrollbar': {
             height: 8,
@@ -121,20 +121,20 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
           },
         }}
       >
-        <Table 
-          size={isMobile ? "small" : "medium"}
-          sx={{ 
+        <Table
+          size={isMobile ? 'small' : 'medium'}
+          sx={{
             minWidth: isMobile ? 300 : 'auto',
             '& .MuiTableCell-root': {
               fontSize: isMobile ? '0.8rem' : '0.875rem',
               padding: isMobile ? '6px 8px' : '8px 16px',
-            }
+            },
           }}
         >
           <TableHead>
             <TableRow>
-              <TableCell 
-                sx={{ 
+              <TableCell
+                sx={{
                   fontWeight: 'bold',
                   minWidth: isMobile ? '60px' : '80px',
                   position: 'sticky',
@@ -146,22 +146,24 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                 チーム
               </TableCell>
               {innings.map((inning) => (
-                <TableCell 
-                  key={inning} 
+                <TableCell
+                  key={inning}
                   align="center"
-                  sx={{ 
+                  sx={{
                     fontWeight: inning === currentInning ? 'bold' : 'normal',
-                    backgroundColor: inning === currentInning ? 
-                      theme.palette.action.selected : 'transparent',
+                    backgroundColor:
+                      inning === currentInning
+                        ? theme.palette.action.selected
+                        : 'transparent',
                     minWidth: isMobile ? '32px' : '40px',
                   }}
                 >
                   {inning}
                 </TableCell>
               ))}
-              <TableCell 
+              <TableCell
                 align="center"
-                sx={{ 
+                sx={{
                   fontWeight: 'bold',
                   minWidth: isMobile ? '40px' : '50px',
                   position: 'sticky',
@@ -178,15 +180,15 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
             {/* 先攻チーム */}
             <TableRow>
               <TableCell
-                sx={{ 
+                sx={{
                   position: 'sticky',
                   left: 0,
                   backgroundColor: theme.palette.background.paper,
                   zIndex: 1,
                 }}
               >
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   fontWeight="bold"
                   sx={{ fontSize: isMobile ? '0.8rem' : '0.875rem' }}
                 >
@@ -194,20 +196,22 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                 </Typography>
               </TableCell>
               {innings.map((inning) => (
-                <TableCell 
-                  key={inning} 
+                <TableCell
+                  key={inning}
                   align="center"
-                  sx={{ 
-                    backgroundColor: inning === currentInning ? 
-                      theme.palette.action.selected : 'transparent',
+                  sx={{
+                    backgroundColor:
+                      inning === currentInning
+                        ? theme.palette.action.selected
+                        : 'transparent',
                   }}
                 >
                   {calculateScore(awayTeam, inning, true)}
                 </TableCell>
               ))}
-              <TableCell 
-                align="center" 
-                sx={{ 
+              <TableCell
+                align="center"
+                sx={{
                   fontWeight: 'bold',
                   position: 'sticky',
                   right: 0,
@@ -222,15 +226,15 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
             {/* 後攻チーム */}
             <TableRow>
               <TableCell
-                sx={{ 
+                sx={{
                   position: 'sticky',
                   left: 0,
                   backgroundColor: theme.palette.background.paper,
                   zIndex: 1,
                 }}
               >
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   fontWeight="bold"
                   sx={{ fontSize: isMobile ? '0.8rem' : '0.875rem' }}
                 >
@@ -238,20 +242,22 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                 </Typography>
               </TableCell>
               {innings.map((inning) => (
-                <TableCell 
-                  key={inning} 
+                <TableCell
+                  key={inning}
                   align="center"
-                  sx={{ 
-                    backgroundColor: inning === currentInning ? 
-                      theme.palette.action.selected : 'transparent',
+                  sx={{
+                    backgroundColor:
+                      inning === currentInning
+                        ? theme.palette.action.selected
+                        : 'transparent',
                   }}
                 >
                   {calculateScore(homeTeam, inning, false)}
                 </TableCell>
               ))}
-              <TableCell 
-                align="center" 
-                sx={{ 
+              <TableCell
+                align="center"
+                sx={{
                   fontWeight: 'bold',
                   position: 'sticky',
                   right: 0,

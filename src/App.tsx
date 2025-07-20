@@ -140,10 +140,13 @@ const MainApp: React.FC = () => {
   // チーム管理関連の状態
   const [showTeamManagement, setShowTeamManagement] = useState(false);
   const [teamSelectionDialogOpen, setTeamSelectionDialogOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [teamSelectionMode, setTeamSelectionMode] = useState<'home' | 'away'>(
     'home'
   );
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [availableTeams, setAvailableTeams] = useState<TeamSetting[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loadingTeams, setLoadingTeams] = useState(false);
 
   // 通算成績関連の状態
@@ -874,7 +877,7 @@ const MainApp: React.FC = () => {
                 aria-label="help"
                 title="ヘルプ"
                 size={isMobile ? 'medium' : 'medium'}
-                sx={{ 
+                sx={{
                   mr: isMobile ? 0.5 : 0,
                   minWidth: isMobile ? '44px' : undefined,
                   minHeight: isMobile ? '44px' : undefined,
@@ -1006,7 +1009,7 @@ const MainApp: React.FC = () => {
                       variant="outlined"
                       color="secondary"
                       onClick={handleOpenRunDialog}
-                      sx={{ 
+                      sx={{
                         minWidth: isMobile ? '80px' : undefined,
                         minHeight: isMobile ? '48px' : '36px',
                         fontSize: isMobile ? '0.9rem' : undefined,
@@ -1018,7 +1021,7 @@ const MainApp: React.FC = () => {
                       variant="outlined"
                       color="secondary"
                       onClick={handleOpenOutDialog}
-                      sx={{ 
+                      sx={{
                         minWidth: isMobile ? '80px' : undefined,
                         minHeight: isMobile ? '48px' : '36px',
                         fontSize: isMobile ? '0.9rem' : undefined,
@@ -1030,16 +1033,16 @@ const MainApp: React.FC = () => {
                       <Button
                         onClick={() => handleInningChange(-1)}
                         disabled={game.currentInning <= 1}
-                        sx={{ 
+                        sx={{
                           minHeight: isMobile ? '44px' : '36px',
                           fontSize: isMobile ? '0.8rem' : undefined,
                         }}
                       >
                         前の回
                       </Button>
-                      <Button 
+                      <Button
                         onClick={() => handleInningChange(1)}
-                        sx={{ 
+                        sx={{
                           minHeight: isMobile ? '44px' : '36px',
                           fontSize: isMobile ? '0.8rem' : undefined,
                         }}
