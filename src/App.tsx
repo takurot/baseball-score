@@ -140,10 +140,13 @@ const MainApp: React.FC = () => {
   // チーム管理関連の状態
   const [showTeamManagement, setShowTeamManagement] = useState(false);
   const [teamSelectionDialogOpen, setTeamSelectionDialogOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [teamSelectionMode, setTeamSelectionMode] = useState<'home' | 'away'>(
     'home'
   );
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [availableTeams, setAvailableTeams] = useState<TeamSetting[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loadingTeams, setLoadingTeams] = useState(false);
 
   // 通算成績関連の状態

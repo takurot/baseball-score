@@ -167,6 +167,7 @@ const GameList: React.FC<GameListProps> = ({
   };
 
   // シェアボタンのクリックハンドラー
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleShareGame = (gameId: string, event: React.MouseEvent) => {
     event.stopPropagation();
     if (onShareGame) {
