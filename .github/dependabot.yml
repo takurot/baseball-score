@@ -48,6 +48,14 @@ updates:
         versions: [">=7.0.0"]
       - dependency-name: "@mui/icons-material"
         versions: [">=7.0.0"]
+      # eslint-plugin-jest v28+ は @typescript-eslint v6+ を要求
+      # 現在は v5.62.0 を使用しているため互換性がない
+      - dependency-name: "eslint-plugin-jest"
+        versions: [">=28.0.0"]
+      # web-vitals v5+ は破壊的変更が多い
+      # getFID()関数削除、ReportHandler型変更など
+      - dependency-name: "web-vitals"
+        versions: [">=5.0.0"]
     
   # GitHub Actions ワークフローの更新
   - package-ecosystem: "github-actions"
