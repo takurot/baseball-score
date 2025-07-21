@@ -19,6 +19,15 @@ updates:
     labels:
       - "dependencies"
       - "javascript"
+    ignore:
+      # eslint-plugin-jest v29+ は @typescript-eslint v8+ が必要で
+      # 現在の react-scripts 5.0.1 と互換性がない
+      - dependency-name: "eslint-plugin-jest"
+        versions: [">=29.0.0"]
+      # TypeScript ESLint v8+ は破壊的変更が多く、
+      # react-scripts のアップデートが必要
+      - dependency-name: "@typescript-eslint/*"
+        versions: [">=8.0.0"]
     
   # GitHub Actions ワークフローの更新
   - package-ecosystem: "github-actions"
