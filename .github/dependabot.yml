@@ -28,6 +28,26 @@ updates:
       # react-scripts のアップデートが必要
       - dependency-name: "@typescript-eslint/*"
         versions: [">=8.0.0"]
+      # TypeScript v5+ は react-scripts 5.0.1 と互換性がない
+      # react-scripts は "^3.2.1 || ^4" のみサポート
+      - dependency-name: "typescript"
+        versions: [">=5.0.0"]
+      # React v19+ は破壊的変更が多く、慎重な検証が必要
+      # 全体的なエコシステムアップデートが必要
+      - dependency-name: "react"
+        versions: [">=19.0.0"]
+      - dependency-name: "react-dom"
+        versions: [">=19.0.0"]
+      - dependency-name: "@types/react"
+        versions: [">=19.0.0"]
+      - dependency-name: "@types/react-dom"
+        versions: [">=19.0.0"]
+      # MUI v7+ は破壊的変更があり、段階的アップデートが必要
+      # @mui/icons-material とバージョン同期が必要
+      - dependency-name: "@mui/material"
+        versions: [">=7.0.0"]
+      - dependency-name: "@mui/icons-material"
+        versions: [">=7.0.0"]
     
   # GitHub Actions ワークフローの更新
   - package-ecosystem: "github-actions"
