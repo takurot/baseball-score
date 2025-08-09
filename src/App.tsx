@@ -891,9 +891,7 @@ const MainApp: React.FC<{
                 color="inherit"
                 onClick={toggleColorMode}
                 aria-label="toggle theme"
-                title={
-                  mode === 'light' ? 'ダークモードに切替' : 'ライトモードに切替'
-                }
+                title={mode === 'light' ? 'ダークモードに切替' : 'ライトモードに切替'}
                 sx={{ mr: isMobile ? 0.5 : 1 }}
               >
                 {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
@@ -923,9 +921,7 @@ const MainApp: React.FC<{
                 color="inherit"
                 onClick={toggleColorMode}
                 aria-label="toggle theme"
-                title={
-                  mode === 'light' ? 'ダークモードに切替' : 'ライトモードに切替'
-                }
+                title={mode === 'light' ? 'ダークモードに切替' : 'ライトモードに切替'}
                 sx={{ mr: 1 }}
                 size={isMobile ? 'small' : 'medium'}
               >
@@ -1005,12 +1001,7 @@ const MainApp: React.FC<{
               isSharedMode={isSharedMode}
               onClick={handleOpenVenueDialog}
             />
-
-            <Stepper
-              activeStep={activeStep}
-              alternativeLabel
-              sx={{ mt: 2, mb: 2 }}
-            >
+            <Stepper activeStep={activeStep} alternativeLabel sx={{ mt: 2, mb: 2 }}>
               {steps.map((label) => (
                 <Step key={label}>
                   <StepLabel>{label}</StepLabel>
@@ -1026,9 +1017,7 @@ const MainApp: React.FC<{
                 戻る
               </Button>
               <Button
-                onClick={() =>
-                  setActiveStep((s) => Math.min(steps.length - 1, s + 1))
-                }
+                onClick={() => setActiveStep((s) => Math.min(steps.length - 1, s + 1))}
                 disabled={activeStep === steps.length - 1}
               >
                 次へ
