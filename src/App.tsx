@@ -29,7 +29,6 @@ import {
   Select,
   FormControl,
   useMediaQuery,
-  useTheme,
   Hidden,
   PaletteMode,
   Stepper,
@@ -78,6 +77,7 @@ import { analytics } from './firebase/config';
 import { logEvent } from 'firebase/analytics';
 import HelpDialog from './components/HelpDialog';
 import HelpIcon from '@mui/icons-material/Help';
+import { useTheme } from '@mui/material/styles';
 
 // テーマの作成
 const getTheme = (mode: PaletteMode) =>
@@ -1005,7 +1005,6 @@ const MainApp: React.FC<{
               isSharedMode={isSharedMode}
               onClick={handleOpenVenueDialog}
             />
-
             <Stepper
               activeStep={activeStep}
               alternativeLabel
