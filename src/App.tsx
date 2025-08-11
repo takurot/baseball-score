@@ -29,7 +29,6 @@ import {
   Select,
   FormControl,
   useMediaQuery,
-  useTheme,
   Hidden,
   PaletteMode,
   Stepper,
@@ -135,7 +134,6 @@ const MainApp: React.FC<{
   toggleColorMode: () => void;
   mode: PaletteMode;
 }> = ({ toggleColorMode, mode }) => {
-  const theme = useTheme();
   const { currentUser, isLoading } = useAuth();
   const theme = useTheme();
   const [game, setGame] = useState<Game>(initialGame);
