@@ -9,8 +9,8 @@ import {
   TableRow,
   Typography,
   useMediaQuery,
-  useTheme,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { Team, RunEvent } from '../types';
 
 interface ScoreBoardProps {

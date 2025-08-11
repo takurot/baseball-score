@@ -78,6 +78,7 @@ import { analytics } from './firebase/config';
 import { logEvent } from 'firebase/analytics';
 import HelpDialog from './components/HelpDialog';
 import HelpIcon from '@mui/icons-material/Help';
+import { useTheme } from '@mui/material/styles';
 
 // テーマの作成
 const getTheme = (mode: PaletteMode) =>
@@ -134,6 +135,7 @@ const MainApp: React.FC<{
   toggleColorMode: () => void;
   mode: PaletteMode;
 }> = ({ toggleColorMode, mode }) => {
+  const theme = useTheme();
   const { currentUser, isLoading } = useAuth();
   const theme = useTheme();
   const [game, setGame] = useState<Game>(initialGame);
