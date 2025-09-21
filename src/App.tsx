@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Container,
   CssBaseline,
@@ -30,12 +30,18 @@ import {
   FormControl,
   useMediaQuery,
   Hidden,
+  PaletteMode,
+  Stepper,
+  Step,
+  StepLabel,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import MenuIcon from '@mui/icons-material/Menu';
 import SportsBaseballIcon from '@mui/icons-material/SportsBaseball';
 import GroupsIcon from '@mui/icons-material/Groups';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { v4 as uuidv4 } from 'uuid';
 import {
   Team,
@@ -71,18 +77,21 @@ import { analytics } from './firebase/config';
 import { logEvent } from 'firebase/analytics';
 import HelpDialog from './components/HelpDialog';
 import HelpIcon from '@mui/icons-material/Help';
+import { useTheme } from '@mui/material/styles';
 
 // テーマの作成
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
+const getTheme = (mode: PaletteMode) =>
+  createTheme({
+    palette: {
+      mode,
+      primary: {
+        main: '#1976d2',
+      },
+      secondary: {
+        main: '#dc004e',
+      },
     },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-});
+  });
 
 // 初期データ
 const initialHomeTeam: Team = {
@@ -121,12 +130,17 @@ const sendAnalyticsEvent = (
 };
 
 // アプリのメインコンテンツコンポーネント
-const MainApp: React.FC = () => {
+const MainApp: React.FC<{
+  toggleColorMode: () => void;
+  mode: PaletteMode;
+}> = ({ toggleColorMode, mode }) => {
   const { currentUser, isLoading } = useAuth();
+  const theme = useTheme();
   const [game, setGame] = useState<Game>(initialGame);
   const [tabIndex, setTabIndex] = useState(0);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  const [viewMode, setViewMode] = useState<'edit' | 'summary'>('edit');
+  const steps = ['プレー入力', '試合結果'];
+  const [activeStep, setActiveStep] = useState(0);
 
   // 試合保存・読み込み関連の状態
   const [showGameList, setShowGameList] = useState(false);
@@ -209,7 +223,7 @@ const MainApp: React.FC = () => {
             console.log('Successfully loaded shared game:', sharedGameId);
             setGame(sharedGame);
             setIsSharedMode(true);
-            setViewMode('summary'); // 共有リンクでは自動的に一覧表示モードに
+            setActiveStep(1); // 共有リンクでは自動的に一覧表示モードに
             setSharedGameError(null);
 
             // 共有モードの場合はアナリティクスイベントを送信
@@ -484,11 +498,13 @@ const MainApp: React.FC = () => {
 
   // 表示モードの切り替え
   const toggleViewMode = () => {
-    const newMode = viewMode === 'edit' ? 'summary' : 'edit';
-    setViewMode(newMode);
+    const newStep = activeStep === 0 ? 1 : 0;
+    setActiveStep(newStep);
 
     // アナリティクスイベント：表示モード切り替え
-    sendAnalyticsEvent('view_mode_change', { mode: newMode });
+    sendAnalyticsEvent('view_mode_change', {
+      mode: newStep === 0 ? 'edit' : 'summary',
+    });
   };
 
   // 保存ダイアログを開く
@@ -862,7 +878,7 @@ const MainApp: React.FC = () => {
                 onClick={toggleViewMode}
                 sx={{ mr: isMobile ? 0.5 : 1 }}
               >
-                {viewMode === 'edit'
+                {activeStep === 0
                   ? isMobile
                     ? '一覧'
                     : '一覧表示'
@@ -870,6 +886,18 @@ const MainApp: React.FC = () => {
                     ? '編集'
                     : '編集に戻る'}
               </Button>
+
+              <IconButton
+                color="inherit"
+                onClick={toggleColorMode}
+                aria-label="toggle theme"
+                title={
+                  mode === 'light' ? 'ダークモードに切替' : 'ライトモードに切替'
+                }
+                sx={{ mr: isMobile ? 0.5 : 1 }}
+              >
+                {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
+              </IconButton>
 
               <IconButton
                 color="inherit"
@@ -891,6 +919,22 @@ const MainApp: React.FC = () => {
           ) : (
             // 共有モードでのボタン
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <IconButton
+                color="inherit"
+                onClick={toggleColorMode}
+                aria-label="toggle theme"
+                title={
+                  mode === 'light' ? 'ダークモードに切替' : 'ライトモードに切替'
+                }
+                sx={{ mr: 1 }}
+                size={isMobile ? 'small' : 'medium'}
+              >
+                {mode === 'light' ? (
+                  <Brightness4Icon fontSize={isMobile ? 'small' : 'medium'} />
+                ) : (
+                  <Brightness7Icon fontSize={isMobile ? 'small' : 'medium'} />
+                )}
+              </IconButton>
               <IconButton
                 color="inherit"
                 onClick={handleOpenHelpDialog}
@@ -961,6 +1005,34 @@ const MainApp: React.FC = () => {
               isSharedMode={isSharedMode}
               onClick={handleOpenVenueDialog}
             />
+            <Stepper
+              activeStep={activeStep}
+              alternativeLabel
+              sx={{ mt: 2, mb: 2 }}
+            >
+              {steps.map((label) => (
+                <Step key={label}>
+                  <StepLabel>{label}</StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button
+                onClick={() => setActiveStep((s) => Math.max(0, s - 1))}
+                disabled={activeStep === 0}
+                sx={{ mr: 1 }}
+              >
+                戻る
+              </Button>
+              <Button
+                onClick={() =>
+                  setActiveStep((s) => Math.min(steps.length - 1, s + 1))
+                }
+                disabled={activeStep === steps.length - 1}
+              >
+                次へ
+              </Button>
+            </Box>
 
             <ScoreBoard
               homeTeam={game.homeTeam}
@@ -976,7 +1048,7 @@ const MainApp: React.FC = () => {
               </Tabs>
             </Box>
 
-            {viewMode === 'summary' || isSharedMode ? (
+            {activeStep === 1 || isSharedMode ? (
               // 打席結果一覧表示モード
               <AtBatSummaryTable
                 team={currentTeam}
@@ -1451,11 +1523,18 @@ const MainApp: React.FC = () => {
 
 // アプリケーションのルートコンポーネント
 function App() {
+  const [mode, setMode] = useState<PaletteMode>('light');
+  const theme = useMemo(() => getTheme(mode), [mode]);
+
+  const toggleColorMode = () => {
+    setMode((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <MainApp />
+        <MainApp toggleColorMode={toggleColorMode} mode={mode} />
       </AuthProvider>
     </ThemeProvider>
   );
