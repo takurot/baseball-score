@@ -4,6 +4,9 @@ import { axe } from '../../setupTests';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import AtBatForm from '../AtBatForm';
 
+// uuid は ESM のため、Jest 上ではモックして回避
+jest.mock('uuid', () => ({ v4: () => 'test-id' }));
+
 const renderWithTheme = (ui: React.ReactElement) => {
   const theme = createTheme({});
   return render(<ThemeProvider theme={theme}>{ui}</ThemeProvider>);
