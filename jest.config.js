@@ -1,7 +1,7 @@
 module.exports = {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
   collectCoverageFrom: [
@@ -36,7 +36,7 @@ module.exports = {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['react-app'] }],
   },
   transformIgnorePatterns: [
-    '[/\\\\]node_modules[/\\\\].+\\.(js|jsx|ts|tsx)$',
+    '[/\\\\]node_modules[/\\\\](?!uuid).+\\.(js|jsx|ts|tsx)$',
     '^.+\\.module\\.(css|sass|scss)$',
   ],
   testPathIgnorePatterns: [
@@ -44,6 +44,6 @@ module.exports = {
     '/\\.git/',
     '/coverage/',
     '/build/',
-    '.*[/\\\\]\\._.*',
+    '[/\\\\]\\._',
   ],
 };
