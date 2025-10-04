@@ -39,4 +39,11 @@ module.exports = {
     '[/\\\\]node_modules[/\\\\].+\\.(js|jsx|ts|tsx)$',
     '^.+\\.module\\.(css|sass|scss)$',
   ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/\\.git/',
+    '/coverage/',
+    '/build/',
+    '.*[/\\\\]\\._.*',
+  ],
 };
