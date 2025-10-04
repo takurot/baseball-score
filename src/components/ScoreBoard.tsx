@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Paper,
   Table,
@@ -76,38 +76,29 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
     return atBatTotal + runEventTotal;
   };
 
-  // デバッグ用：各イニングの得点を確認
-  console.log(
-    'Away team innings:',
-    innings.map((inning) => ({
-      inning,
-      score: calculateScore(awayTeam, inning, true),
-      atBats: awayTeam.atBats
-        .filter((atBat) => atBat.inning === inning)
-        .map((a) => ({ result: a.result, rbi: a.rbi })),
-      runEvents: runEvents.filter(
-        (event) => event.inning === inning && event.isTop === true
-      ),
-    }))
-  );
-  console.log(
-    'Home team innings:',
-    innings.map((inning) => ({
-      inning,
-      score: calculateScore(homeTeam, inning, false),
-      atBats: homeTeam.atBats
-        .filter((atBat) => atBat.inning === inning)
-        .map((a) => ({ result: a.result, rbi: a.rbi })),
-      runEvents: runEvents.filter(
-        (event) => event.inning === inning && event.isTop === false
-      ),
-    }))
-  );
+  // 横スクロール可能かどうかを検出
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isScrollable, setIsScrollable] = useState(false);
+
+  useEffect(() => {
+    const checkScrollable = () => {
+      if (containerRef.current) {
+        const { scrollWidth, clientWidth } = containerRef.current;
+        setIsScrollable(scrollWidth > clientWidth);
+      }
+    };
+
+    checkScrollable();
+    window.addEventListener('resize', checkScrollable);
+    return () => window.removeEventListener('resize', checkScrollable);
+  }, [innings.length]);
 
   return (
     <Paper sx={{ mb: 3, mt: 3 }}>
       <TableContainer
+        ref={containerRef}
         sx={{
+          position: 'relative',
           overflowX: 'auto',
           '&::-webkit-scrollbar': {
             height: 8,
@@ -118,6 +109,21 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
           '&::-webkit-scrollbar-thumb': {
             backgroundColor: '#888',
             borderRadius: 4,
+          },
+          // 横スクロールインジケータ（グラデーション）
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            height: '100%',
+            width: '30px',
+            background:
+              'linear-gradient(to left, rgba(0,0,0,0.1), transparent)',
+            pointerEvents: 'none',
+            opacity: isScrollable ? 1 : 0,
+            transition: 'opacity 0.3s',
+            zIndex: 1,
           },
         }}
       >
@@ -134,13 +140,15 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
           <TableHead>
             <TableRow>
               <TableCell
+                component="th"
+                scope="col"
                 sx={{
                   fontWeight: 'bold',
                   minWidth: isMobile ? '60px' : '80px',
                   position: 'sticky',
                   left: 0,
                   backgroundColor: theme.palette.background.paper,
-                  zIndex: 1,
+                  zIndex: 2,
                 }}
               >
                 チーム
@@ -148,13 +156,20 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
               {innings.map((inning) => (
                 <TableCell
                   key={inning}
+                  component="th"
+                  scope="col"
                   align="center"
+                  aria-current={inning === currentInning ? 'true' : undefined}
                   sx={{
                     fontWeight: inning === currentInning ? 'bold' : 'normal',
                     backgroundColor:
                       inning === currentInning
-                        ? theme.palette.action.selected
+                        ? theme.palette.action.hover
                         : 'transparent',
+                    borderBottom:
+                      inning === currentInning
+                        ? `3px solid ${theme.palette.primary.main}`
+                        : undefined,
                     minWidth: isMobile ? '32px' : '40px',
                   }}
                 >
@@ -162,14 +177,18 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                 </TableCell>
               ))}
               <TableCell
+                component="th"
+                scope="col"
                 align="center"
+                aria-label="合計得点"
+                title="合計得点"
                 sx={{
                   fontWeight: 'bold',
                   minWidth: isMobile ? '40px' : '50px',
                   position: 'sticky',
                   right: 0,
                   backgroundColor: theme.palette.background.paper,
-                  zIndex: 1,
+                  zIndex: 2,
                 }}
               >
                 R
@@ -180,6 +199,8 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
             {/* 先攻チーム */}
             <TableRow>
               <TableCell
+                component="th"
+                scope="row"
                 sx={{
                   position: 'sticky',
                   left: 0,
@@ -199,11 +220,16 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                 <TableCell
                   key={inning}
                   align="center"
+                  aria-current={inning === currentInning ? 'true' : undefined}
                   sx={{
                     backgroundColor:
                       inning === currentInning
-                        ? theme.palette.action.selected
+                        ? theme.palette.action.hover
                         : 'transparent',
+                    borderBottom:
+                      inning === currentInning
+                        ? `3px solid ${theme.palette.primary.main}`
+                        : undefined,
                   }}
                 >
                   {calculateScore(awayTeam, inning, true)}
@@ -226,6 +252,8 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
             {/* 後攻チーム */}
             <TableRow>
               <TableCell
+                component="th"
+                scope="row"
                 sx={{
                   position: 'sticky',
                   left: 0,
@@ -245,11 +273,16 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                 <TableCell
                   key={inning}
                   align="center"
+                  aria-current={inning === currentInning ? 'true' : undefined}
                   sx={{
                     backgroundColor:
                       inning === currentInning
-                        ? theme.palette.action.selected
+                        ? theme.palette.action.hover
                         : 'transparent',
+                    borderBottom:
+                      inning === currentInning
+                        ? `3px solid ${theme.palette.primary.main}`
+                        : undefined,
                   }}
                 >
                   {calculateScore(homeTeam, inning, false)}
