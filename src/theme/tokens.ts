@@ -75,5 +75,3 @@ export const getNewTheme = (mode: 'light' | 'dark') =>
       },
     },
   });
-
-

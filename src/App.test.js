@@ -1,6 +1,4 @@
 const { test, expect, describe } = require('@jest/globals');
-const React = require('react');
-const { render } = require('@testing-library/react');
 
 describe('theme accessibility tokens', () => {
   test('Theme に accessibility トークンが含まれること', async () => {
