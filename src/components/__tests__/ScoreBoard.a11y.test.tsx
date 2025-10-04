@@ -14,11 +14,14 @@ describe('ScoreBoard accessibility', () => {
   test('has no axe violations', async () => {
     const team: Team = { id: 't1', name: 'A', players: [], atBats: [] };
     const { container } = renderWithTheme(
-      <ScoreBoard homeTeam={team} awayTeam={team} currentInning={1} runEvents={[]} />
+      <ScoreBoard
+        homeTeam={team}
+        awayTeam={team}
+        currentInning={1}
+        runEvents={[]}
+      />
     );
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
 });
-
-

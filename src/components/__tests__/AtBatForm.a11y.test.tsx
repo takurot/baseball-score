@@ -21,5 +21,3 @@ describe('AtBatForm accessibility', () => {
     expect(results).toHaveNoViolations();
   });
 });
-
-

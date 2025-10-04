@@ -11,10 +11,10 @@ const renderWithTheme = (ui: React.ReactElement) => {
 
 describe('HelpDialog accessibility', () => {
   test('has no axe violations when open', async () => {
-    const { container } = renderWithTheme(<HelpDialog open={true} onClose={() => {}} />);
+    const { container } = renderWithTheme(
+      <HelpDialog open={true} onClose={() => {}} />
+    );
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
 });
-
-
