@@ -154,8 +154,17 @@ jobs:
           head -5 build/index.html
           echo "---"
           grep -o 'src="[^"]*"' build/index.html | head -3
-      - name: Run Lighthouse CI
-        run: npx lhci autorun --config=.lighthouserc.json
+      - name: Start static server manually
+        run: |
+          npx serve -s build -l 8080 &
+          echo "Waiting for server to start..."
+          sleep 5
+          curl -I http://localhost:8080 || echo "Server not responding"
+          curl http://localhost:8080 | head -20
+      - name: Run Lighthouse CI with manual server
+        run: npx lhci collect --url=http://localhost:8080 --config=.lighthouserc.json
+      - name: Run Lighthouse CI assertions
+        run: npx lhci assert --config=.lighthouserc.json
 
   # デプロイメント準備チェック
   deployment-check:
