@@ -3,7 +3,6 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-    '^uuid$': '<rootDir>/src/test-utils/uuid-shim.js',
   },
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',
@@ -45,8 +44,6 @@ module.exports = {
     '/\\.git/',
     '/coverage/',
     '/build/',
-    '.*[/\\\\]\\._.*',
-    '^.*\\/\\._.*$',
-    '^\\._.*$',
+    '[/\\\\]\\._',
   ],
 };
