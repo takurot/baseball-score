@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Button,
   FormControl,
+  FormHelperText,
   InputLabel,
   MenuItem,
   Select,
@@ -12,6 +13,12 @@ import {
   ListSubheader,
   Stack,
 } from '@mui/material';
+import {
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
+  Sports as SportsIcon,
+  MoreHoriz as MoreHorizIcon,
+} from '@mui/icons-material';
 import { HitResult, Player, AtBat } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -137,6 +144,11 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
   const [result, setResult] = useState<HitResult>('GO_2B');
   const [description, setDescription] = useState('');
   const [rbi, setRbi] = useState<number>(0);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // フォーカス管理用のref
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   // 編集モードの場合、フォームに値をセット
   useEffect(() => {
@@ -146,6 +158,16 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
       setRbi(editingAtBat.rbi || 0);
     }
   }, [editingAtBat]);
+
+  // 成功メッセージを3秒後に自動的にクリア
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   // 編集モードかどうか
   const isEditMode = !!editingAtBat;
@@ -175,6 +197,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
       };
 
       onUpdateAtBat(updatedAtBat);
+      setSuccessMessage('打席結果を更新しました');
     } else {
       // 新規登録モードの場合
       const newAtBat: AtBat = {
@@ -188,12 +211,18 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
       };
 
       onAddAtBat(newAtBat);
+      setSuccessMessage('打席結果を登録しました');
     }
 
     // フォームをリセット
     setResult('GO_2B');
     setDescription('');
     setRbi(0);
+
+    // 送信ボタンにフォーカスを戻す
+    if (submitButtonRef.current) {
+      submitButtonRef.current.focus();
+    }
   };
 
   // 編集をキャンセル
@@ -206,6 +235,31 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
     setResult('GO_2B');
     setDescription('');
     setRbi(0);
+    setSuccessMessage('');
+  };
+
+  // カテゴリーに対応するアイコンを返す関数
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'ヒット':
+        return (
+          <CheckCircleIcon fontSize="small" sx={{ color: customColors.hit }} />
+        );
+      case 'ゴロアウト':
+      case 'フライアウト':
+      case 'その他アウト':
+        return <CancelIcon fontSize="small" sx={{ color: customColors.out }} />;
+      case '犠打/犠飛':
+        return (
+          <SportsIcon fontSize="small" sx={{ color: customColors.other }} />
+        );
+      case 'その他':
+        return (
+          <MoreHorizIcon fontSize="small" sx={{ color: customColors.walk }} />
+        );
+      default:
+        return null;
+    }
   };
 
   // 打撃結果をカテゴリごとにグループ化
@@ -255,20 +309,44 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
         {displayPosition})
       </Typography>
 
+      {/* 成功メッセージ（スクリーンリーダー対応） */}
+      {successMessage && (
+        <Box
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          sx={{
+            p: 2,
+            mb: 2,
+            bgcolor: 'success.light',
+            color: 'success.contrastText',
+            borderRadius: 1,
+          }}
+        >
+          <Typography>{successMessage}</Typography>
+        </Box>
+      )}
+
       <Box component="form" onSubmit={handleSubmit}>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
-              <InputLabel>打席結果</InputLabel>
+              <InputLabel id="result-label">打席結果</InputLabel>
               <Select
+                labelId="result-label"
                 value={result}
                 onChange={(e) => setResult(e.target.value as HitResult)}
                 label="打席結果"
                 required
+                aria-required="true"
+                aria-describedby="result-helper-text"
               >
                 {hitOptions.map((group) => [
                   <ListSubheader key={group.category}>
-                    {group.category}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {getCategoryIcon(group.category)}
+                      <span>{group.category}</span>
+                    </Box>
                   </ListSubheader>,
                   ...group.items.map((hit) => (
                     <MenuItem key={hit} value={hit}>
@@ -277,7 +355,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
                           display: 'flex',
                           justifyContent: 'space-between',
                           width: '100%',
-                          color: getResultColor(hit), // <--- This line is added
+                          color: getResultColor(hit),
                         }}
                       >
                         <span>{hitResultLabels[hit]}</span>
@@ -289,16 +367,21 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
                   )),
                 ])}
               </Select>
+              <FormHelperText id="result-helper-text">
+                打席の結果を選択してください
+              </FormHelperText>
             </FormControl>
           </Grid>
 
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
-              <InputLabel>打点</InputLabel>
+              <InputLabel id="rbi-label">打点</InputLabel>
               <Select
+                labelId="rbi-label"
                 value={rbi}
                 onChange={(e) => setRbi(Number(e.target.value))}
                 label="打点"
+                aria-describedby="rbi-helper-text"
               >
                 <MenuItem value={0}>0</MenuItem>
                 <MenuItem value={1}>1</MenuItem>
@@ -306,6 +389,9 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
                 <MenuItem value={3}>3</MenuItem>
                 <MenuItem value={4}>4 (グランドスラム)</MenuItem>
               </Select>
+              <FormHelperText id="rbi-helper-text">
+                この打席で記録した打点を選択
+              </FormHelperText>
             </FormControl>
           </Grid>
 
@@ -317,6 +403,11 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
               fullWidth
               multiline
               rows={2}
+              aria-describedby="description-helper-text"
+              helperText="打席の詳細や特記事項を入力（任意）"
+              FormHelperTextProps={{
+                id: 'description-helper-text',
+              }}
             />
           </Grid>
 
@@ -324,6 +415,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
             {isEditMode ? (
               <Stack direction="row" spacing={2}>
                 <Button
+                  ref={submitButtonRef}
                   type="submit"
                   variant="contained"
                   color="primary"
@@ -332,6 +424,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
                   更新
                 </Button>
                 <Button
+                  ref={cancelButtonRef}
                   variant="outlined"
                   color="secondary"
                   fullWidth
@@ -342,6 +435,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
               </Stack>
             ) : (
               <Button
+                ref={submitButtonRef}
                 type="submit"
                 variant="contained"
                 color="primary"
