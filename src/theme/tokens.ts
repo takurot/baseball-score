@@ -45,6 +45,18 @@ export const getNewTheme = (mode: 'light' | 'dark') =>
   createTheme({
     palette: {
       mode,
+      primary: {
+        main: '#1976d2', // アプリのブランドカラー（例: ブルー系）
+      },
+      secondary: {
+        main: '#dc004e', // アクセントカラー（例: ピンク系）
+      },
+      ...(mode === 'dark' && {
+        background: {
+          default: '#121212',
+          paper: '#1e1e1e',
+        },
+      }),
     },
     accessibility: accessibilityTokens,
     components: {
@@ -54,7 +66,11 @@ export const getNewTheme = (mode: 'light' | 'dark') =>
             minHeight: theme.accessibility.touchTarget.minHeight,
             minWidth: theme.accessibility.touchTarget.minWidth,
             '&:focus-visible': {
-              outline: `${theme.accessibility.focusVisible.outline} ${theme.palette.primary.main}`,
+              outline: `${theme.accessibility.focusVisible.outline} ${
+                theme.palette.mode === 'dark'
+                  ? theme.palette.primary.light
+                  : theme.palette.primary.main
+              }`,
               outlineOffset: theme.accessibility.focusVisible.outlineOffset,
               borderRadius: theme.accessibility.focusVisible.borderRadius,
             },
@@ -67,7 +83,11 @@ export const getNewTheme = (mode: 'light' | 'dark') =>
             minHeight: theme.accessibility.touchTarget.minHeight,
             minWidth: theme.accessibility.touchTarget.minWidth,
             '&:focus-visible': {
-              outline: `${theme.accessibility.focusVisible.outline} ${theme.palette.primary.main}`,
+              outline: `${theme.accessibility.focusVisible.outline} ${
+                theme.palette.mode === 'dark'
+                  ? theme.palette.primary.light
+                  : theme.palette.primary.main
+              }`,
               outlineOffset: theme.accessibility.focusVisible.outlineOffset,
             },
           }),
