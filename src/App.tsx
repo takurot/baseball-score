@@ -11,7 +11,6 @@ import {
   Button,
   ButtonGroup,
   ThemeProvider,
-  createTheme,
   TextField,
   Dialog,
   DialogActions,
@@ -78,20 +77,9 @@ import { logEvent } from 'firebase/analytics';
 import HelpDialog from './components/HelpDialog';
 import HelpIcon from '@mui/icons-material/Help';
 import { useTheme } from '@mui/material/styles';
+import { createAppTheme } from './theme';
 
-// テーマの作成
-const getTheme = (mode: PaletteMode) =>
-  createTheme({
-    palette: {
-      mode,
-      primary: {
-        main: '#1976d2',
-      },
-      secondary: {
-        main: '#dc004e',
-      },
-    },
-  });
+// 新テーマ（アクセシビリティ拡張）
 
 // 初期データ
 const initialHomeTeam: Team = {
@@ -1524,7 +1512,7 @@ const MainApp: React.FC<{
 // アプリケーションのルートコンポーネント
 function App() {
   const [mode, setMode] = useState<PaletteMode>('light');
-  const theme = useMemo(() => getTheme(mode), [mode]);
+  const theme = useMemo(() => createAppTheme(mode), [mode]);
 
   const toggleColorMode = () => {
     setMode((prev) => (prev === 'light' ? 'dark' : 'light'));
