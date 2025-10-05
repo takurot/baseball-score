@@ -798,13 +798,21 @@ const MainApp: React.FC<{
 
   return (
     <>
-      <AppBar position="sticky">
+      <AppBar
+        position="sticky"
+        component="nav"
+        role="navigation"
+        aria-label="メインナビゲーション"
+      >
         <Toolbar sx={{ flexWrap: 'wrap', p: isMobile ? 1 : 2 }}>
           {!isSharedMode && (
             <IconButton
               edge="start"
               color="inherit"
-              aria-label="menu"
+              aria-label="メニューを開く"
+              aria-controls={menuOpen ? 'main-menu' : undefined}
+              aria-expanded={menuOpen ? 'true' : 'false'}
+              aria-haspopup="true"
               onClick={handleMenuOpen}
               size={isMobile ? 'small' : 'medium'}
             >
@@ -825,7 +833,7 @@ const MainApp: React.FC<{
             <SportsBaseballIcon
               sx={{ mr: 0.5, fontSize: isMobile ? '1.1rem' : '1.5rem' }}
             />
-            野球スコア {isSharedMode && '(共有モード)'}
+            野球スコア
           </Typography>
 
           {!isSharedMode ? (
@@ -847,8 +855,12 @@ const MainApp: React.FC<{
                   color="inherit"
                   onClick={handleOpenDateDialog}
                   sx={{ mr: 1 }}
+                  aria-label="試合日を変更"
+                  aria-describedby="game-date-text"
                 >
-                  {new Date(game.date).toLocaleDateString('ja-JP')}
+                  <span id="game-date-text">
+                    {new Date(game.date).toLocaleDateString('ja-JP')}
+                  </span>
                 </Button>
               </Hidden>
 
@@ -857,6 +869,7 @@ const MainApp: React.FC<{
                 startIcon={!isMobile && <SaveIcon />}
                 onClick={handleOpenSaveDialog}
                 sx={{ mr: isMobile ? 0.5 : 1 }}
+                aria-label="試合データを保存"
               >
                 {isMobile ? '保存' : '保存'}
               </Button>
@@ -865,6 +878,9 @@ const MainApp: React.FC<{
                 color="inherit"
                 onClick={toggleViewMode}
                 sx={{ mr: isMobile ? 0.5 : 1 }}
+                aria-label={
+                  activeStep === 0 ? '一覧表示に切り替え' : '編集モードに戻る'
+                }
               >
                 {activeStep === 0
                   ? isMobile
@@ -946,6 +962,34 @@ const MainApp: React.FC<{
             </Box>
           )}
         </Toolbar>
+
+        {/* 共有モード状態表示バナー */}
+        {isSharedMode && (
+          <Box
+            sx={{
+              bgcolor: 'warning.light',
+              px: 2,
+              py: 0.5,
+              borderTop: '1px solid',
+              borderColor: 'warning.dark',
+            }}
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'warning.contrastText',
+                fontWeight: 'medium',
+                display: 'block',
+                textAlign: 'center',
+              }}
+            >
+              閲覧専用モード（編集・保存はできません）
+            </Typography>
+          </Box>
+        )}
       </AppBar>
 
       {/* モバイル表示のみの日付ボタン（AppBarの下に配置） */}
@@ -963,8 +1007,12 @@ const MainApp: React.FC<{
             onClick={handleOpenDateDialog}
             startIcon={<span style={{ fontSize: '0.8rem' }}>📅</span>}
             sx={{ fontSize: '0.8rem' }}
+            aria-label="試合日を変更"
+            aria-describedby="mobile-game-date-text"
           >
-            {new Date(game.date).toLocaleDateString('ja-JP')}
+            <span id="mobile-game-date-text">
+              {new Date(game.date).toLocaleDateString('ja-JP')}
+            </span>
           </Button>
         </Box>
       )}
@@ -1030,9 +1078,21 @@ const MainApp: React.FC<{
             />
 
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-              <Tabs value={tabIndex} onChange={handleTabChange}>
-                <Tab label={game.awayTeam.name} />
-                <Tab label={game.homeTeam.name} />
+              <Tabs
+                value={tabIndex}
+                onChange={handleTabChange}
+                aria-label="チーム選択タブ"
+              >
+                <Tab
+                  label={game.awayTeam.name}
+                  id="team-tab-0"
+                  aria-controls="team-tabpanel-0"
+                />
+                <Tab
+                  label={game.homeTeam.name}
+                  id="team-tab-1"
+                  aria-controls="team-tabpanel-1"
+                />
               </Tabs>
             </Box>
 
@@ -1340,7 +1400,12 @@ const MainApp: React.FC<{
 
       {/* メニュー */}
       {menuOpen && !isSharedMode && (
-        <Menu anchorEl={menuAnchorEl} open={menuOpen} onClose={handleMenuClose}>
+        <Menu
+          id="main-menu"
+          anchorEl={menuAnchorEl}
+          open={menuOpen}
+          onClose={handleMenuClose}
+        >
           <MenuItem onClick={handleNewGame}>
             <ListItemIcon>
               <SportsBaseballIcon fontSize="small" />
