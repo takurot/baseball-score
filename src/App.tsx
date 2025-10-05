@@ -62,6 +62,7 @@ import GameList from './components/GameList';
 import TeamList from './components/TeamList';
 import TeamStatsList from './components/TeamStatsList';
 import TournamentVenue from './components/TournamentVenue';
+import LoadingButton from './components/LoadingButton';
 import {
   saveGame,
   getGameById,
@@ -133,6 +134,9 @@ const MainApp: React.FC<{
   // 試合保存・読み込み関連の状態
   const [showGameList, setShowGameList] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [loading, setLoading] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<
@@ -507,10 +511,17 @@ const MainApp: React.FC<{
 
   // 試合データを保存する関数
   const handleSaveGame = async (saveAsNew: boolean = false) => {
+    // 既に保存中の場合は処理しない（冪等性の保証）
+    if (saving) {
+      return;
+    }
+
+    setSaving(true);
     try {
       if (!currentUser) {
         setSnackbarOpen(true);
         setSnackbarMessage('ログインしてください');
+        setSnackbarSeverity('warning');
         return;
       }
 
@@ -557,6 +568,7 @@ const MainApp: React.FC<{
 
       setSnackbarOpen(true);
       setSnackbarMessage(message);
+      setSnackbarSeverity('success');
 
       // 最後に保存した試合のIDをローカルストレージに保存
       localStorage.setItem('lastGameId', gameId);
@@ -572,11 +584,14 @@ const MainApp: React.FC<{
           : '保存中に不明なエラーが発生しました'
       );
       setSnackbarSeverity('error');
+    } finally {
+      setSaving(false);
     }
   };
 
   // 既存の試合データを選択
   const handleSelectGame = async (gameId: string) => {
+    setLoading(true);
     try {
       const loadedGame = await getGameById(gameId);
       if (loadedGame) {
@@ -597,6 +612,8 @@ const MainApp: React.FC<{
       setSnackbarMessage(`読み込みに失敗しました: ${error.message}`);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1278,21 +1295,38 @@ const MainApp: React.FC<{
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseSaveDialog}>キャンセル</Button>
+          <Button onClick={handleCloseSaveDialog} disabled={saving}>
+            キャンセル
+          </Button>
           {game.id && (
             <>
-              <Button onClick={() => handleSaveGame(false)} color="primary">
+              <LoadingButton
+                onClick={() => handleSaveGame(false)}
+                color="primary"
+                loading={saving}
+                loadingText="保存中..."
+              >
                 上書き保存
-              </Button>
-              <Button onClick={() => handleSaveGame(true)} color="secondary">
+              </LoadingButton>
+              <LoadingButton
+                onClick={() => handleSaveGame(true)}
+                color="secondary"
+                loading={saving}
+                loadingText="保存中..."
+              >
                 新規保存
-              </Button>
+              </LoadingButton>
             </>
           )}
           {!game.id && (
-            <Button onClick={() => handleSaveGame()} color="primary">
+            <LoadingButton
+              onClick={() => handleSaveGame()}
+              color="primary"
+              loading={saving}
+              loadingText="保存中..."
+            >
               保存
-            </Button>
+            </LoadingButton>
           )}
         </DialogActions>
       </Dialog>
@@ -1452,6 +1486,8 @@ const MainApp: React.FC<{
           severity={snackbarSeverity}
           sx={{ width: '100%' }}
           variant="filled"
+          role={snackbarSeverity === 'error' ? 'alert' : 'status'}
+          aria-live={snackbarSeverity === 'error' ? 'assertive' : 'polite'}
         >
           {snackbarMessage}
         </Alert>
