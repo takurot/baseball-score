@@ -1494,7 +1494,11 @@ const MainApp: React.FC<{
       </Snackbar>
 
       {/* ヘルプダイアログ */}
-      <HelpDialog open={helpDialogOpen} onClose={handleCloseHelpDialog} />
+      <HelpDialog
+        open={helpDialogOpen}
+        onClose={handleCloseHelpDialog}
+        isSharedMode={isSharedMode}
+      />
 
       {/* 得点追加ダイアログ */}
       <Dialog open={runDialogOpen} onClose={handleCloseRunDialog}>

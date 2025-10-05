@@ -51,9 +51,14 @@ function TabPanel(props: TabPanelProps) {
 interface HelpDialogProps {
   open: boolean;
   onClose: () => void;
+  isSharedMode?: boolean;
 }
 
-const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
+const HelpDialog: React.FC<HelpDialogProps> = ({
+  open,
+  onClose,
+  isSharedMode = false,
+}) => {
   const [tabValue, setTabValue] = useState(0);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -67,6 +72,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
       fullWidth
       maxWidth="md"
       aria-labelledby="help-dialog-title"
+      aria-describedby="help-dialog-description"
     >
       <DialogTitle
         id="help-dialog-title"
@@ -84,22 +90,91 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
           <CloseIcon />
         </IconButton>
       </DialogTitle>
-      <DialogContent dividers>
+      <DialogContent dividers id="help-dialog-description">
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs
             value={tabValue}
             onChange={handleTabChange}
             aria-label="help topics tabs"
+            variant="scrollable"
+            scrollButtons="auto"
           >
+            {isSharedMode && <Tab label="閲覧専用モード" />}
             <Tab label="はじめに" />
             <Tab label="チーム・選手管理" />
             <Tab label="試合スコア入力" />
             <Tab label="保存と共有" />
+            <Tab label="キーボード操作" />
             <Tab label="よくある質問" />
           </Tabs>
         </Box>
 
-        <TabPanel value={tabValue} index={0}>
+        {/* 共有モード専用タブ */}
+        {isSharedMode && (
+          <TabPanel value={tabValue} index={0}>
+            <Typography variant="h6" gutterBottom>
+              閲覧専用モード
+            </Typography>
+            <Typography paragraph>
+              このページは共有されている試合データを閲覧するためのモードです。
+            </Typography>
+            <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                閲覧専用モードでできること
+              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemText
+                    primary="試合スコアの閲覧"
+                    secondary="現在の試合スコアと打席履歴を確認できます"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="選手ごとの成績確認"
+                    secondary="「一覧表示」ボタンで選手ごとの打席結果を確認できます"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="ダークモード切り替え"
+                    secondary="画面右上のボタンでダークモード/ライトモードを切り替えられます"
+                  />
+                </ListItem>
+              </List>
+            </Paper>
+            <Paper elevation={2} sx={{ p: 2, mb: 2, bgcolor: 'warning.light' }}>
+              <Typography variant="subtitle1" gutterBottom>
+                閲覧専用モードでできないこと
+              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemText
+                    primary="データの編集・削除"
+                    secondary="打席結果の追加、編集、削除はできません"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="データの保存"
+                    secondary="変更を保存することはできません"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="チーム・選手の管理"
+                    secondary="チームや選手の追加・編集はできません"
+                  />
+                </ListItem>
+              </List>
+            </Paper>
+            <Typography paragraph>
+              このデータを編集したい場合は、アプリにログインして自分の試合データとして新規作成してください。
+            </Typography>
+          </TabPanel>
+        )}
+
+        <TabPanel value={tabValue} index={isSharedMode ? 1 : 0}>
           <Typography variant="h6" gutterBottom>
             野球スコアアプリへようこそ！
           </Typography>
@@ -151,7 +226,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
           </Typography>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={1}>
+        <TabPanel value={tabValue} index={isSharedMode ? 2 : 1}>
           <Typography variant="h6" gutterBottom>
             チームと選手の管理
           </Typography>
@@ -221,7 +296,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
           </Typography>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={2}>
+        <TabPanel value={tabValue} index={isSharedMode ? 3 : 2}>
           <Typography variant="h6" gutterBottom>
             試合スコアの入力方法
           </Typography>
@@ -334,7 +409,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
           </Paper>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={3}>
+        <TabPanel value={tabValue} index={isSharedMode ? 4 : 3}>
           <Typography variant="h6" gutterBottom>
             試合データの保存と共有
           </Typography>
@@ -431,7 +506,89 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
           </Typography>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={4}>
+        {/* キーボード操作タブ */}
+        <TabPanel value={tabValue} index={isSharedMode ? 5 : 4}>
+          <Typography variant="h6" gutterBottom>
+            キーボード操作
+          </Typography>
+          <Typography paragraph>
+            このアプリでは、キーボードを使って効率的に操作することができます。
+          </Typography>
+
+          <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              基本操作
+            </Typography>
+            <List>
+              <ListItem>
+                <ListItemText
+                  primary="Tab キー"
+                  secondary="次の操作可能な要素に移動します"
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Shift + Tab キー"
+                  secondary="前の操作可能な要素に戻ります"
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Enter キー"
+                  secondary="ボタンをクリックしたり、リンクを開いたりします"
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Space キー"
+                  secondary="ボタンをクリックしたり、チェックボックスを切り替えたりします"
+                />
+              </ListItem>
+            </List>
+          </Paper>
+
+          <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              ダイアログ操作
+            </Typography>
+            <List>
+              <ListItem>
+                <ListItemText
+                  primary="Esc キー"
+                  secondary="開いているダイアログやメニューを閉じます"
+                />
+              </ListItem>
+            </List>
+          </Paper>
+
+          <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              アクセシビリティ機能
+            </Typography>
+            <List>
+              <ListItem>
+                <ListItemText
+                  primary="フォーカス表示"
+                  secondary="Tabキーで移動すると、現在の位置が青い枠線で表示されます"
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="スクリーンリーダー対応"
+                  secondary="NVDA、JAWSなどのスクリーンリーダーで操作できます"
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="ダークモード"
+                  secondary="目の疲れを軽減するダークモードに切り替えられます"
+                />
+              </ListItem>
+            </List>
+          </Paper>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={isSharedMode ? 6 : 5}>
           <Typography variant="h6" gutterBottom>
             よくある質問
           </Typography>
