@@ -133,6 +133,58 @@ const isOutResult = (result: HitResult): boolean => {
   ].includes(result);
 };
 
+// 打撃結果をカテゴリごとにグループ化（定数なのでコンポーネント外に配置）
+const hitOptions = [
+  {
+    category: 'ヒット',
+    items: ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'] as HitResult[],
+  },
+  {
+    category: 'ゴロアウト',
+    items: [
+      'GO_P',
+      'GO_C',
+      'GO_1B',
+      'GO_2B',
+      'GO_3B',
+      'GO_SS',
+      'GO_RF',
+    ] as HitResult[],
+  },
+  {
+    category: 'フライアウト',
+    items: ['FO_LF', 'FO_CF', 'FO_RF', 'FO_IF', 'LO'] as HitResult[],
+  },
+  { category: 'その他アウト', items: ['DP', 'SO'] as HitResult[] },
+  { category: '犠打/犠飛', items: ['SAC', 'SF'] as HitResult[] },
+  {
+    category: 'その他',
+    items: ['BB', 'HBP', 'E', 'FC', 'OTH'] as HitResult[],
+  },
+];
+
+// カテゴリーに対応するアイコンを返す関数（コンポーネント外に配置）
+const getCategoryIcon = (category: string) => {
+  switch (category) {
+    case 'ヒット':
+      return (
+        <CheckCircleIcon fontSize="small" sx={{ color: customColors.hit }} />
+      );
+    case 'ゴロアウト':
+    case 'フライアウト':
+    case 'その他アウト':
+      return <CancelIcon fontSize="small" sx={{ color: customColors.out }} />;
+    case '犠打/犠飛':
+      return <SportsIcon fontSize="small" sx={{ color: customColors.other }} />;
+    case 'その他':
+      return (
+        <MoreHorizIcon fontSize="small" sx={{ color: customColors.walk }} />
+      );
+    default:
+      return null;
+  }
+};
+
 const AtBatForm: React.FC<AtBatFormProps> = ({
   player,
   inning,
@@ -237,60 +289,6 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
     setRbi(0);
     setSuccessMessage('');
   };
-
-  // カテゴリーに対応するアイコンを返す関数
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'ヒット':
-        return (
-          <CheckCircleIcon fontSize="small" sx={{ color: customColors.hit }} />
-        );
-      case 'ゴロアウト':
-      case 'フライアウト':
-      case 'その他アウト':
-        return <CancelIcon fontSize="small" sx={{ color: customColors.out }} />;
-      case '犠打/犠飛':
-        return (
-          <SportsIcon fontSize="small" sx={{ color: customColors.other }} />
-        );
-      case 'その他':
-        return (
-          <MoreHorizIcon fontSize="small" sx={{ color: customColors.walk }} />
-        );
-      default:
-        return null;
-    }
-  };
-
-  // 打撃結果をカテゴリごとにグループ化
-  const hitOptions = [
-    {
-      category: 'ヒット',
-      items: ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'] as HitResult[],
-    },
-    {
-      category: 'ゴロアウト',
-      items: [
-        'GO_P',
-        'GO_C',
-        'GO_1B',
-        'GO_2B',
-        'GO_3B',
-        'GO_SS',
-        'GO_RF',
-      ] as HitResult[],
-    },
-    {
-      category: 'フライアウト',
-      items: ['FO_LF', 'FO_CF', 'FO_RF', 'FO_IF', 'LO'] as HitResult[],
-    },
-    { category: 'その他アウト', items: ['DP', 'SO'] as HitResult[] },
-    { category: '犠打/犠飛', items: ['SAC', 'SF'] as HitResult[] },
-    {
-      category: 'その他',
-      items: ['BB', 'HBP', 'E', 'FC', 'OTH'] as HitResult[],
-    },
-  ];
 
   // 表示する選手名
   const displayPlayerName = isEditMode
@@ -451,4 +449,4 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
   );
 };
 
-export default AtBatForm;
+export default React.memo(AtBatForm);

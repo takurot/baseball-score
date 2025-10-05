@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Paper,
   Table,
@@ -33,8 +33,11 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
   const maxInning = 7;
   const displayInnings = Math.min(currentInning, maxInning);
 
-  // イニングの配列を作成
-  const innings = Array.from({ length: displayInnings }, (_, i) => i + 1);
+  // イニングの配列を作成（メモ化）
+  const innings = useMemo(
+    () => Array.from({ length: displayInnings }, (_, i) => i + 1),
+    [displayInnings]
+  );
 
   // 得点イベントから得点を計算
   const calculateRunEventsScore = (inning: number, isTop: boolean): number => {
@@ -75,6 +78,16 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
 
     return atBatTotal + runEventTotal;
   };
+
+  // 合計得点を事前に計算してメモ化
+  const totalScores = useMemo(
+    () => ({
+      away: calculateTotalScore(awayTeam, true),
+      home: calculateTotalScore(homeTeam, false),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [awayTeam, homeTeam, runEvents]
+  );
 
   // 横スクロール可能かどうかを検出
   const containerRef = useRef<HTMLDivElement>(null);
@@ -245,7 +258,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                   zIndex: 1,
                 }}
               >
-                {calculateTotalScore(awayTeam, true)}
+                {totalScores.away}
               </TableCell>
             </TableRow>
 
@@ -298,7 +311,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                   zIndex: 1,
                 }}
               >
-                {calculateTotalScore(homeTeam, false)}
+                {totalScores.home}
               </TableCell>
             </TableRow>
           </TableBody>
@@ -308,4 +321,4 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
   );
 };
 
-export default ScoreBoard;
+export default React.memo(ScoreBoard);
