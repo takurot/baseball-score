@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import {
   Container,
   CssBaseline,
@@ -58,9 +58,6 @@ import AtBatForm from './components/AtBatForm';
 import AtBatHistory from './components/AtBatHistory';
 import ScoreBoard from './components/ScoreBoard';
 import AtBatSummaryTable from './components/AtBatSummaryTable';
-import GameList from './components/GameList';
-import TeamList from './components/TeamList';
-import TeamStatsList from './components/TeamStatsList';
 import TournamentVenue from './components/TournamentVenue';
 import LoadingButton from './components/LoadingButton';
 import {
@@ -75,10 +72,15 @@ import Login from './components/Login';
 import UserProfile from './components/UserProfile';
 import { analytics } from './firebase/config';
 import { logEvent } from 'firebase/analytics';
-import HelpDialog from './components/HelpDialog';
 import HelpIcon from '@mui/icons-material/Help';
 import { useTheme } from '@mui/material/styles';
 import { createAppTheme } from './theme';
+
+// 遅延ロード - 初期表示に不要なコンポーネント
+const GameList = lazy(() => import('./components/GameList'));
+const TeamList = lazy(() => import('./components/TeamList'));
+const TeamStatsList = lazy(() => import('./components/TeamStatsList'));
+const HelpDialog = lazy(() => import('./components/HelpDialog'));
 
 // 新テーマ（アクセシビリティ拡張）
 
@@ -1037,18 +1039,42 @@ const MainApp: React.FC<{
       <Container sx={{ pt: 2 }}>
         {/* 画面の優先順位: チーム管理画面 > 通算成績 > ゲーム一覧 > 通常の試合画面 */}
         {showTeamManagement && !isSharedMode ? (
-          <TeamList />
+          <Suspense
+            fallback={
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress />
+              </Box>
+            }
+          >
+            <TeamList />
+          </Suspense>
         ) : showTeamStats && !isSharedMode ? (
-          <TeamStatsList />
+          <Suspense
+            fallback={
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress />
+              </Box>
+            }
+          >
+            <TeamStatsList />
+          </Suspense>
         ) : showGameList && !isSharedMode ? (
-          <GameList
-            onSelectGame={handleSelectGame}
-            onGameDeleted={() => {
-              setSnackbarMessage('試合データを削除しました');
-              setSnackbarSeverity('success');
-              setSnackbarOpen(true);
-            }}
-          />
+          <Suspense
+            fallback={
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress />
+              </Box>
+            }
+          >
+            <GameList
+              onSelectGame={handleSelectGame}
+              onGameDeleted={() => {
+                setSnackbarMessage('試合データを削除しました');
+                setSnackbarSeverity('success');
+                setSnackbarOpen(true);
+              }}
+            />
+          </Suspense>
         ) : (
           <>
             {/* 場所と大会名の表示 */}
@@ -1494,11 +1520,13 @@ const MainApp: React.FC<{
       </Snackbar>
 
       {/* ヘルプダイアログ */}
-      <HelpDialog
-        open={helpDialogOpen}
-        onClose={handleCloseHelpDialog}
-        isSharedMode={isSharedMode}
-      />
+      <Suspense fallback={null}>
+        <HelpDialog
+          open={helpDialogOpen}
+          onClose={handleCloseHelpDialog}
+          isSharedMode={isSharedMode}
+        />
+      </Suspense>
 
       {/* 得点追加ダイアログ */}
       <Dialog open={runDialogOpen} onClose={handleCloseRunDialog}>
