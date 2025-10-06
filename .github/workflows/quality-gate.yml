@@ -1,0 +1,105 @@
+name: Security & Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # 毎週月曜日の午前0時（UTC）に実行
+    - cron: '0 0 * * 1'
+
+jobs:
+  # CodeQL セキュリティ分析
+  codeql-analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript'
+
+  # 依存関係の脆弱性スキャン
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+
+  # SAST（Static Application Security Testing）
+  sast-scan:
+    name: SAST Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint security rules
+        run: npx eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 0
+        continue-on-error: true
+
+      - name: Security audit
+        run: npm audit --audit-level=moderate --json > audit-report.json
+        continue-on-error: true
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-audit-report
+          path: audit-report.json
+          retention-days: 30
+
+      - name: Check audit results
+        run: |
+          if [ -f audit-report.json ]; then
+            echo "📊 Security Audit Summary"
+            echo "═══════════════════════════════════════"
+            node -e "
+              const report = require('./audit-report.json');
+              const vulnerabilities = report.metadata?.vulnerabilities || {};
+              console.log('Critical:', vulnerabilities.critical || 0);
+              console.log('High:', vulnerabilities.high || 0);
+              console.log('Moderate:', vulnerabilities.moderate || 0);
+              console.log('Low:', vulnerabilities.low || 0);
+              console.log('Info:', vulnerabilities.info || 0);
+            "
+            echo "═══════════════════════════════════════"
+          fi
+

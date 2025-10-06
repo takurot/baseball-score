@@ -91,6 +91,14 @@ jobs:
           flags: unittests
           name: codecov-umbrella
 
+      - name: Upload coverage artifacts
+        if: matrix.node-version == '18'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
   # ビルドテスト
   build:
     name: Build Test
@@ -126,7 +134,7 @@ jobs:
           path: build/
           retention-days: 7
 
-  # デプロイメント準備チェック
+  # デプロイメント準備チェック（実質的な品質ゲート）
   deployment-check:
     name: Deployment Readiness
     runs-on: ubuntu-latest
@@ -137,9 +145,53 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Deployment readiness check
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-files
+          path: build/
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
+      - name: Check test coverage threshold
+        run: node scripts/check-coverage.js
+        env:
+          COVERAGE_THRESHOLD: 30
+
+      - name: Check bundle size
+        run: node scripts/check-bundle-size.js
+        env:
+          MAX_BUNDLE_SIZE_MB: 1
+
+      - name: Verify TypeScript compilation
+        run: npx tsc --noEmit
+
+      - name: Check for security vulnerabilities
+        run: npm audit --audit-level=high --production
+        continue-on-error: true
+
+      - name: Quality gate summary
         run: |
-          echo "✅ All tests passed"
-          echo "✅ Build successful"
-          echo "✅ Security audit completed"
-          echo "🚀 Ready for deployment!"
+          echo ""
+          echo "📊 Quality Gate Report"
+          echo "═══════════════════════════════════════"
+          echo "✅ Test Coverage: Meets threshold (≥30%)"
+          echo "✅ Bundle Size: Within limit (≤1MB)"
+          echo "✅ TypeScript: No errors"
+          echo "✅ Security: Audit completed"
+          echo "═══════════════════════════════════════"
+          echo "🚀 Deployment approved!"
+          echo ""
