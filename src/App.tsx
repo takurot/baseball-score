@@ -478,6 +478,10 @@ const MainApp: React.FC<{
   const handleNewGame = () => {
     setGame(initialGame);
     handleMenuClose();
+    // 試合一覧画面が表示されている場合は閉じる
+    if (showGameList) {
+      setShowGameList(false);
+    }
     // チーム管理画面が表示されている場合は閉じる
     if (showTeamManagement) {
       setShowTeamManagement(false);
