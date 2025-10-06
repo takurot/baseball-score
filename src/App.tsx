@@ -36,6 +36,7 @@ import {
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import MenuIcon from '@mui/icons-material/Menu';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SportsBaseballIcon from '@mui/icons-material/SportsBaseball';
 import GroupsIcon from '@mui/icons-material/Groups';
 import BarChartIcon from '@mui/icons-material/BarChart';
@@ -201,6 +202,19 @@ const MainApp: React.FC<{
   // レスポンシブデザイン用のメディアクエリ
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isSmallMobile = useMediaQuery('(max-width:380px)');
+
+  // 画面モードの判定
+  const isGameInputMode =
+    !showGameList && !showTeamManagement && !showTeamStats;
+
+  // 動的タイトルの取得
+  const getPageTitle = (): string => {
+    if (isSharedMode) return '野球スコア（閲覧専用）';
+    if (showGameList) return '試合一覧';
+    if (showTeamManagement) return '選手管理';
+    if (showTeamStats) return '通算成績';
+    return '野球スコア';
+  };
 
   // URLから共有されたゲームIDを取得
   useEffect(() => {
@@ -472,6 +486,14 @@ const MainApp: React.FC<{
   // メニューを閉じる
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
+  };
+
+  // 試合画面に戻る
+  const handleBackToGame = () => {
+    if (showGameList) setShowGameList(false);
+    if (showTeamManagement) setShowTeamManagement(false);
+    if (showTeamStats) setShowTeamStats(false);
+    handleMenuClose();
   };
 
   // 新しい試合を作成
@@ -828,20 +850,31 @@ const MainApp: React.FC<{
         aria-label="メインナビゲーション"
       >
         <Toolbar sx={{ flexWrap: 'wrap', p: isMobile ? 1 : 2 }}>
-          {!isSharedMode && (
-            <IconButton
-              edge="start"
-              color="inherit"
-              aria-label="メニューを開く"
-              aria-controls={menuOpen ? 'main-menu' : undefined}
-              aria-expanded={menuOpen ? 'true' : 'false'}
-              aria-haspopup="true"
-              onClick={handleMenuOpen}
-              size={isMobile ? 'small' : 'medium'}
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
+          {!isSharedMode &&
+            (isGameInputMode ? (
+              <IconButton
+                edge="start"
+                color="inherit"
+                aria-label="メニューを開く"
+                aria-controls={menuOpen ? 'main-menu' : undefined}
+                aria-expanded={menuOpen ? 'true' : 'false'}
+                aria-haspopup="true"
+                onClick={handleMenuOpen}
+                size={isMobile ? 'small' : 'medium'}
+              >
+                <MenuIcon />
+              </IconButton>
+            ) : (
+              <IconButton
+                edge="start"
+                color="inherit"
+                aria-label="試合画面に戻る"
+                onClick={handleBackToGame}
+                size={isMobile ? 'small' : 'medium'}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+            ))}
           <Typography
             variant={isMobile ? 'body1' : 'h6'}
             component="div"
@@ -856,7 +889,7 @@ const MainApp: React.FC<{
             <SportsBaseballIcon
               sx={{ mr: 0.5, fontSize: isMobile ? '1.1rem' : '1.5rem' }}
             />
-            野球スコア
+            {getPageTitle()}
           </Typography>
 
           {!isSharedMode ? (
@@ -873,46 +906,52 @@ const MainApp: React.FC<{
                 },
               }}
             >
-              <Hidden smDown>
-                <Button
-                  color="inherit"
-                  onClick={handleOpenDateDialog}
-                  sx={{ mr: 1 }}
-                  aria-label="試合日を変更"
-                  aria-describedby="game-date-text"
-                >
-                  <span id="game-date-text">
-                    {new Date(game.date).toLocaleDateString('ja-JP')}
-                  </span>
-                </Button>
-              </Hidden>
+              {isGameInputMode && (
+                <>
+                  <Hidden smDown>
+                    <Button
+                      color="inherit"
+                      onClick={handleOpenDateDialog}
+                      sx={{ mr: 1 }}
+                      aria-label="試合日を変更"
+                      aria-describedby="game-date-text"
+                    >
+                      <span id="game-date-text">
+                        {new Date(game.date).toLocaleDateString('ja-JP')}
+                      </span>
+                    </Button>
+                  </Hidden>
 
-              <Button
-                color="inherit"
-                startIcon={!isMobile && <SaveIcon />}
-                onClick={handleOpenSaveDialog}
-                sx={{ mr: isMobile ? 0.5 : 1 }}
-                aria-label="試合データを保存"
-              >
-                {isMobile ? '保存' : '保存'}
-              </Button>
+                  <Button
+                    color="inherit"
+                    startIcon={!isMobile && <SaveIcon />}
+                    onClick={handleOpenSaveDialog}
+                    sx={{ mr: isMobile ? 0.5 : 1 }}
+                    aria-label="試合データを保存"
+                  >
+                    {isMobile ? '保存' : '保存'}
+                  </Button>
 
-              <Button
-                color="inherit"
-                onClick={toggleViewMode}
-                sx={{ mr: isMobile ? 0.5 : 1 }}
-                aria-label={
-                  activeStep === 0 ? '一覧表示に切り替え' : '編集モードに戻る'
-                }
-              >
-                {activeStep === 0
-                  ? isMobile
-                    ? '一覧'
-                    : '一覧表示'
-                  : isMobile
-                    ? '編集'
-                    : '編集に戻る'}
-              </Button>
+                  <Button
+                    color="inherit"
+                    onClick={toggleViewMode}
+                    sx={{ mr: isMobile ? 0.5 : 1 }}
+                    aria-label={
+                      activeStep === 0
+                        ? '一覧表示に切り替え'
+                        : '編集モードに戻る'
+                    }
+                  >
+                    {activeStep === 0
+                      ? isMobile
+                        ? '一覧'
+                        : '一覧表示'
+                      : isMobile
+                        ? '編集'
+                        : '編集に戻る'}
+                  </Button>
+                </>
+              )}
 
               <IconButton
                 color="inherit"
@@ -1016,7 +1055,7 @@ const MainApp: React.FC<{
       </AppBar>
 
       {/* モバイル表示のみの日付ボタン（AppBarの下に配置） */}
-      {!isSharedMode && isMobile && (
+      {!isSharedMode && isGameInputMode && isMobile && (
         <Box
           sx={{
             backgroundColor: '#f5f5f5',
