@@ -1051,11 +1051,490 @@ Day 4: PR-04着手・完成（監視準備）
 
 ---
 
+## 🏗️ Phase 5以降: 中長期的構造改善（別計画）
+
+Phase 1-4完了後の次のステップとして、以下の構造改善を検討します。
+
+### 背景: カバレッジ分析結果
+
+Phase 2でテストカバレッジは向上しますが（6% → 30-60%）、さらなる品質向上には構造的な改善が必要です。
+
+```
+現状の課題:
+├─ App.tsx: 1,707行 (0%カバー) ← 最大のボトルネック
+├─ Firebase系: 1,095行 (0%カバー) ← モック困難
+├─ 大規模UI: 2,500行+ (低カバー) ← 統合テスト不足
+└─ 小規模コンポーネント: Phase 2で改善予定
+```
+
+**課題の本質**:
+
+1. ✗ **ビジネスロジックとUIの密結合** → テスト困難
+2. ✗ **巨大なコンポーネント** → 変更影響範囲が大きい
+3. ✗ **Firebase直接依存** → モックが複雑
+
+---
+
+### Phase 5a: App.tsxのリファクタリング（優先度: 高）
+
+**目的**: 1,707行の巨大ファイルをテスト可能な単位に分割
+
+**工数見積**: 3日間
+
+**改善案**:
+
+1. **カスタムHooksへの分割**:
+
+   ```typescript
+   // src/hooks/useGameState.ts (新規作成)
+   export const useGameState = (initialGame?: Game) => {
+     const [homeTeam, setHomeTeam] = useState<Team>(/* ... */);
+     const [awayTeam, setAwayTeam] = useState<Team>(/* ... */);
+     const [currentInning, setCurrentInning] = useState(1);
+     const [isTop, setIsTop] = useState(true);
+
+     const addAtBat = useCallback((atBat: AtBat) => {
+       // ビジネスロジック
+     }, [homeTeam, awayTeam]);
+
+     return {
+       homeTeam,
+       awayTeam,
+       currentInning,
+       isTop,
+       addAtBat,
+       // ... その他の操作
+     };
+   };
+
+   // src/hooks/useTeamManagement.ts (新規作成)
+   export const useTeamManagement = () => {
+     // チームの作成・編集・削除ロジック
+   };
+
+   // src/hooks/useScoreCalculation.ts (新規作成)
+   export const useScoreCalculation = (
+     homeTeam: Team,
+     awayTeam: Team,
+     runEvents: RunEvent[]
+   ) => {
+     // スコア計算ロジック
+   };
+   ```
+
+2. **ビジネスロジックのサービス層分離**:
+
+   ```typescript
+   // src/services/scoreCalculator.ts (新規作成)
+   export class ScoreCalculator {
+     static calculateInningScore(
+       team: Team,
+       inning: number,
+       isTop: boolean
+     ): number {
+       // 純粋関数化されたスコア計算
+     }
+
+     static calculateTotalScore(
+       team: Team,
+       runEvents: RunEvent[]
+     ): number {
+       // 合計スコア計算
+     }
+   }
+
+   // src/services/inningManager.ts (新規作成)
+   export class InningManager {
+     static getNextInning(
+       current: number,
+       isTop: boolean,
+       maxInnings: number
+     ): { inning: number; isTop: boolean } {
+       // イニング進行ロジック
+     }
+   }
+   ```
+
+**期待効果**:
+
+- ✅ テストカバレッジ: 0% → 60%以上
+- ✅ 変更影響範囲の明確化
+- ✅ 並行開発の容易性向上
+- ✅ コードレビューの効率化
+
+**リスク**: 大規模リファクタリングによる一時的不安定化  
+**軽減策**: フィーチャーフラグによる段階的移行
+
+---
+
+### Phase 5b: Firebase依存の抽象化（優先度: 中）
+
+**目的**: テスト容易性とプラットフォーム非依存性の向上
+
+**工数見積**: 2日間
+
+**改善案**:
+
+1. **Repositoryパターンの導入**:
+
+   ```typescript
+   // src/repositories/GameRepository.ts (新規作成)
+   export interface IGameRepository {
+     save(game: Game, userId: string): Promise<string>;
+     load(gameId: string): Promise<Game | null>;
+     list(userId: string): Promise<Game[]>;
+     delete(gameId: string): Promise<void>;
+   }
+
+   // src/repositories/FirebaseGameRepository.ts (新規作成)
+   export class FirebaseGameRepository implements IGameRepository {
+     private firestore: Firestore;
+
+     constructor(firestore: Firestore) {
+       this.firestore = firestore;
+     }
+
+     async save(game: Game, userId: string): Promise<string> {
+       // Firebase実装
+     }
+
+     // ... その他のメソッド
+   }
+
+   // src/repositories/MockGameRepository.ts (テスト用)
+   export class MockGameRepository implements IGameRepository {
+     private storage: Map<string, Game> = new Map();
+
+     async save(game: Game, userId: string): Promise<string> {
+       const id = `mock-${Date.now()}`;
+       this.storage.set(id, game);
+       return id;
+     }
+
+     // ... その他のメソッド
+   }
+   ```
+
+2. **Dependency Injectionの導入**:
+
+   ```typescript
+   // src/contexts/RepositoryContext.tsx (新規作成)
+   export const RepositoryContext = createContext<{
+     gameRepository: IGameRepository;
+     teamRepository: ITeamRepository;
+     statsRepository: IStatsRepository;
+   } | null>(null);
+
+   export const RepositoryProvider: React.FC<{
+     children: React.ReactNode;
+     repositories?: {
+       /* ... */
+     };
+   }> = ({ children, repositories }) => {
+     const defaultRepositories = useMemo(
+       () => ({
+         gameRepository:
+           repositories?.gameRepository ||
+           new FirebaseGameRepository(firestore),
+         // ... その他
+       }),
+       [repositories]
+     );
+
+     return (
+       <RepositoryContext.Provider value={defaultRepositories}>
+         {children}
+       </RepositoryContext.Provider>
+     );
+   };
+
+   // 使用例
+   export const useGameRepository = () => {
+     const context = useContext(RepositoryContext);
+     if (!context) {
+       throw new Error('useGameRepository must be used within RepositoryProvider');
+     }
+     return context.gameRepository;
+   };
+   ```
+
+3. **テストでの利用**:
+   ```typescript
+   // App.test.tsx
+   import { MockGameRepository } from './repositories/MockGameRepository';
+
+   test('試合を保存できる', async () => {
+     const mockRepo = new MockGameRepository();
+
+     render(
+       <RepositoryProvider
+         repositories={{ gameRepository: mockRepo }}
+       >
+         <App />
+       </RepositoryProvider>
+     );
+
+     // テスト実行（Firebaseモック不要）
+   });
+   ```
+
+**期待効果**:
+
+- ✅ Firebase Emulator不要でテスト実行可能
+- ✅ テスト実行速度の大幅向上（50倍以上）
+- ✅ プラットフォーム変更時の影響範囲限定
+- ✅ カバレッジ: Firebase系サービス 0% → 80%以上
+
+**リスク**: 抽象化レイヤーの複雑性増加  
+**軽減策**: まず1つのRepositoryで実証、段階的移行
+
+---
+
+### Phase 5c: E2Eテスト基盤の構築（優先度: 中）
+
+**目的**: エンドツーエンドテストによる品質保証の強化
+
+**工数見積**: 2日間
+
+**改善案**:
+
+1. **Playwrightの導入**:
+
+   ```typescript
+   // e2e/game-flow.spec.ts (新規作成)
+   import { test, expect } from '@playwright/test';
+
+   test('試合作成から保存までのフロー', async ({ page }) => {
+     // ログイン
+     await page.goto('/');
+     await page.click('text=ログイン');
+     // ... 認証フロー
+
+     // 試合作成
+     await page.click('text=新しい試合');
+     await page.fill('[name="home-team"]', 'ホークス');
+     await page.fill('[name="away-team"]', 'タイガース');
+
+     // 打席記録
+     await page.click('text=打席を追加');
+     await page.selectOption('[name="result"]', 'IH');
+     await page.click('text=登録');
+
+     // 保存確認
+     await page.click('text=保存');
+     await expect(page.locator('text=保存しました')).toBeVisible();
+   });
+   ```
+
+2. **Visual Regression Testing** (Optional):
+
+   ```typescript
+   // スクリーンショット比較による視覚的リグレッション検出
+   await expect(page).toHaveScreenshot('score-board.png');
+   ```
+
+3. **CI/CDへの統合**:
+   ```yaml
+   # .github/workflows/e2e.yml
+   name: E2E Tests
+   on: [pull_request]
+   jobs:
+     e2e:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v3
+         - uses: actions/setup-node@v3
+         - run: npm ci
+         - run: npx playwright install
+         - run: npm run test:e2e
+   ```
+
+**期待効果**:
+
+- ✅ クリティカルパスの自動検証
+- ✅ リグレッション検出の早期化
+- ✅ 全体フローのカバレッジ向上
+
+---
+
+### 実装スケジュール（段階的アプローチ）
+
+**Phase 5全体: 実証とプロトタイプ（2週間）**
+
+```
+Week 1-2:
+  - App.tsxから1つのカスタムHookを抽出（useGameState）
+  - 1つのRepositoryを実装（GameRepository）
+  - テストカバレッジ効果の測定
+  → 効果が確認できれば本格展開
+```
+
+**Phase 6: 本格展開（4週間）**
+
+```
+Week 3-4:
+  - 残りのカスタムHooks実装
+  - ビジネスロジックのサービス層分離
+  - テストカバレッジ: 30% → 40%
+
+Week 5-6:
+  - 全Repositoryの実装
+  - 既存コードの段階的移行
+  - テストカバレッジ: 40% → 60%
+```
+
+**Phase 7: 品質強化（2週間）**
+
+```
+Week 7-8:
+  - E2Eテスト実装
+  - 統合テストの拡充
+  - テストカバレッジ: 60% → 70%
+  - ドキュメント整備
+```
+
+**総工数**: 8週間（1人）または 4週間（2人）
+
+---
+
+### 投資対効果（ROI）分析
+
+**初期投資**: 8週間（約160時間）
+
+**期待効果**:
+
+| 指標                       | v3.0完了時 | Phase 7完了時 | 改善率  |
+| -------------------------- | ---------- | ------------- | ------- |
+| テストカバレッジ           | 30-60%     | 70%           | +1,067% |
+| バグ検出時間               | 数時間     | 数分          | -99%    |
+| 新機能開発速度             | 基準       | 1.5倍         | +50%    |
+| リファクタリングの安全性   | 中         | 高            | +++     |
+| 新メンバーのオンボード時間 | 1週間      | 3日           | -70%    |
+| デプロイ時の不安度         | 中         | 低            | ---     |
+| 技術的負債の蓄積速度       | 中速       | 遅い          | ---     |
+
+**年間換算の効果**:
+
+- バグ修正時間削減: 40時間/年 → 160時間の投資は**4ヶ月で回収**
+- 開発速度向上: 50%のスピードアップ → 年間200時間の追加開発時間
+- 品質向上による顧客満足度とNPSの向上（定量化困難）
+
+**結論**: **投資する価値は極めて高い**
+
+---
+
+### 段階的移行の実践例
+
+**ステップ1: 小規模から開始**
+
+```typescript
+// まず、最も独立性の高いuseScoreCalculationを抽出
+
+// Before (App.tsx内)
+const calculateTotalScore = (team: Team, isAway: boolean) => {
+  // 複雑なロジック
+};
+
+// After (hooks/useScoreCalculation.ts)
+export const useScoreCalculation = (
+  homeTeam: Team,
+  awayTeam: Team,
+  runEvents: RunEvent[]
+) => {
+  const calculateTotalScore = useCallback((team: Team, isAway: boolean) => {
+    // 同じロジック（テスト可能）
+  }, [runEvents]);
+
+  return { calculateTotalScore };
+};
+
+// App.tsx
+const { calculateTotalScore } = useScoreCalculation(
+  homeTeam,
+  awayTeam,
+  runEvents
+);
+```
+
+**ステップ2: テストを書く**
+
+```typescript
+// hooks/__tests__/useScoreCalculation.test.ts
+import { renderHook } from '@testing-library/react';
+import { useScoreCalculation } from '../useScoreCalculation';
+
+describe('useScoreCalculation', () => {
+  test('合計スコアを正しく計算する', () => {
+    const { result } = renderHook(() =>
+      useScoreCalculation(mockHomeTeam, mockAwayTeam, mockRunEvents)
+    );
+
+    expect(result.current.calculateTotalScore(mockHomeTeam, false)).toBe(5);
+  });
+});
+```
+
+**ステップ3: カバレッジを確認**
+
+```bash
+npm test -- --coverage
+# useScoreCalculation: 95%達成！
+```
+
+**ステップ4: 次のHookへ**
+
+```
+成功体験を元に、次のuseGameStateを抽出...
+```
+
+---
+
+### 参考資料
+
+**アーキテクチャパターン**:
+
+- [Clean Architecture in React](https://dev.to/rubemfsv/clean-architecture-applying-with-react-40h6)
+- [Repository Pattern](https://martinfowler.com/eaaCatalog/repository.html)
+- [Dependency Injection in React](https://javascript.plainenglish.io/dependency-injection-in-react-a6c3d5d0db76)
+
+**テスト戦略**:
+
+- [Testing Trophy](https://kentcdodds.com/blog/the-testing-trophy-and-testing-classifications)
+- [React Testing Best Practices](https://github.com/goldbergyoni/javascript-testing-best-practices)
+
+**リファクタリング手法**:
+
+- [Refactoring by Martin Fowler](https://refactoring.com/)
+- [Working Effectively with Legacy Code](https://www.goodreads.com/book/show/44919.Working_Effectively_with_Legacy_Code)
+
+---
+
+### Phase 5以降の優先順位判断
+
+v3.0 (Phase 1-4)完了後、以下の基準で判断：
+
+**即座に実施すべき場合**:
+- ✅ チーム規模が拡大する予定（3人以上）
+- ✅ 新機能開発の頻度が高い（週1回以上）
+- ✅ バグ修正時間が開発時間を圧迫している
+- ✅ レガシーコードへの恐怖が強い
+
+**様子見が妥当な場合**:
+- ⚠️ チームが小規模（1-2人）で安定
+- ⚠️ 新機能開発の頻度が低い
+- ⚠️ 現状のカバレッジ（30-60%）で十分
+- ⚠️ 他の優先度の高い機能開発がある
+
+**推奨**: v3.0完了から**3ヶ月後**に効果測定し、Phase 5の着手判断を実施
+
+---
+
 ## 📅 変更履歴
 
-| バージョン | 日付       | 変更内容                                              | 作成者       |
-| ---------- | ---------- | ----------------------------------------------------- | ------------ |
-| 3.0        | 2025-10-06 | 初版作成：コンテキストアウェアなAppBar + 品質基盤強化 | AI Assistant |
-| 3.0.1      | 2025-10-06 | v2.0統合レビュー結果を追加、Phase 2-4を拡充           | AI Assistant |
-| 3.1        | 2025-10-06 | カバレッジ実測値反映（4-5%）、目標60%に調整           | AI Assistant |
-| 3.1.1      | 2025-10-06 | バンドルサイズ制限を1MBに調整、現実的なテスト戦略追加 | AI Assistant |
+| バージョン | 日付       | 変更内容                                                | 作成者       |
+| ---------- | ---------- | ------------------------------------------------------- | ------------ |
+| 3.0        | 2025-10-06 | 初版作成：コンテキストアウェアなAppBar + 品質基盤強化   | AI Assistant |
+| 3.0.1      | 2025-10-06 | v2.0統合レビュー結果を追加、Phase 2-4を拡充             | AI Assistant |
+| 3.1        | 2025-10-06 | カバレッジ実測値反映（4-5%）、目標60%に調整             | AI Assistant |
+| 3.1.1      | 2025-10-06 | バンドルサイズ制限を1MBに調整、現実的なテスト戦略追加   | AI Assistant |
+| 3.2        | 2025-10-06 | Phase 5以降の中長期的構造改善計画を追加（8週間・70%目標）| AI Assistant |

@@ -787,6 +787,478 @@ Week 3: PR-06, 07完成 → PR-08着手 → 最終検証
 - ダークモードの最適化
 - より高度なアニメーション（Framer Motion）
 
+### 10.3 中長期的構造改善（Phase 2+）
+
+**背景**: テストカバレッジ分析（v3.0計画より）により、以下の構造的課題が判明：
+
+```
+現状のカバレッジ: 6%
+├─ App.tsx: 1,707行 (0%カバー) ← 最大のボトルネック
+├─ Firebase系: 1,095行 (0%カバー) ← モック困難
+├─ 大規模UI: 2,500行+ (0%カバー) ← 統合テスト不足
+└─ 小規模コンポーネント: 高カバレッジ達成済み
+```
+
+**課題の本質**:
+
+1. ✗ **ビジネスロジックとUIの密結合** → テスト困難
+2. ✗ **巨大なコンポーネント** → 変更影響範囲が大きい
+3. ✗ **Firebase直接依存** → モックが複雑
+
+#### 10.3.1 App.tsx のリファクタリング（優先度: 高）
+
+**目的**: 1,707行の巨大ファイルをテスト可能な単位に分割
+
+**工数見積**: 3日間
+
+**改善案**:
+
+1. **カスタムHooksへの分割**:
+
+   ```typescript
+   // src/hooks/useGameState.ts (新規作成)
+   export const useGameState = (initialGame?: Game) => {
+     const [homeTeam, setHomeTeam] = useState<Team>(/* ... */);
+     const [awayTeam, setAwayTeam] = useState<Team>(/* ... */);
+     const [currentInning, setCurrentInning] = useState(1);
+     const [isTop, setIsTop] = useState(true);
+
+     const addAtBat = useCallback((atBat: AtBat) => {
+       // ビジネスロジック
+     }, [homeTeam, awayTeam]);
+
+     return {
+       homeTeam,
+       awayTeam,
+       currentInning,
+       isTop,
+       addAtBat,
+       // ... その他の操作
+     };
+   };
+
+   // src/hooks/useTeamManagement.ts (新規作成)
+   export const useTeamManagement = () => {
+     // チームの作成・編集・削除ロジック
+   };
+
+   // src/hooks/useScoreCalculation.ts (新規作成)
+   export const useScoreCalculation = (
+     homeTeam: Team,
+     awayTeam: Team,
+     runEvents: RunEvent[]
+   ) => {
+     // スコア計算ロジック
+   };
+   ```
+
+2. **ビジネスロジックのサービス層分離**:
+
+   ```typescript
+   // src/services/scoreCalculator.ts (新規作成)
+   export class ScoreCalculator {
+     static calculateInningScore(
+       team: Team,
+       inning: number,
+       isTop: boolean
+     ): number {
+       // 純粋関数化されたスコア計算
+     }
+
+     static calculateTotalScore(
+       team: Team,
+       runEvents: RunEvent[]
+     ): number {
+       // 合計スコア計算
+     }
+   }
+
+   // src/services/inningManager.ts (新規作成)
+   export class InningManager {
+     static getNextInning(
+       current: number,
+       isTop: boolean,
+       maxInnings: number
+     ): { inning: number; isTop: boolean } {
+       // イニング進行ロジック
+     }
+   }
+   ```
+
+3. **状態管理の最適化** (Optional):
+   ```typescript
+   // Zustand or Jotaiの導入検討
+   // より細かい粒度での状態管理
+   ```
+
+**期待効果**:
+
+- ✅ テストカバレッジ: 0% → 60%以上
+- ✅ 変更影響範囲の明確化
+- ✅ 並行開発の容易性向上
+- ✅ コードレビューの効率化
+
+**リスク**:
+
+- 大規模なリファクタリングによる一時的な不安定化
+- 既存の暗黙的な依存関係の顕在化
+
+**軽減策**:
+
+- フィーチャーフラグによる段階的移行
+- 既存コードを残しつつ新実装を並行稼働
+- 広範な統合テストの事前実施
+
+---
+
+#### 10.3.2 Firebase依存の抽象化（優先度: 中）
+
+**目的**: テスト容易性とプラットフォーム非依存性の向上
+
+**工数見積**: 2日間
+
+**改善案**:
+
+1. **Repositoryパターンの導入**:
+
+   ```typescript
+   // src/repositories/GameRepository.ts (新規作成)
+   export interface IGameRepository {
+     save(game: Game, userId: string): Promise<string>;
+     load(gameId: string): Promise<Game | null>;
+     list(userId: string): Promise<Game[]>;
+     delete(gameId: string): Promise<void>;
+   }
+
+   // src/repositories/FirebaseGameRepository.ts (新規作成)
+   export class FirebaseGameRepository implements IGameRepository {
+     private firestore: Firestore;
+
+     constructor(firestore: Firestore) {
+       this.firestore = firestore;
+     }
+
+     async save(game: Game, userId: string): Promise<string> {
+       // Firebase実装
+     }
+
+     // ... その他のメソッド
+   }
+
+   // src/repositories/MockGameRepository.ts (テスト用)
+   export class MockGameRepository implements IGameRepository {
+     private storage: Map<string, Game> = new Map();
+
+     async save(game: Game, userId: string): Promise<string> {
+       const id = `mock-${Date.now()}`;
+       this.storage.set(id, game);
+       return id;
+     }
+
+     // ... その他のメソッド
+   }
+   ```
+
+2. **Dependency Injectionの導入**:
+
+   ```typescript
+   // src/contexts/RepositoryContext.tsx (新規作成)
+   export const RepositoryContext = createContext<{
+     gameRepository: IGameRepository;
+     teamRepository: ITeamRepository;
+     statsRepository: IStatsRepository;
+   } | null>(null);
+
+   export const RepositoryProvider: React.FC<{
+     children: React.ReactNode;
+     repositories?: {
+       /* ... */
+     };
+   }> = ({ children, repositories }) => {
+     const defaultRepositories = useMemo(
+       () => ({
+         gameRepository:
+           repositories?.gameRepository ||
+           new FirebaseGameRepository(firestore),
+         // ... その他
+       }),
+       [repositories]
+     );
+
+     return (
+       <RepositoryContext.Provider value={defaultRepositories}>
+         {children}
+       </RepositoryContext.Provider>
+     );
+   };
+
+   // 使用例
+   export const useGameRepository = () => {
+     const context = useContext(RepositoryContext);
+     if (!context) {
+       throw new Error('useGameRepository must be used within RepositoryProvider');
+     }
+     return context.gameRepository;
+   };
+   ```
+
+3. **テストでの利用**:
+   ```typescript
+   // App.test.tsx
+   import { MockGameRepository } from './repositories/MockGameRepository';
+
+   test('試合を保存できる', async () => {
+     const mockRepo = new MockGameRepository();
+
+     render(
+       <RepositoryProvider
+         repositories={{ gameRepository: mockRepo }}
+       >
+         <App />
+       </RepositoryProvider>
+     );
+
+     // テスト実行（Firebaseモック不要）
+   });
+   ```
+
+**期待効果**:
+
+- ✅ Firebase Emulator不要でテスト実行可能
+- ✅ テスト実行速度の大幅向上（50倍以上）
+- ✅ プラットフォーム変更時の影響範囲限定
+- ✅ カバレッジ: Firebase系サービス 0% → 80%以上
+
+**リスク**:
+
+- 抽象化レイヤーの複雑性増加
+- 既存コードの大規模な書き換え
+
+**軽減策**:
+
+- まず1つのRepositoryで実証
+- 既存サービスをラップする形で段階的移行
+- インターフェース設計のレビュー強化
+
+---
+
+#### 10.3.3 統合テスト基盤の構築（優先度: 中）
+
+**目的**: E2Eテストによる品質保証の強化
+
+**工数見積**: 2日間
+
+**改善案**:
+
+1. **Playwrightの導入**:
+
+   ```typescript
+   // e2e/game-flow.spec.ts (新規作成)
+   import { test, expect } from '@playwright/test';
+
+   test('試合作成から保存までのフロー', async ({ page }) => {
+     // ログイン
+     await page.goto('/');
+     await page.click('text=ログイン');
+     // ... 認証フロー
+
+     // 試合作成
+     await page.click('text=新しい試合');
+     await page.fill('[name="home-team"]', 'ホークス');
+     await page.fill('[name="away-team"]', 'タイガース');
+
+     // 打席記録
+     await page.click('text=打席を追加');
+     await page.selectOption('[name="result"]', 'IH');
+     await page.click('text=登録');
+
+     // 保存確認
+     await page.click('text=保存');
+     await expect(page.locator('text=保存しました')).toBeVisible();
+   });
+   ```
+
+2. **Visual Regression Testing** (Optional):
+
+   ```typescript
+   // スクリーンショット比較による視覚的リグレッション検出
+   await expect(page).toHaveScreenshot('score-board.png');
+   ```
+
+3. **CI/CDへの統合**:
+   ```yaml
+   # .github/workflows/e2e.yml
+   name: E2E Tests
+   on: [pull_request]
+   jobs:
+     e2e:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v3
+         - uses: actions/setup-node@v3
+         - run: npm ci
+         - run: npx playwright install
+         - run: npm run test:e2e
+   ```
+
+**期待効果**:
+
+- ✅ クリティカルパスの自動検証
+- ✅ リグレッション検出の早期化
+- ✅ 全体フローのカバレッジ向上
+
+---
+
+#### 10.3.4 実装スケジュール（段階的アプローチ）
+
+**Phase 2a: 実証とプロトタイプ（2週間）**
+
+```
+Week 1-2:
+  - App.tsxから1つのカスタムHookを抽出（useGameState）
+  - 1つのRepositoryを実装（GameRepository）
+  - テストカバレッジ効果の測定
+  → 効果が確認できれば本格展開
+```
+
+**Phase 2b: 本格展開（4週間）**
+
+```
+Week 3-4:
+  - 残りのカスタムHooks実装
+  - ビジネスロジックのサービス層分離
+  - テストカバレッジ: 20% → 40%
+
+Week 5-6:
+  - 全Repositoryの実装
+  - 既存コードの段階的移行
+  - テストカバレッジ: 40% → 60%
+```
+
+**Phase 2c: 品質強化（2週間）**
+
+```
+Week 7-8:
+  - E2Eテスト実装
+  - 統合テストの拡充
+  - テストカバレッジ: 60% → 70%
+  - ドキュメント整備
+```
+
+**総工数**: 8週間（1人）または 4週間（2人）
+
+---
+
+#### 10.3.5 投資対効果（ROI）分析
+
+**初期投資**: 8週間（約160時間）
+
+**期待効果**:
+
+| 指標                       | 現状   | 改善後  | 改善率  |
+| -------------------------- | ------ | ------- | ------- |
+| テストカバレッジ           | 6%     | 70%     | +1,067% |
+| バグ検出時間               | 数日   | 数分    | -99%    |
+| 新機能開発速度             | 基準   | 1.5倍   | +50%    |
+| リファクタリングの安全性   | 低     | 高      | +++     |
+| 新メンバーのオンボード時間 | 2週間  | 3日     | -85%    |
+| デプロイ時の不安度         | 高     | 低      | ---     |
+| 技術的負債の蓄積速度       | 速い   | 遅い    | ---     |
+
+**年間換算の効果**:
+
+- バグ修正時間削減: 40時間/年 → 160時間の投資は**4ヶ月で回収**
+- 開発速度向上: 50%のスピードアップ → 年間200時間の追加開発時間
+- 品質向上による顧客満足度とNPSの向上（定量化困難）
+
+**結論**: **投資する価値は極めて高い**
+
+---
+
+#### 10.3.6 段階的移行の実践例
+
+**ステップ1: 小規模から開始**
+
+```typescript
+// まず、最も独立性の高いuseScoreCalculationを抽出
+
+// Before (App.tsx内)
+const calculateTotalScore = (team: Team, isAway: boolean) => {
+  // 複雑なロジック
+};
+
+// After (hooks/useScoreCalculation.ts)
+export const useScoreCalculation = (
+  homeTeam: Team,
+  awayTeam: Team,
+  runEvents: RunEvent[]
+) => {
+  const calculateTotalScore = useCallback((team: Team, isAway: boolean) => {
+    // 同じロジック（テスト可能）
+  }, [runEvents]);
+
+  return { calculateTotalScore };
+};
+
+// App.tsx
+const { calculateTotalScore } = useScoreCalculation(
+  homeTeam,
+  awayTeam,
+  runEvents
+);
+```
+
+**ステップ2: テストを書く**
+
+```typescript
+// hooks/__tests__/useScoreCalculation.test.ts
+import { renderHook } from '@testing-library/react';
+import { useScoreCalculation } from '../useScoreCalculation';
+
+describe('useScoreCalculation', () => {
+  test('合計スコアを正しく計算する', () => {
+    const { result } = renderHook(() =>
+      useScoreCalculation(mockHomeTeam, mockAwayTeam, mockRunEvents)
+    );
+
+    expect(result.current.calculateTotalScore(mockHomeTeam, false)).toBe(5);
+  });
+});
+```
+
+**ステップ3: カバレッジを確認**
+
+```bash
+npm test -- --coverage
+# useScoreCalculation: 95%達成！
+```
+
+**ステップ4: 次のHookへ**
+
+```
+成功体験を元に、次のuseGameStateを抽出...
+```
+
+---
+
+#### 10.3.7 参考資料
+
+**アーキテクチャパターン**:
+
+- [Clean Architecture in React](https://dev.to/rubemfsv/clean-architecture-applying-with-react-40h6)
+- [Repository Pattern](https://martinfowler.com/eaaCatalog/repository.html)
+- [Dependency Injection in React](https://javascript.plainenglish.io/dependency-injection-in-react-a6c3d5d0db76)
+
+**テスト戦略**:
+
+- [Testing Trophy](https://kentcdodds.com/blog/the-testing-trophy-and-testing-classifications)
+- [React Testing Best Practices](https://github.com/goldbergyoni/javascript-testing-best-practices)
+
+**リファクタリング手法**:
+
+- [Refactoring by Martin Fowler](https://refactoring.com/)
+- [Working Effectively with Legacy Code](https://www.goodreads.com/book/show/44919.Working_Effectively_with_Legacy_Code)
+
 ---
 
 ## 11. 参考資料とチェックリスト
@@ -852,6 +1324,7 @@ A: Phase 2完了時点で1回、最終リリース前に1回の計2回を推奨�
 
 - v1.0: 初版（2025-10-03想定）
 - v2.0: 本版（2025-10-04）
+- v2.1: 中長期的構造改善計画の追加（2025-10-06）- カバレッジ分析に基づくアーキテクチャ改善提案
 - 次回更新予定: Phase 1完了後のレトロスペクティブ反映
 
 ---
