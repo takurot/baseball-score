@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="35" failures="0" errors="0" time="27.037">
+  <testsuite name="theme accessibility tokens" errors="0" failures="0" skipped="0" timestamp="2025-10-07T13:58:05" time="2.518" tests="1">
+    <testcase classname="theme accessibility tokens Theme に accessibility トークンが含まれること" name="theme accessibility tokens Theme に accessibility トークンが含まれること" time="1.203">
+    </testcase>
+  </testsuite>
+  <testsuite name="LoadingButton" errors="0" failures="0" skipped="0" timestamp="2025-10-07T13:58:05" time="4.434" tests="14">
+    <testcase classname="LoadingButton renders children when not loading" name="LoadingButton renders children when not loading" time="0.051">
+    </testcase>
+    <testcase classname="LoadingButton shows loading text when loading prop is true" name="LoadingButton shows loading text when loading prop is true" time="0.016">
+    </testcase>
+    <testcase classname="LoadingButton shows default loading text when loading and no loadingText provided" name="LoadingButton shows default loading text when loading and no loadingText provided" time="0.012">
+    </testcase>
+    <testcase classname="LoadingButton disables button when loading" name="LoadingButton disables button when loading" time="0.015">
+    </testcase>
+    <testcase classname="LoadingButton disables button when disabled prop is true" name="LoadingButton disables button when disabled prop is true" time="0.014">
+    </testcase>
+    <testcase classname="LoadingButton disables button when both loading and disabled are true" name="LoadingButton disables button when both loading and disabled are true" time="0.016">
+    </testcase>
+    <testcase classname="LoadingButton sets aria-busy attribute when loading" name="LoadingButton sets aria-busy attribute when loading" time="0.013">
+    </testcase>
+    <testcase classname="LoadingButton sets aria-busy attribute to false when not loading" name="LoadingButton sets aria-busy attribute to false when not loading" time="0.011">
+    </testcase>
+    <testcase classname="LoadingButton has aria-live attribute" name="LoadingButton has aria-live attribute" time="0.01">
+    </testcase>
+    <testcase classname="LoadingButton shows CircularProgress when loading" name="LoadingButton shows CircularProgress when loading" time="0.004">
+    </testcase>
+    <testcase classname="LoadingButton does not show CircularProgress when not loading" name="LoadingButton does not show CircularProgress when not loading" time="0.002">
+    </testcase>
+    <testcase classname="LoadingButton passes through additional props" name="LoadingButton passes through additional props" time="0.01">
+    </testcase>
+    <testcase classname="LoadingButton applies custom startIcon when not loading" name="LoadingButton applies custom startIcon when not loading" time="0.003">
+    </testcase>
+    <testcase classname="LoadingButton replaces startIcon with CircularProgress when loading" name="LoadingButton replaces startIcon with CircularProgress when loading" time="0.003">
+    </testcase>
+  </testsuite>
+  <testsuite name="ScoreBoard accessibility" errors="0" failures="0" skipped="0" timestamp="2025-10-07T13:58:05" time="4.498" tests="5">
+    <testcase classname="ScoreBoard accessibility has no axe violations" name="ScoreBoard accessibility has no axe violations" time="0.172">
+    </testcase>
+    <testcase classname="ScoreBoard accessibility table headers have proper semantic markup" name="ScoreBoard accessibility table headers have proper semantic markup" time="0.035">
+    </testcase>
+    <testcase classname="ScoreBoard accessibility team names are row headers" name="ScoreBoard accessibility team names are row headers" time="0.022">
+    </testcase>
+    <testcase classname="ScoreBoard accessibility current inning has aria-current attribute" name="ScoreBoard accessibility current inning has aria-current attribute" time="0.006">
+    </testcase>
+    <testcase classname="ScoreBoard accessibility total score column has descriptive label" name="ScoreBoard accessibility total score column has descriptive label" time="0.011">
+    </testcase>
+  </testsuite>
+  <testsuite name="HelpDialog accessibility" errors="0" failures="0" skipped="0" timestamp="2025-10-07T13:58:05" time="4.989" tests="1">
+    <testcase classname="HelpDialog accessibility has no axe violations when open" name="HelpDialog accessibility has no axe violations when open" time="0.185">
+    </testcase>
+  </testsuite>
+  <testsuite name="AtBatHistory" errors="0" failures="0" skipped="0" timestamp="2025-10-07T13:58:05" time="4.99" tests="13">
+    <testcase classname="AtBatHistory displays at-bat records correctly" name="AtBatHistory displays at-bat records correctly" time="0.077">
+    </testcase>
+    <testcase classname="AtBatHistory filters at-bats by inning" name="AtBatHistory filters at-bats by inning" time="0.016">
+    </testcase>
+    <testcase classname="AtBatHistory displays player name or number when player not found" name="AtBatHistory displays player name or number when player not found" time="0.009">
+    </testcase>
+    <testcase classname="AtBatHistory handles edit action when onEditAtBat is provided" name="AtBatHistory handles edit action when onEditAtBat is provided" time="0.033">
+    </testcase>
+    <testcase classname="AtBatHistory handles delete action when onDeleteAtBat is provided" name="AtBatHistory handles delete action when onDeleteAtBat is provided" time="0.014">
+    </testcase>
+    <testcase classname="AtBatHistory does not show edit/delete buttons when handlers are not provided" name="AtBatHistory does not show edit/delete buttons when handlers are not provided" time="0.01">
+    </testcase>
+    <testcase classname="AtBatHistory displays memo when provided" name="AtBatHistory displays memo when provided" time="0.01">
+    </testcase>
+    <testcase classname="AtBatHistory displays message when no at-bats for the inning" name="AtBatHistory displays message when no at-bats for the inning" time="0.002">
+    </testcase>
+    <testcase classname="AtBatHistory displays run events when provided" name="AtBatHistory displays run events when provided" time="0.005">
+    </testcase>
+    <testcase classname="AtBatHistory displays out events when provided" name="AtBatHistory displays out events when provided" time="0.005">
+    </testcase>
+    <testcase classname="AtBatHistory handles delete run event action" name="AtBatHistory handles delete run event action" time="0.008">
+    </testcase>
+    <testcase classname="AtBatHistory handles delete out event action" name="AtBatHistory handles delete out event action" time="0.006">
+    </testcase>
+    <testcase classname="AtBatHistory displays team names when provided" name="AtBatHistory displays team names when provided" time="0.004">
+    </testcase>
+  </testsuite>
+  <testsuite name="AtBatForm accessibility" errors="0" failures="0" skipped="0" timestamp="2025-10-07T13:58:05" time="22.965" tests="1">
+    <testcase classname="AtBatForm accessibility has no axe violations (empty state)" name="AtBatForm accessibility has no axe violations (empty state)" time="0.051">
+    </testcase>
+  </testsuite>
+</testsuites>

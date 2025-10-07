@@ -27,8 +27,9 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "build:noeslint": "DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build:noeslint": "DISABLE_ESLINt_PLUGIN=true react-scripts build",
     "test": "react-scripts test",
+    "test:ci": "react-scripts test --coverage --watchAll=false --coverageReporters=json-summary",
     "eject": "react-scripts eject",
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint \"src/**/*.{js,jsx,ts,tsx}\" --fix"
@@ -58,6 +59,7 @@
     "eslint-plugin-jest": "^27.9.0",
     "jest-axe": "^8.0.0",
     "jest-environment-jsdom": "^30.1.2",
+    "jest-junit": "^16.0.0",
     "prettier": "^3.6.2"
   }
 }
