@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import ErrorBoundary from './components/ErrorBoundary';
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(
@@ -9,11 +10,16 @@ const root = ReactDOM.createRoot(
 );
 root.render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+// Web Vitalsの計測を開始
+// 開発環境ではコンソールにログ出力
+// 本番環境では分析サービスへの送信準備（reportWebVitals.ts参照）
+reportWebVitals((metric) => {
+  // 開発環境ではreportWebVitals内でログ出力されるため、ここでは何もしない
+  // 本番環境では、ここでメトリクスを集約してバッチ送信することも可能
+});
