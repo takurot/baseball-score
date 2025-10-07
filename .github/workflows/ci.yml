@@ -160,11 +160,8 @@ jobs:
           name: build-files
           path: build/
 
-      - name: Download coverage artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage/
+      - name: Run tests with coverage
+        run: npm test -- --coverage --watchAll=false
 
       - name: Check test coverage threshold
         run: node scripts/check-coverage.js
