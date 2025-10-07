@@ -105,6 +105,19 @@ jobs:
       - name: Run tests with coverage
         run: npm test -- --coverage --watchAll=false
 
+      - name: Debug - Verify coverage directory
+        run: |
+          echo "Listing coverage directory..."
+          ls -laR coverage/ || echo "Coverage directory not found after tests"
+          echo "Current directory:"
+          ls -la
+          echo "Coverage summary content:"
+          if [ -f coverage/coverage-summary.json ]; then
+            cat coverage/coverage-summary.json
+          else
+            echo "coverage-summary.json NOT FOUND"
+          fi
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
@@ -140,6 +153,13 @@ jobs:
 
       - name: Build project
         run: npm run build
+
+      - name: Debug - Verify build directory
+        run: |
+          echo "Listing build directory..."
+          ls -la build/ || echo "Build directory not found"
+          echo "Build directory size:"
+          du -sh build/ || echo "Cannot measure build size"
 
       - name: Check build size
         run: |
