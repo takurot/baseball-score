@@ -204,6 +204,18 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:ci
 
+      - name: Debug - List files after coverage run
+        run: |
+          echo "--- Listing files in workspace root ---"
+          ls -la
+          echo "--- Checking for coverage directory ---"
+          if [ -d "coverage" ]; then
+            echo "Coverage directory exists. Listing contents:"
+            ls -laR coverage
+          else
+            echo "Coverage directory NOT found."
+          fi
+
       - name: Build project
         run: npm run build
 
