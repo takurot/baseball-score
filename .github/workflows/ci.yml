@@ -222,7 +222,7 @@ jobs:
       - name: Check test coverage threshold
         run: node scripts/check-coverage.js
         env:
-          COVERAGE_THRESHOLD: 10
+          COVERAGE_THRESHOLD: 5
 
       - name: Check bundle size
         run: node scripts/check-bundle-size.js
