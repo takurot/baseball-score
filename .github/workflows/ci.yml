@@ -116,7 +116,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage/
+          path: coverage
           retention-days: 7
 
   # ビルドテスト
@@ -151,7 +151,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-files
-          path: build/
+          path: build
           retention-days: 7
 
   # デプロイメント準備チェック（実質的な品質ゲート）
@@ -177,13 +177,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-files
-          path: build/
+          path: build
 
       - name: Download coverage report
         uses: actions/download-artifact@v4
         with:
           name: coverage-report
-          path: coverage/
+          path: coverage
 
       - name: Debug - List coverage directory
         run: |
