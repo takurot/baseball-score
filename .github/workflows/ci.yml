@@ -249,6 +249,15 @@ jobs:
             ls -la
           fi
 
+      - name: Fallback - Generate coverage when missing
+        run: |
+          if [ ! -f coverage/coverage-summary.json ]; then
+            echo "coverage-summary.json is missing. Re-running tests to generate coverage..."
+            npm test -- --coverage --watchAll=false
+            echo "Re-checking coverage directory..."
+            ls -la coverage/ || true
+          fi
+
       - name: Check test coverage threshold
         run: node scripts/check-coverage.js
         env:
