@@ -185,6 +185,19 @@ jobs:
           name: coverage-report
           path: coverage/
 
+      - name: Debug - List coverage directory
+        run: |
+          echo "Checking coverage directory..."
+          ls -la coverage/ || echo "Coverage directory not found"
+          if [ -f coverage/coverage-summary.json ]; then
+            echo "coverage-summary.json found!"
+            cat coverage/coverage-summary.json | head -20
+          else
+            echo "coverage-summary.json NOT found"
+            echo "Current directory contents:"
+            ls -la
+          fi
+
       - name: Check test coverage threshold
         run: node scripts/check-coverage.js
         env:
