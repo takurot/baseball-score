@@ -1,8 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useTeamManagement } from '../useTeamManagement';
 import { Team } from '../../types';
-import { v4 as uuidv4 } from 'uuid';
-
 Object.defineProperty(global.self, 'crypto', {
   value: {
     getRandomValues: (arr: any) => require('crypto').randomBytes(arr.length),

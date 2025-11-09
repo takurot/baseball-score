@@ -1,5 +1,5 @@
 /* istanbul ignore file */
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import {
   Container,
   AppBar,
@@ -66,7 +66,7 @@ import {
   getSharedGameById,
   saveGameAsNew,
 } from './firebase/gameService';
-import { getTeamById } from './firebase/teamService';
+import { getTeamById, getUserTeams } from './firebase/teamService';
 import { useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import UserProfile from './components/UserProfile';
@@ -85,30 +85,23 @@ const HelpDialog = lazy(() => import('./components/HelpDialog'));
 
 // 新テーマ（アクセシビリティ拡張）
 
-// 初期データ
-const initialHomeTeam: Team = {
+const createInitialTeam = (name: string): Team => ({
   id: uuidv4(),
-  name: '後攻チーム',
+  name,
   players: [],
   atBats: [],
-};
+});
 
-const initialAwayTeam: Team = {
-  id: uuidv4(),
-  name: '先攻チーム',
-  players: [],
-  atBats: [],
-};
-
-const initialGame: Game = {
+const createInitialGame = (): Game => ({
   id: uuidv4(),
   date: new Date().toISOString().split('T')[0],
-  homeTeam: initialHomeTeam,
-  awayTeam: initialAwayTeam,
+  homeTeam: createInitialTeam('後攻チーム'),
+  awayTeam: createInitialTeam('先攻チーム'),
   currentInning: 1,
-  venue: '', // 球場・場所
-  tournament: '', // 大会名
-};
+  isTop: true,
+  venue: '',
+  tournament: '',
+});
 
 // アナリティクスイベントを送信するヘルパー関数
 const sendAnalyticsEvent = (
@@ -128,6 +121,7 @@ const MainApp: React.FC<{
 }> = ({ toggleColorMode, mode }) => {
   const { currentUser, isLoading } = useAuth();
   const theme = useTheme();
+  const initialGame = useMemo(() => createInitialGame(), []);
   const { state: gameState, actions: gameActions } = useGameState(initialGame);
   const { loadGame } = gameActions;
   const { homeTeam, awayTeam, currentInning, isTop } = gameState;
@@ -143,8 +137,6 @@ const MainApp: React.FC<{
   const [showGameList, setShowGameList] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [loading, setLoading] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<
@@ -154,13 +146,10 @@ const MainApp: React.FC<{
   // チーム管理関連の状態
   const [showTeamManagement, setShowTeamManagement] = useState(false);
   const [teamSelectionDialogOpen, setTeamSelectionDialogOpen] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [teamSelectionMode, setTeamSelectionMode] = useState<'home' | 'away'>(
     'home'
   );
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [availableTeams, setAvailableTeams] = useState<TeamSetting[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loadingTeams, setLoadingTeams] = useState(false);
 
   // 通算成績関連の状態
@@ -578,9 +567,38 @@ const MainApp: React.FC<{
     }
   };
 
+  const handleOpenTeamSelection = async (mode: 'home' | 'away') => {
+    if (!currentUser) {
+      setSnackbarMessage('チームを読み込むにはログインしてください');
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    setTeamSelectionMode(mode);
+    setTeamSelectionDialogOpen(true);
+    setLoadingTeams(true);
+
+    try {
+      const teams = await getUserTeams();
+      setAvailableTeams(teams ?? []);
+    } catch (error) {
+      console.error('Failed to load teams:', error);
+      setSnackbarMessage(
+        error instanceof Error
+          ? `チーム一覧の取得に失敗しました: ${error.message}`
+          : 'チーム一覧の取得に失敗しました'
+      );
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      setAvailableTeams([]);
+    } finally {
+      setLoadingTeams(false);
+    }
+  };
+
   // 既存の試合データを選択
   const handleSelectGame = async (gameId: string) => {
-    setLoading(true);
     try {
       const loadedGame = await getGameById(gameId);
       if (loadedGame) {
@@ -601,8 +619,6 @@ const MainApp: React.FC<{
       setSnackbarMessage(`読み込みに失敗しました: ${error.message}`);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -1015,7 +1031,7 @@ const MainApp: React.FC<{
             aria-describedby="mobile-game-date-text"
           >
             <span id="mobile-game-date-text">
-              {/* {new Date(game.date).toLocaleDateString('ja-JP')} */}
+              {new Date(gameState.date).toLocaleDateString('ja-JP')}
             </span>
           </Button>
         </Box>
@@ -1064,11 +1080,37 @@ const MainApp: React.FC<{
           <>
             {/* 場所と大会名の表示 */}
             <TournamentVenue
-              // tournament={game.tournament}
-              // venue={game.venue}
+              tournament={gameState.tournament}
+              venue={gameState.venue}
               isSharedMode={isSharedMode}
               onClick={handleOpenVenueDialog}
             />
+            {!isSharedMode && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 1,
+                  flexWrap: 'wrap',
+                  mt: 1,
+                }}
+              >
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => handleOpenTeamSelection('away')}
+                >
+                  先攻チームを読み込む
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => handleOpenTeamSelection('home')}
+                >
+                  後攻チームを読み込む
+                </Button>
+              </Box>
+            )}
             <Stepper
               activeStep={activeStep}
               alternativeLabel
