@@ -15,7 +15,7 @@ const renderWithTheme = (ui: React.ReactElement) => {
 describe('AtBatForm accessibility', () => {
   test('has no axe violations (empty state)', async () => {
     const { container } = renderWithTheme(
-      <AtBatForm player={null} inning={1} onAddAtBat={() => {}} />
+      <AtBatForm player={null} inning={1} isTop={true} onAddAtBat={() => {}} />
     );
     const results = await axe(container);
     expect(results).toHaveNoViolations();

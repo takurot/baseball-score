@@ -68,6 +68,7 @@ const getResultColor = (result: HitResult): string => {
 interface AtBatFormProps {
   player: Player | null;
   inning: number;
+  isTop: boolean;
   onAddAtBat: (atBat: AtBat) => void;
   editingAtBat?: AtBat | null;
   onUpdateAtBat?: (atBat: AtBat) => void;
@@ -188,6 +189,7 @@ const getCategoryIcon = (category: string) => {
 const AtBatForm: React.FC<AtBatFormProps> = ({
   player,
   inning,
+  isTop,
   onAddAtBat,
   editingAtBat,
   onUpdateAtBat,
@@ -256,10 +258,12 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
         id: uuidv4(),
         playerId: player!.id,
         inning,
+        isTop,
         result,
         description: description || undefined,
         rbi: rbi,
         isOut: isOutResult(result),
+        timestamp: Date.now(),
       };
 
       onAddAtBat(newAtBat);
