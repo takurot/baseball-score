@@ -547,13 +547,10 @@ const MainApp: React.FC<{
         // 既存の試合データを更新または新規に保存
         gameId = await saveGame(gameToSave);
         gameActions.setGameId(gameId);
-        sendAnalyticsEvent(
-          id ? 'game_save_update' : 'game_save_new',
-          {
-            gameId,
-            teams: `${awayTeam.name} vs ${homeTeam.name}`,
-          }
-        );
+        sendAnalyticsEvent(id ? 'game_save_update' : 'game_save_new', {
+          gameId,
+          teams: `${awayTeam.name} vs ${homeTeam.name}`,
+        });
         message = '試合データを保存しました';
       }
 
@@ -1117,12 +1114,12 @@ const MainApp: React.FC<{
               }}
             >
               <Typography variant="body2">
-                {awayTeam.name}: R {awayScoreData.totalScore} / H {awayScoreData.hits} / E{' '}
-                {awayScoreData.errors}
+                {awayTeam.name}: R {awayScoreData.totalScore} / H{' '}
+                {awayScoreData.hits} / E {awayScoreData.errors}
               </Typography>
               <Typography variant="body2">
-                {homeTeam.name}: R {homeScoreData.totalScore} / H {homeScoreData.hits} / E{' '}
-                {homeScoreData.errors}
+                {homeTeam.name}: R {homeScoreData.totalScore} / H{' '}
+                {homeScoreData.hits} / E {homeScoreData.errors}
               </Typography>
             </Box>
 
@@ -1562,8 +1559,8 @@ const MainApp: React.FC<{
             variant="body2"
             sx={{ mt: 2, mb: 1, color: 'text.secondary' }}
           >
-            {tabIndex === 0 ? awayTeam.name : homeTeam.name}の
-            {currentInning}回の得点として記録します
+            {tabIndex === 0 ? awayTeam.name : homeTeam.name}の{currentInning}
+            回の得点として記録します
           </Typography>
 
           <TextField
@@ -1611,8 +1608,8 @@ const MainApp: React.FC<{
             variant="body2"
             sx={{ mt: 2, mb: 1, color: 'text.secondary' }}
           >
-            {tabIndex === 0 ? awayTeam.name : homeTeam.name}の
-            {currentInning}回のアウトとして記録します
+            {tabIndex === 0 ? awayTeam.name : homeTeam.name}の{currentInning}
+            回のアウトとして記録します
           </Typography>
 
           <TextField

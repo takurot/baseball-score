@@ -3,14 +3,38 @@ import { useAtBatHistory } from '../useAtBatHistory';
 import { AtBat } from '../../types';
 
 const initialAtBats: AtBat[] = [
-  { id: 'ab1', playerId: 'p1', result: 'IH', inning: 1, isTop: true, rbi: 0, isOut: false },
-  { id: 'ab2', playerId: 'p2', result: 'SO', inning: 1, isTop: true, rbi: 0, isOut: true },
+  {
+    id: 'ab1',
+    playerId: 'p1',
+    result: 'IH',
+    inning: 1,
+    isTop: true,
+    rbi: 0,
+    isOut: false,
+  },
+  {
+    id: 'ab2',
+    playerId: 'p2',
+    result: 'SO',
+    inning: 1,
+    isTop: true,
+    rbi: 0,
+    isOut: true,
+  },
 ];
 
 describe('useAtBatHistory', () => {
   test('should add an at-bat', () => {
     const { result } = renderHook(() => useAtBatHistory(initialAtBats));
-    const newAtBat: AtBat = { id: 'ab3', playerId: 'p3', result: 'HR', inning: 2, isTop: true, rbi: 1, isOut: false };
+    const newAtBat: AtBat = {
+      id: 'ab3',
+      playerId: 'p3',
+      result: 'HR',
+      inning: 2,
+      isTop: true,
+      rbi: 1,
+      isOut: false,
+    };
 
     act(() => {
       result.current.addAtBat(newAtBat);
@@ -39,12 +63,12 @@ describe('useAtBatHistory', () => {
     });
 
     expect(result.current.atBats).toHaveLength(1);
-    expect(result.current.atBats.find(ab => ab.id === 'ab1')).toBeUndefined();
+    expect(result.current.atBats.find((ab) => ab.id === 'ab1')).toBeUndefined();
   });
 
   test('should set at-bats directly', () => {
     const { result } = renderHook(() => useAtBatHistory([]));
-    
+
     act(() => {
       result.current.setAtBats(initialAtBats);
     });
@@ -52,4 +76,3 @@ describe('useAtBatHistory', () => {
     expect(result.current.atBats).toHaveLength(2);
   });
 });
-

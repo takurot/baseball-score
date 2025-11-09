@@ -8,9 +8,33 @@ describe('useScoreCalculation', () => {
     name: 'ホークス',
     players: [],
     atBats: [
-      { id: 'ab1', playerId: '1', result: 'IH', inning: 1, rbi: 1, isOut: false, isTop: false },
-      { id: 'ab2', playerId: '2', result: 'HR', inning: 2, rbi: 1, isOut: false, isTop: false },
-      { id: 'ab3', playerId: '3', result: 'SO', inning: 3, rbi: 0, isOut: true, isTop: false },
+      {
+        id: 'ab1',
+        playerId: '1',
+        result: 'IH',
+        inning: 1,
+        rbi: 1,
+        isOut: false,
+        isTop: false,
+      },
+      {
+        id: 'ab2',
+        playerId: '2',
+        result: 'HR',
+        inning: 2,
+        rbi: 1,
+        isOut: false,
+        isTop: false,
+      },
+      {
+        id: 'ab3',
+        playerId: '3',
+        result: 'SO',
+        inning: 3,
+        rbi: 0,
+        isOut: true,
+        isTop: false,
+      },
     ],
   };
 
@@ -19,15 +43,52 @@ describe('useScoreCalculation', () => {
     name: 'タイガース',
     players: [],
     atBats: [
-      { id: 'ab4', playerId: '1', result: '2B', inning: 1, rbi: 0, isOut: false, isTop: true },
-      { id: 'ab5', playerId: '2', result: 'E', inning: 2, rbi: 0, isOut: false, isTop: true },
+      {
+        id: 'ab4',
+        playerId: '1',
+        result: '2B',
+        inning: 1,
+        rbi: 0,
+        isOut: false,
+        isTop: true,
+      },
+      {
+        id: 'ab5',
+        playerId: '2',
+        result: 'E',
+        inning: 2,
+        rbi: 0,
+        isOut: false,
+        isTop: true,
+      },
     ],
   };
 
   const mockRunEvents: RunEvent[] = [
-    { id: 're1', inning: 1, isTop: false, runType: 'その他', runCount: 0, timestamp: Date.now() },
-    { id: 're2', inning: 2, isTop: false, runType: 'その他', runCount: 3, timestamp: Date.now() },
-    { id: 're3', inning: 1, isTop: true,  runType: 'その他', runCount: 2, timestamp: Date.now() },
+    {
+      id: 're1',
+      inning: 1,
+      isTop: false,
+      runType: 'その他',
+      runCount: 0,
+      timestamp: Date.now(),
+    },
+    {
+      id: 're2',
+      inning: 2,
+      isTop: false,
+      runType: 'その他',
+      runCount: 3,
+      timestamp: Date.now(),
+    },
+    {
+      id: 're3',
+      inning: 1,
+      isTop: true,
+      runType: 'その他',
+      runCount: 2,
+      timestamp: Date.now(),
+    },
   ];
 
   test('合計スコアを正しく計算する', () => {
@@ -57,4 +118,3 @@ describe('useScoreCalculation', () => {
     expect(result.current.awayScore.errors).toBe(1); // E
   });
 });
-

@@ -5,9 +5,30 @@ describe('ScoreCalculator', () => {
   describe('calculateInningScore', () => {
     test('指定イニングのスコアを計算する', () => {
       const runEvents: RunEvent[] = [
-        { id: '1', inning: 1, isTop: true,  runType: 'その他', runCount: 2, timestamp: Date.now() },
-        { id: '2', inning: 1, isTop: false, runType: 'その他', runCount: 1, timestamp: Date.now() },
-        { id: '3', inning: 2, isTop: true,  runType: 'その他', runCount: 3, timestamp: Date.now() },
+        {
+          id: '1',
+          inning: 1,
+          isTop: true,
+          runType: 'その他',
+          runCount: 2,
+          timestamp: Date.now(),
+        },
+        {
+          id: '2',
+          inning: 1,
+          isTop: false,
+          runType: 'その他',
+          runCount: 1,
+          timestamp: Date.now(),
+        },
+        {
+          id: '3',
+          inning: 2,
+          isTop: true,
+          runType: 'その他',
+          runCount: 3,
+          timestamp: Date.now(),
+        },
       ];
 
       expect(ScoreCalculator.calculateInningScore(runEvents, 1, true)).toBe(2);
@@ -24,19 +45,75 @@ describe('ScoreCalculator', () => {
   describe('calculateBattingAverage', () => {
     test('打率を正しく計算する', () => {
       const atBats: AtBat[] = [
-        { id: 'a1', playerId: 'p1', result: 'IH', inning: 1, rbi: 0, isOut: false, isTop: true },
-        { id: 'a2', playerId: 'p2', result: 'SO', inning: 1, rbi: 0, isOut: true, isTop: true },
-        { id: 'a3', playerId: 'p3', result: '2B', inning: 1, rbi: 0, isOut: false, isTop: true },
-        { id: 'a4', playerId: 'p4', result: 'GO_SS', inning: 1, rbi: 0, isOut: true, isTop: true },
+        {
+          id: 'a1',
+          playerId: 'p1',
+          result: 'IH',
+          inning: 1,
+          rbi: 0,
+          isOut: false,
+          isTop: true,
+        },
+        {
+          id: 'a2',
+          playerId: 'p2',
+          result: 'SO',
+          inning: 1,
+          rbi: 0,
+          isOut: true,
+          isTop: true,
+        },
+        {
+          id: 'a3',
+          playerId: 'p3',
+          result: '2B',
+          inning: 1,
+          rbi: 0,
+          isOut: false,
+          isTop: true,
+        },
+        {
+          id: 'a4',
+          playerId: 'p4',
+          result: 'GO_SS',
+          inning: 1,
+          rbi: 0,
+          isOut: true,
+          isTop: true,
+        },
       ];
       expect(ScoreCalculator.calculateBattingAverage(atBats)).toBe(0.5);
     });
 
     test('四球は打数に含めない', () => {
       const atBats: AtBat[] = [
-        { id: 'a1', playerId: 'p1', result: 'IH', inning: 1, rbi: 0, isOut: false, isTop: true },
-        { id: 'a2', playerId: 'p2', result: 'BB', inning: 1, rbi: 0, isOut: false, isTop: true },
-        { id: 'a3', playerId: 'p3', result: 'SO', inning: 1, rbi: 0, isOut: true, isTop: true },
+        {
+          id: 'a1',
+          playerId: 'p1',
+          result: 'IH',
+          inning: 1,
+          rbi: 0,
+          isOut: false,
+          isTop: true,
+        },
+        {
+          id: 'a2',
+          playerId: 'p2',
+          result: 'BB',
+          inning: 1,
+          rbi: 0,
+          isOut: false,
+          isTop: true,
+        },
+        {
+          id: 'a3',
+          playerId: 'p3',
+          result: 'SO',
+          inning: 1,
+          rbi: 0,
+          isOut: true,
+          isTop: true,
+        },
       ];
       expect(ScoreCalculator.calculateBattingAverage(atBats)).toBe(0.5);
     });
@@ -45,10 +122,42 @@ describe('ScoreCalculator', () => {
   describe('calculateOPS', () => {
     test('OPSを正しく計算する', () => {
       const atBats: AtBat[] = [
-        { id: 'a1', playerId: 'p1', result: 'IH', inning: 1, rbi: 0, isOut: false, isTop: true },
-        { id: 'a2', playerId: 'p2', result: 'HR', inning: 1, rbi: 0, isOut: false, isTop: true },
-        { id: 'a3', playerId: 'p3', result: 'SO', inning: 1, rbi: 0, isOut: true, isTop: true },
-        { id: 'a4', playerId: 'p4', result: 'BB', inning: 1, rbi: 0, isOut: false, isTop: true },
+        {
+          id: 'a1',
+          playerId: 'p1',
+          result: 'IH',
+          inning: 1,
+          rbi: 0,
+          isOut: false,
+          isTop: true,
+        },
+        {
+          id: 'a2',
+          playerId: 'p2',
+          result: 'HR',
+          inning: 1,
+          rbi: 0,
+          isOut: false,
+          isTop: true,
+        },
+        {
+          id: 'a3',
+          playerId: 'p3',
+          result: 'SO',
+          inning: 1,
+          rbi: 0,
+          isOut: true,
+          isTop: true,
+        },
+        {
+          id: 'a4',
+          playerId: 'p4',
+          result: 'BB',
+          inning: 1,
+          rbi: 0,
+          isOut: false,
+          isTop: true,
+        },
       ];
       const ops = ScoreCalculator.calculateOPS(atBats);
       expect(ops).toBeGreaterThan(0);
@@ -67,4 +176,3 @@ describe('ScoreCalculator', () => {
     });
   });
 });
-

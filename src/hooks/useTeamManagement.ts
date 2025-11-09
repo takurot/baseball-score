@@ -12,32 +12,35 @@ export interface TeamManagementActions {
 export const useTeamManagement = (initialTeams: Team[]) => {
   const [teams, setTeams] = useState<Team[]>(initialTeams);
 
-  const addPlayer = useCallback((teamId: string, name: string, number: string) => {
-    setTeams(prevTeams =>
-      prevTeams.map(team => {
-        if (team.id === teamId) {
-          const newPlayer: Player = {
-            id: uuidv4(),
-            name,
-            number,
-            position: '',
-            isActive: true,
-            order: team.players.length + 1,
-          };
-          return { ...team, players: [...team.players, newPlayer] };
-        }
-        return team;
-      })
-    );
-  }, []);
+  const addPlayer = useCallback(
+    (teamId: string, name: string, number: string) => {
+      setTeams((prevTeams) =>
+        prevTeams.map((team) => {
+          if (team.id === teamId) {
+            const newPlayer: Player = {
+              id: uuidv4(),
+              name,
+              number,
+              position: '',
+              isActive: true,
+              order: team.players.length + 1,
+            };
+            return { ...team, players: [...team.players, newPlayer] };
+          }
+          return team;
+        })
+      );
+    },
+    []
+  );
 
   const removePlayer = useCallback((teamId: string, playerId: string) => {
-    setTeams(prevTeams =>
-      prevTeams.map(team => {
+    setTeams((prevTeams) =>
+      prevTeams.map((team) => {
         if (team.id === teamId) {
           return {
             ...team,
-            players: team.players.filter(p => p.id !== playerId),
+            players: team.players.filter((p) => p.id !== playerId),
           };
         }
         return team;
@@ -46,8 +49,8 @@ export const useTeamManagement = (initialTeams: Team[]) => {
   }, []);
 
   const updatePlayerOrder = useCallback((teamId: string, players: Player[]) => {
-    setTeams(prevTeams =>
-      prevTeams.map(team => {
+    setTeams((prevTeams) =>
+      prevTeams.map((team) => {
         if (team.id === teamId) {
           return { ...team, players };
         }
@@ -57,8 +60,8 @@ export const useTeamManagement = (initialTeams: Team[]) => {
   }, []);
 
   const updateTeamName = useCallback((teamId: string, newName: string) => {
-    setTeams(prevTeams =>
-      prevTeams.map(team => {
+    setTeams((prevTeams) =>
+      prevTeams.map((team) => {
         if (team.id === teamId) {
           return { ...team, name: newName };
         }
@@ -69,4 +72,3 @@ export const useTeamManagement = (initialTeams: Team[]) => {
 
   return { teams, addPlayer, removePlayer, updatePlayerOrder, updateTeamName };
 };
-

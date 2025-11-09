@@ -142,7 +142,9 @@ const advanceRunners = (runners: RunnerState, bases: number): RunnerState => {
 };
 
 export const useGameState = (initialGame?: Game): UseGameStateReturn => {
-  const [state, setState] = useState<GameState>(() => buildInitialState(initialGame));
+  const [state, setState] = useState<GameState>(() =>
+    buildInitialState(initialGame)
+  );
 
   const setHomeTeam = useCallback((team: Team) => {
     setState((prev) => ({
@@ -196,57 +198,58 @@ export const useGameState = (initialGame?: Game): UseGameStateReturn => {
     }));
   }, []);
 
-  const addAtBat = useCallback(
-    (atBat: AtBat) => {
-      setState((prev) => {
-        const teamKey = atBat.isTop ? 'awayTeam' : 'homeTeam';
-        const targetTeam = prev[teamKey];
-        const updatedTeam: Team = {
-          ...targetTeam,
-          atBats: [...targetTeam.atBats, atBat],
-        };
+  const addAtBat = useCallback((atBat: AtBat) => {
+    setState((prev) => {
+      const teamKey = atBat.isTop ? 'awayTeam' : 'homeTeam';
+      const targetTeam = prev[teamKey];
+      const updatedTeam: Team = {
+        ...targetTeam,
+        atBats: [...targetTeam.atBats, atBat],
+      };
 
-        let nextState: GameState = {
-          ...prev,
-          [teamKey]: updatedTeam,
-        };
+      let nextState: GameState = {
+        ...prev,
+        [teamKey]: updatedTeam,
+      };
 
-        if (atBat.isOut) {
-          const newOuts = prev.outs + 1;
-          if (newOuts >= 3) {
-            const nextInning = prev.isTop ? prev.currentInning : prev.currentInning + 1;
-            nextState = {
-              ...nextState,
-              outs: 0,
-              runners: emptyRunners(),
-              currentInning: nextInning,
-              isTop: !prev.isTop,
-            };
-          } else {
-            nextState = {
-              ...nextState,
-              outs: newOuts,
-            };
-          }
-        } else {
-          const bases = getBaseAdvancement(atBat.result);
+      if (atBat.isOut) {
+        const newOuts = prev.outs + 1;
+        if (newOuts >= 3) {
+          const nextInning = prev.isTop
+            ? prev.currentInning
+            : prev.currentInning + 1;
           nextState = {
             ...nextState,
-            runners: advanceRunners(prev.runners, bases),
+            outs: 0,
+            runners: emptyRunners(),
+            currentInning: nextInning,
+            isTop: !prev.isTop,
+          };
+        } else {
+          nextState = {
+            ...nextState,
+            outs: newOuts,
           };
         }
+      } else {
+        const bases = getBaseAdvancement(atBat.result);
+        nextState = {
+          ...nextState,
+          runners: advanceRunners(prev.runners, bases),
+        };
+      }
 
-        return nextState;
-      });
-    },
-    []
-  );
+      return nextState;
+    });
+  }, []);
 
   const updateAtBat = useCallback((updatedAtBat: AtBat) => {
     setState((prev) => {
       const updateTeam = (team: Team): Team => ({
         ...team,
-        atBats: team.atBats.map((ab) => (ab.id === updatedAtBat.id ? updatedAtBat : ab)),
+        atBats: team.atBats.map((ab) =>
+          ab.id === updatedAtBat.id ? updatedAtBat : ab
+        ),
       });
 
       if (prev.homeTeam.atBats.some((ab) => ab.id === updatedAtBat.id)) {
@@ -341,4 +344,3 @@ export const useGameState = (initialGame?: Game): UseGameStateReturn => {
     },
   };
 };
-

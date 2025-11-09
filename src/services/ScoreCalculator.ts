@@ -65,7 +65,9 @@ export class ScoreCalculator {
   static calculateOnBasePercentage(atBats: AtBat[]): number {
     if (atBats.length === 0) return 0;
     const timesOnBase = atBats.filter((ab) =>
-      ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR', 'BB', 'HBP'].includes(ab.result)
+      ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR', 'BB', 'HBP'].includes(
+        ab.result
+      )
     ).length;
     return timesOnBase / atBats.length;
   }
@@ -85,4 +87,3 @@ export class ScoreCalculator {
     return 'tie';
   }
 }
-

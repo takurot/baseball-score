@@ -88,7 +88,7 @@ describe('AtBatHistory', () => {
         id: 'ab1',
         playerId: 'unknown',
         inning: 1,
-      isTop: true,
+        isTop: true,
         result: 'IH' as HitResult,
         description: '',
         rbi: 0,

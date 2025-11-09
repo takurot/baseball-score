@@ -39,4 +39,3 @@ export const useInningControl = () => {
 
   return { getNextGameState, isGameEnd };
 };
-

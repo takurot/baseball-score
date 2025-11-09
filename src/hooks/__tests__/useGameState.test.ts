@@ -9,7 +9,11 @@ describe('useGameState', () => {
     expect(result.current.state.currentInning).toBe(1);
     expect(result.current.state.isTop).toBe(true);
     expect(result.current.state.outs).toBe(0);
-    expect(result.current.state.runners).toEqual({ first: false, second: false, third: false });
+    expect(result.current.state.runners).toEqual({
+      first: false,
+      second: false,
+      third: false,
+    });
   });
 
   test('updateInning action works correctly', () => {
@@ -22,7 +26,11 @@ describe('useGameState', () => {
     expect(result.current.state.currentInning).toBe(2);
     expect(result.current.state.isTop).toBe(false);
     expect(result.current.state.outs).toBe(0);
-    expect(result.current.state.runners).toEqual({ first: false, second: false, third: false });
+    expect(result.current.state.runners).toEqual({
+      first: false,
+      second: false,
+      third: false,
+    });
   });
 
   test('resetGame action works correctly', () => {
@@ -68,7 +76,16 @@ describe('useGameState', () => {
       result.current.actions.setAwayTeam({
         id: 'test-team',
         name: 'Test Team',
-        players: [{ id: 'p1', name: 'Player 1', number: '1', position: 'P', isActive: true, order: 1 }],
+        players: [
+          {
+            id: 'p1',
+            name: 'Player 1',
+            number: '1',
+            position: 'P',
+            isActive: true,
+            order: 1,
+          },
+        ],
         atBats: [],
       });
     });
@@ -114,18 +131,42 @@ describe('useGameState', () => {
 
   test('3 outs change the inning', () => {
     const { result } = renderHook(() => useGameState());
-    
+
     act(() => {
-      result.current.actions.addAtBat({ id: 'ab1', playerId: 'p1', result: 'SO', inning: 1, isTop: true, rbi: 0, isOut: true });
+      result.current.actions.addAtBat({
+        id: 'ab1',
+        playerId: 'p1',
+        result: 'SO',
+        inning: 1,
+        isTop: true,
+        rbi: 0,
+        isOut: true,
+      });
     });
     act(() => {
-      result.current.actions.addAtBat({ id: 'ab2', playerId: 'p2', result: 'SO', inning: 1, isTop: true, rbi: 0, isOut: true });
+      result.current.actions.addAtBat({
+        id: 'ab2',
+        playerId: 'p2',
+        result: 'SO',
+        inning: 1,
+        isTop: true,
+        rbi: 0,
+        isOut: true,
+      });
     });
 
     expect(result.current.state.outs).toBe(2);
 
     act(() => {
-      result.current.actions.addAtBat({ id: 'ab3', playerId: 'p3', result: 'SO', inning: 1, isTop: true, rbi: 0, isOut: true });
+      result.current.actions.addAtBat({
+        id: 'ab3',
+        playerId: 'p3',
+        result: 'SO',
+        inning: 1,
+        isTop: true,
+        rbi: 0,
+        isOut: true,
+      });
     });
 
     expect(result.current.state.currentInning).toBe(1);
@@ -137,10 +178,22 @@ describe('useGameState', () => {
     const { result } = renderHook(() => useGameState());
 
     act(() => {
-      result.current.actions.addAtBat({ id: 'ab1', playerId: 'p1', result: 'IH', inning: 1, isTop: true, rbi: 0, isOut: false });
+      result.current.actions.addAtBat({
+        id: 'ab1',
+        playerId: 'p1',
+        result: 'IH',
+        inning: 1,
+        isTop: true,
+        rbi: 0,
+        isOut: false,
+      });
     });
 
-    expect(result.current.state.runners).toEqual({ first: true, second: false, third: false });
+    expect(result.current.state.runners).toEqual({
+      first: true,
+      second: false,
+      third: false,
+    });
   });
 
   test('updateAtBat replaces existing record', () => {
@@ -268,4 +321,3 @@ describe('useGameState', () => {
     expect(result.current.state.tournament).toBe('Winter Cup');
   });
 });
-
