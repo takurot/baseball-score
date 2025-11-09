@@ -39,10 +39,12 @@ export interface AtBat {
   id: string;
   playerId: string;
   inning: number;
+  isTop: boolean;
   result: HitResult;
   description?: string;
   rbi: number;
   isOut: boolean;
+  timestamp?: number;
 }
 
 // 選手情報
@@ -70,6 +72,7 @@ export interface Game {
   homeTeam: Team;
   awayTeam: Team;
   currentInning: number;
+  isTop?: boolean; // true: 表, false: 裏
   userId?: string; // ユーザーID（オプショナル）
   userEmail?: string; // ユーザーのメールアドレス（オプショナル）
   venue?: string; // 球場・場所
@@ -77,6 +80,7 @@ export interface Game {
   isPublic?: boolean; // 公開状態
   runEvents?: RunEvent[]; // 打席以外での得点イベント
   outEvents?: OutEvent[]; // 打席以外でのアウトイベント
+  lastUpdated?: string; // 最終更新日時
 }
 
 // 得点イベントの種類
