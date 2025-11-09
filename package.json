@@ -40,6 +40,15 @@
       "prettier"
     ]
   },
+  "jest": {
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(uuid)/)"
+    ],
+    "collectCoverageFrom": [
+      "src/hooks/**/*.{ts,tsx}",
+      "src/services/**/*.{ts,tsx}"
+    ]
+  },
   "browserslist": {
     "production": [
       ">0.2%",
