@@ -129,6 +129,7 @@ const MainApp: React.FC<{
   const { currentUser, isLoading } = useAuth();
   const theme = useTheme();
   const { state: gameState, actions: gameActions } = useGameState(initialGame);
+  const { loadGame } = gameActions;
   const { homeTeam, awayTeam, currentInning, isTop } = gameState;
   const { homeScore: homeScoreData, awayScore: awayScoreData } =
     useScoreCalculation(homeTeam, awayTeam, gameState.runEvents);
@@ -233,7 +234,7 @@ const MainApp: React.FC<{
           const sharedGame = await getSharedGameById(sharedGameId);
           if (sharedGame) {
             console.log('Successfully loaded shared game:', sharedGameId);
-            gameActions.loadGame(sharedGame);
+            loadGame(sharedGame);
             setIsSharedMode(true);
             setActiveStep(1); // 共有リンクでは自動的に一覧表示モードに
             setSharedGameError(null);
@@ -262,7 +263,7 @@ const MainApp: React.FC<{
     };
 
     checkSharedGame();
-  }, []);
+  }, [loadGame]);
 
   // ローディング中表示
   if (sharedGameLoading || isLoading) {
@@ -583,7 +584,7 @@ const MainApp: React.FC<{
     try {
       const loadedGame = await getGameById(gameId);
       if (loadedGame) {
-        gameActions.loadGame(loadedGame);
+        loadGame(loadedGame);
         setSnackbarMessage('試合データを読み込みました');
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
