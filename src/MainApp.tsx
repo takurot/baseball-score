@@ -1262,6 +1262,7 @@ const MainApp: React.FC<{
                     <AtBatForm
                       player={selectedPlayer}
                       inning={currentInning}
+                      isTop={tabIndex === 0}
                       onAddAtBat={(atBat) => {
                         handleAddAtBat(atBat);
                         handleCloseAtBatDialog();
