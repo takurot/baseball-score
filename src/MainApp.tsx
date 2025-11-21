@@ -9,7 +9,6 @@ import {
   Tabs,
   Tab,
   Button,
-  ButtonGroup,
   TextField,
   Dialog,
   DialogActions,
@@ -32,6 +31,7 @@ import {
   Stepper,
   Step,
   StepLabel,
+  Stack,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -41,6 +41,8 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import { v4 as uuidv4 } from 'uuid';
 import {
   Team,
@@ -57,6 +59,7 @@ import ScoreBoard from './components/ScoreBoard';
 import AtBatSummaryTable from './components/AtBatSummaryTable';
 import TournamentVenue from './components/TournamentVenue';
 import LoadingButton from './components/LoadingButton';
+import SectionCard from './components/SectionCard';
 import {
   saveGame,
   getGameById,
@@ -69,7 +72,6 @@ import Login from './components/Login';
 import HelpIcon from '@mui/icons-material/Help';
 import { useTheme } from '@mui/material/styles';
 import { useGameState } from './hooks/useGameState';
-import { useScoreCalculation } from './hooks/useScoreCalculation';
 import { logAnalyticsEvent } from './firebase/analyticsClient';
 
 // 遅延ロード - 初期表示に不要なコンポーネント
@@ -121,8 +123,6 @@ const MainApp: React.FC<{
   const { state: gameState, actions: gameActions } = useGameState(initialGame);
   const { loadGame } = gameActions;
   const { homeTeam, awayTeam, currentInning, isTop } = gameState;
-  const { homeScore: homeScoreData, awayScore: awayScoreData } =
-    useScoreCalculation(homeTeam, awayTeam, gameState.runEvents);
 
   const [tabIndex, setTabIndex] = useState(0);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -1144,25 +1144,6 @@ const MainApp: React.FC<{
               currentInning={currentInning}
               runEvents={gameState.runEvents}
             />
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: 4,
-                mt: 2,
-                flexWrap: 'wrap',
-                textAlign: 'center',
-              }}
-            >
-              <Typography variant="body2">
-                {awayTeam.name}: R {awayScoreData.totalScore} / H{' '}
-                {awayScoreData.hits} / E {awayScoreData.errors}
-              </Typography>
-              <Typography variant="body2">
-                {homeTeam.name}: R {homeScoreData.totalScore} / H{' '}
-                {homeScoreData.hits} / E {homeScoreData.errors}
-              </Typography>
-            </Box>
 
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
               <Tabs
@@ -1193,34 +1174,48 @@ const MainApp: React.FC<{
             ) : (
               // 編集モード（共有モードでは表示しない）
               <>
-                <Box
-                  sx={{
-                    mb: 2,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: isMobile ? 1 : 0,
-                  }}
+                <SectionCard
+                  title={`${currentInning}回の操作`}
+                  actions={
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1}
+                      sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    >
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => handleInningChange(-1)}
+                        disabled={currentInning <= 1}
+                        fullWidth={isMobile}
+                        sx={{ minHeight: isMobile ? 48 : 40 }}
+                      >
+                        前の回
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleInningChange(1)}
+                        fullWidth={isMobile}
+                        sx={{ minHeight: isMobile ? 48 : 40 }}
+                      >
+                        次の回
+                      </Button>
+                    </Stack>
+                  }
                 >
-                  <Typography variant="h6">{currentInning}回</Typography>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      gap: isMobile ? 1 : 1,
-                    }}
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1.5}
+                    sx={{ width: '100%' }}
                   >
                     <Button
-                      variant="outlined"
+                      variant="contained"
                       color="secondary"
                       onClick={handleOpenRunDialog}
-                      sx={{
-                        minWidth: isMobile ? '80px' : undefined,
-                        minHeight: isMobile ? '48px' : '36px',
-                        fontSize: isMobile ? '0.9rem' : undefined,
-                      }}
+                      startIcon={<AddCircleOutlineIcon />}
+                      fullWidth={isMobile}
+                      sx={{ minHeight: isMobile ? 48 : 40 }}
                     >
                       得点追加
                     </Button>
@@ -1228,91 +1223,72 @@ const MainApp: React.FC<{
                       variant="outlined"
                       color="secondary"
                       onClick={handleOpenOutDialog}
-                      sx={{
-                        minWidth: isMobile ? '80px' : undefined,
-                        minHeight: isMobile ? '48px' : '36px',
-                        fontSize: isMobile ? '0.9rem' : undefined,
-                      }}
+                      startIcon={<HighlightOffIcon />}
+                      fullWidth={isMobile}
+                      sx={{ minHeight: isMobile ? 48 : 40 }}
                     >
                       アウト追加
                     </Button>
-                    <ButtonGroup>
-                      <Button
-                        onClick={() => handleInningChange(-1)}
-                        disabled={currentInning <= 1}
+                  </Stack>
+                </SectionCard>
+
+                <SectionCard title="選手一覧">
+                  <Suspense
+                    fallback={
+                      <Box
                         sx={{
-                          minHeight: isMobile ? '44px' : '36px',
-                          fontSize: isMobile ? '0.8rem' : undefined,
+                          display: 'flex',
+                          justifyContent: 'center',
+                          py: 4,
                         }}
                       >
-                        前の回
-                      </Button>
-                      <Button
-                        onClick={() => handleInningChange(1)}
-                        sx={{
-                          minHeight: isMobile ? '44px' : '36px',
-                          fontSize: isMobile ? '0.8rem' : undefined,
-                        }}
-                      >
-                        次の回
-                      </Button>
-                    </ButtonGroup>
-                  </Box>
-                </Box>
-
-                <Suspense
-                  fallback={
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        py: 4,
-                      }}
-                    >
-                      <CircularProgress size={32} />
-                    </Box>
-                  }
-                >
-                  <TeamManager
-                    team={currentTeam}
-                    onTeamUpdate={handleTeamUpdate}
-                    onRegisterAtBat={handleRegisterAtBat}
-                  />
-                </Suspense>
-
-                <Suspense
-                  fallback={
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        py: 4,
-                      }}
-                    >
-                      <CircularProgress size={32} />
-                    </Box>
-                  }
-                >
-                  <AtBatHistory
-                    atBats={currentTeam.atBats}
-                    players={currentTeam.players}
-                    inning={currentInning}
-                    runEvents={gameState.runEvents}
-                    outEvents={gameState.outEvents}
-                    onEditAtBat={handleEditAtBat}
-                    onDeleteAtBat={handleDeleteAtBat}
-                    onDeleteRunEvent={(eventId) => {
-                      gameActions.deleteRunEvent(eventId);
-                    }}
-                    onDeleteOutEvent={(eventId) => {
-                      gameActions.deleteOutEvent(eventId);
-                    }}
-                    currentTeamName={currentTeam.name}
-                    opposingTeamName={
-                      tabIndex === 0 ? homeTeam.name : awayTeam.name
+                        <CircularProgress size={32} />
+                      </Box>
                     }
-                  />
-                </Suspense>
+                  >
+                    <TeamManager
+                      team={currentTeam}
+                      onTeamUpdate={handleTeamUpdate}
+                      onRegisterAtBat={handleRegisterAtBat}
+                    />
+                  </Suspense>
+                </SectionCard>
+
+                <SectionCard title={`${currentInning}回の記録`}>
+                  <Suspense
+                    fallback={
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'center',
+                          py: 4,
+                        }}
+                      >
+                        <CircularProgress size={32} />
+                      </Box>
+                    }
+                  >
+                    <AtBatHistory
+                      atBats={currentTeam.atBats}
+                      players={currentTeam.players}
+                      inning={currentInning}
+                      runEvents={gameState.runEvents}
+                      outEvents={gameState.outEvents}
+                      onEditAtBat={handleEditAtBat}
+                      onDeleteAtBat={handleDeleteAtBat}
+                      onDeleteRunEvent={(eventId) => {
+                        gameActions.deleteRunEvent(eventId);
+                      }}
+                      onDeleteOutEvent={(eventId) => {
+                        gameActions.deleteOutEvent(eventId);
+                      }}
+                      currentTeamName={currentTeam.name}
+                      opposingTeamName={
+                        tabIndex === 0 ? homeTeam.name : awayTeam.name
+                      }
+                    />
+                  </Suspense>
+                </SectionCard>
 
                 {/* 打席登録ダイアログ */}
                 <Dialog
