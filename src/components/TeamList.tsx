@@ -363,7 +363,14 @@ const TeamList: React.FC = () => {
             </AccordionSummary>
             <AccordionDetails>
               <Divider sx={{ mb: 2 }} />
-              <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box
+                sx={{
+                  mb: 2,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
                 <Typography variant="subtitle1" color="text.secondary">
                   所属選手 ({team.players?.length || 0}人)
                 </Typography>
@@ -379,7 +386,11 @@ const TeamList: React.FC = () => {
               </Box>
 
               {!team.players || team.players.length === 0 ? (
-                <Typography variant="body2" color="textSecondary" sx={{ py: 2, textAlign: 'center' }}>
+                <Typography
+                  variant="body2"
+                  color="textSecondary"
+                  sx={{ py: 2, textAlign: 'center' }}
+                >
                   選手が登録されていません。「選手を追加」ボタンから登録してください。
                 </Typography>
               ) : (

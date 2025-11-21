@@ -4,36 +4,40 @@ import { app } from './config';
 type FirebaseAnalyticsModule = typeof import('firebase/analytics');
 
 let analyticsInstance: Analytics | null = null;
-let analyticsModulePromise: Promise<FirebaseAnalyticsModule | null> | null = null;
+let analyticsModulePromise: Promise<FirebaseAnalyticsModule | null> | null =
+  null;
 
-const loadAnalyticsModule = async (): Promise<FirebaseAnalyticsModule | null> => {
-  if (analyticsModulePromise) {
-    return analyticsModulePromise;
-  }
-
-  analyticsModulePromise = (async () => {
-    if (typeof window === 'undefined') {
-      return null;
+const loadAnalyticsModule =
+  async (): Promise<FirebaseAnalyticsModule | null> => {
+    if (analyticsModulePromise) {
+      return analyticsModulePromise;
     }
 
-    try {
-      const module = await import('firebase/analytics');
-      if (module.isSupported) {
-        const supported = await module.isSupported();
-        if (!supported) {
-          console.warn('Firebase Analytics is not supported in this environment.');
-          return null;
-        }
+    analyticsModulePromise = (async () => {
+      if (typeof window === 'undefined') {
+        return null;
       }
-      return module;
-    } catch (error) {
-      console.warn('Firebase Analytics failed to load:', error);
-      return null;
-    }
-  })();
 
-  return analyticsModulePromise;
-};
+      try {
+        const module = await import('firebase/analytics');
+        if (module.isSupported) {
+          const supported = await module.isSupported();
+          if (!supported) {
+            console.warn(
+              'Firebase Analytics is not supported in this environment.'
+            );
+            return null;
+          }
+        }
+        return module;
+      } catch (error) {
+        console.warn('Firebase Analytics failed to load:', error);
+        return null;
+      }
+    })();
+
+    return analyticsModulePromise;
+  };
 
 const loadAnalyticsInstance = async (): Promise<Analytics | null> => {
   if (analyticsInstance) {
@@ -66,4 +70,3 @@ export const logAnalyticsEvent = async (
     console.warn('Analytics event skipped:', error);
   }
 };
-
