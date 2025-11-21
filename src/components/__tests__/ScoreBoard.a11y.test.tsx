@@ -25,7 +25,9 @@ describe('ScoreBoard accessibility', () => {
     atBats: [],
   };
 
-  const renderScoreBoard = (props?: Partial<React.ComponentProps<typeof ScoreBoard>>) =>
+  const renderScoreBoard = (
+    props?: Partial<React.ComponentProps<typeof ScoreBoard>>
+  ) =>
     renderWithTheme(
       <ScoreBoard
         homeTeam={mockTeamA}

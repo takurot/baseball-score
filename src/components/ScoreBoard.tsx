@@ -15,9 +15,15 @@ import {
 import { alpha, useTheme } from '@mui/material/styles';
 import { Team, RunEvent, HitResult } from '../types';
 
-const HIT_RESULT_SET = new Set<HitResult>(
-  ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'] as HitResult[]
-);
+const HIT_RESULT_SET = new Set<HitResult>([
+  'IH',
+  'LH',
+  'CH',
+  'RH',
+  '2B',
+  '3B',
+  'HR',
+] as HitResult[]);
 const countHits = (team: Team): number =>
   team.atBats.filter((atBat) => HIT_RESULT_SET.has(atBat.result)).length;
 

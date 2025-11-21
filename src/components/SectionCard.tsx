@@ -69,4 +69,3 @@ const SectionCard: React.FC<SectionCardProps> = ({
 };
 
 export default SectionCard;
-

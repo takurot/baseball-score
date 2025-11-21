@@ -35,4 +35,3 @@ describe('SectionCard', () => {
     expect(screen.getByRole('button', { name: '追加' })).toBeInTheDocument();
   });
 });
-
