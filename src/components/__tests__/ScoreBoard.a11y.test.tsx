@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { axe } from '../../setupTests';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import ScoreBoard from '../ScoreBoard';
-import { Team } from '../../types';
+import { RunEvent, Team } from '../../types';
 
 const renderWithTheme = (ui: React.ReactElement) => {
   const theme = createTheme({});
@@ -25,6 +25,19 @@ describe('ScoreBoard accessibility', () => {
     atBats: [],
   };
 
+  const renderScoreBoard = (
+    props?: Partial<React.ComponentProps<typeof ScoreBoard>>
+  ) =>
+    renderWithTheme(
+      <ScoreBoard
+        homeTeam={mockTeamA}
+        awayTeam={mockTeamB}
+        currentInning={1}
+        runEvents={[]}
+        {...props}
+      />
+    );
+
   test('has no axe violations', async () => {
     const { container } = renderWithTheme(
       <ScoreBoard
@@ -39,14 +52,7 @@ describe('ScoreBoard accessibility', () => {
   });
 
   test('table headers have proper semantic markup', () => {
-    renderWithTheme(
-      <ScoreBoard
-        homeTeam={mockTeamA}
-        awayTeam={mockTeamB}
-        currentInning={3}
-        runEvents={[]}
-      />
-    );
+    renderScoreBoard({ currentInning: 3 });
 
     // ヘッダーセルがth要素であること
     const teamHeader = screen.getByText('チーム');
@@ -58,14 +64,7 @@ describe('ScoreBoard accessibility', () => {
   });
 
   test('team names are row headers', () => {
-    renderWithTheme(
-      <ScoreBoard
-        homeTeam={mockTeamA}
-        awayTeam={mockTeamB}
-        currentInning={1}
-        runEvents={[]}
-      />
-    );
+    renderScoreBoard();
 
     // チーム名がrowheaderロールを持つこと
     const teamAHeader = screen.getByRole('rowheader', { name: /チームA/i });
@@ -76,14 +75,7 @@ describe('ScoreBoard accessibility', () => {
   });
 
   test('current inning has aria-current attribute', () => {
-    const { container } = renderWithTheme(
-      <ScoreBoard
-        homeTeam={mockTeamA}
-        awayTeam={mockTeamB}
-        currentInning={3}
-        runEvents={[]}
-      />
-    );
+    const { container } = renderScoreBoard({ currentInning: 3 });
 
     // 現在のイニングにaria-current属性があること
     const currentInningCells = container.querySelectorAll(
@@ -94,18 +86,71 @@ describe('ScoreBoard accessibility', () => {
   });
 
   test('total score column has descriptive label', () => {
-    renderWithTheme(
-      <ScoreBoard
-        homeTeam={mockTeamA}
-        awayTeam={mockTeamB}
-        currentInning={1}
-        runEvents={[]}
-      />
-    );
+    renderScoreBoard();
 
     // 合計得点列にaria-labelがあること
     const totalHeader = screen.getByRole('columnheader', { name: /合計得点/i });
     expect(totalHeader).toBeInTheDocument();
     expect(totalHeader).toHaveAttribute('title', '合計得点');
+  });
+
+  test('renders scoreboard heading and team summaries with R/H/E values', () => {
+    renderScoreBoard();
+
+    expect(screen.getByText('スコアボード')).toBeInTheDocument();
+    const awaySummary = screen.getByTestId('scoreboard-summary-away');
+    const homeSummary = screen.getByTestId('scoreboard-summary-home');
+
+    expect(awaySummary).toHaveTextContent(/チームB/);
+    expect(awaySummary).toHaveTextContent(/R 0 \/ H 0 \/ E 0/);
+    expect(homeSummary).toHaveTextContent(/チームA/);
+    expect(homeSummary).toHaveTextContent(/R 0 \/ H 0 \/ E 0/);
+  });
+
+  test('summary values reflect hits, errors, and run events', () => {
+    const scoringHomeTeam: Team = {
+      ...mockTeamA,
+      atBats: [
+        {
+          id: 'ab-1',
+          playerId: 'p1',
+          result: 'IH',
+          inning: 1,
+          rbi: 1,
+          isOut: false,
+          isTop: false,
+        },
+        {
+          id: 'ab-2',
+          playerId: 'p2',
+          result: 'E',
+          inning: 2,
+          rbi: 0,
+          isOut: false,
+          isTop: false,
+        },
+      ],
+    };
+
+    const scoringRunEvents: RunEvent[] = [
+      {
+        id: 'run-1',
+        inning: 2,
+        isTop: false,
+        runType: 'その他',
+        runCount: 2,
+        timestamp: Date.now(),
+      },
+    ];
+
+    renderScoreBoard({
+      homeTeam: scoringHomeTeam,
+      runEvents: scoringRunEvents,
+      currentInning: 2,
+    });
+
+    const homeSummary = screen.getByTestId('scoreboard-summary-home');
+
+    expect(homeSummary).toHaveTextContent(/R 3 \/ H 1 \/ E 1/);
   });
 });

@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useId } from 'react';
 import {
+  Box,
   Paper,
   Table,
   TableBody,
@@ -9,9 +10,25 @@ import {
   TableRow,
   Typography,
   useMediaQuery,
+  Stack,
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import { Team, RunEvent } from '../types';
+import { alpha, useTheme } from '@mui/material/styles';
+import { Team, RunEvent, HitResult } from '../types';
+
+const HIT_RESULT_SET = new Set<HitResult>([
+  'IH',
+  'LH',
+  'CH',
+  'RH',
+  '2B',
+  '3B',
+  'HR',
+] as HitResult[]);
+const countHits = (team: Team): number =>
+  team.atBats.filter((atBat) => HIT_RESULT_SET.has(atBat.result)).length;
+
+const countErrors = (team: Team): number =>
+  team.atBats.filter((atBat) => atBat.result === 'E').length;
 
 interface ScoreBoardProps {
   homeTeam: Team;
@@ -28,6 +45,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const headingId = useId();
 
   // 少年野球なので最大7回まで
   const maxInning = 7;
@@ -106,8 +124,94 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
     return () => window.removeEventListener('resize', checkScrollable);
   }, [innings.length]);
 
+  const summaryData = useMemo(
+    () => ({
+      away: {
+        runs: totalScores.away,
+        hits: countHits(awayTeam),
+        errors: countErrors(awayTeam),
+      },
+      home: {
+        runs: totalScores.home,
+        hits: countHits(homeTeam),
+        errors: countErrors(homeTeam),
+      },
+    }),
+    [awayTeam, homeTeam, totalScores]
+  );
+
+  const teamSummaries: Array<{ team: Team; key: 'home' | 'away' }> = [
+    { team: awayTeam, key: 'away' },
+    { team: homeTeam, key: 'home' },
+  ];
+
+  const highlightStyles = {
+    backgroundColor: alpha(theme.palette.primary.main, 0.12),
+    borderLeft: `2px solid ${theme.palette.primary.main}`,
+    borderRight: `2px solid ${theme.palette.primary.main}`,
+    fontWeight: 600,
+  };
+
+  const stripeBackground = alpha(
+    theme.palette.primary.main,
+    theme.palette.action.selectedOpacity ?? 0.08
+  );
+
   return (
-    <Paper sx={{ mb: 3, mt: 3 }}>
+    <Paper
+      component="section"
+      aria-labelledby={headingId}
+      sx={{ mb: 3, mt: 3, p: { xs: 2, sm: 3 } }}
+    >
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', md: 'center' }}
+        spacing={2}
+      >
+        <Typography
+          id={headingId}
+          component="h2"
+          variant="subtitle1"
+          fontWeight={600}
+        >
+          スコアボード
+        </Typography>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          sx={{
+            width: '100%',
+            justifyContent: { xs: 'flex-start', md: 'flex-end' },
+          }}
+        >
+          {teamSummaries.map(({ team, key }) => {
+            const summary = summaryData[key];
+            return (
+              <Box
+                key={key}
+                data-testid={`scoreboard-summary-${key}`}
+                sx={{
+                  flex: 1,
+                  minWidth: 160,
+                  border: `1px solid ${theme.palette.divider}`,
+                  borderRadius: 1,
+                  p: 1.5,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  {team.name}
+                </Typography>
+                <Typography variant="body2" fontWeight={600}>
+                  R {summary.runs} / H {summary.hits} / E {summary.errors}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Stack>
+      </Stack>
+
       <TableContainer
         ref={containerRef}
         sx={{
@@ -144,9 +248,13 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
           size={isMobile ? 'small' : 'medium'}
           sx={{
             minWidth: isMobile ? 300 : 'auto',
+            mt: 2,
             '& .MuiTableCell-root': {
               fontSize: isMobile ? '0.8rem' : '0.875rem',
               padding: isMobile ? '6px 8px' : '8px 16px',
+            },
+            '& .MuiTableCell-head': {
+              backgroundColor: theme.palette.action.hover,
             },
           }}
         >
@@ -171,18 +279,11 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                   key={inning}
                   component="th"
                   scope="col"
-                  align="center"
+                  align="right"
                   aria-current={inning === currentInning ? 'true' : undefined}
                   sx={{
                     fontWeight: inning === currentInning ? 'bold' : 'normal',
-                    backgroundColor:
-                      inning === currentInning
-                        ? theme.palette.action.hover
-                        : 'transparent',
-                    borderBottom:
-                      inning === currentInning
-                        ? `3px solid ${theme.palette.primary.main}`
-                        : undefined,
+                    ...(inning === currentInning ? highlightStyles : {}),
                     minWidth: isMobile ? '32px' : '40px',
                   }}
                 >
@@ -192,7 +293,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
               <TableCell
                 component="th"
                 scope="col"
-                align="center"
+                align="right"
                 aria-label="合計得点"
                 title="合計得点"
                 sx={{
@@ -210,7 +311,13 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
           </TableHead>
           <TableBody>
             {/* 先攻チーム */}
-            <TableRow>
+            <TableRow
+              sx={{
+                '&:nth-of-type(odd) td': {
+                  backgroundColor: stripeBackground,
+                },
+              }}
+            >
               <TableCell
                 component="th"
                 scope="row"
@@ -232,24 +339,17 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
               {innings.map((inning) => (
                 <TableCell
                   key={inning}
-                  align="center"
+                  align="right"
                   aria-current={inning === currentInning ? 'true' : undefined}
                   sx={{
-                    backgroundColor:
-                      inning === currentInning
-                        ? theme.palette.action.hover
-                        : 'transparent',
-                    borderBottom:
-                      inning === currentInning
-                        ? `3px solid ${theme.palette.primary.main}`
-                        : undefined,
+                    ...(inning === currentInning ? highlightStyles : {}),
                   }}
                 >
                   {calculateScore(awayTeam, inning, true)}
                 </TableCell>
               ))}
               <TableCell
-                align="center"
+                align="right"
                 sx={{
                   fontWeight: 'bold',
                   position: 'sticky',
@@ -263,7 +363,13 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
             </TableRow>
 
             {/* 後攻チーム */}
-            <TableRow>
+            <TableRow
+              sx={{
+                '&:nth-of-type(odd) td': {
+                  backgroundColor: stripeBackground,
+                },
+              }}
+            >
               <TableCell
                 component="th"
                 scope="row"
@@ -285,24 +391,17 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
               {innings.map((inning) => (
                 <TableCell
                   key={inning}
-                  align="center"
+                  align="right"
                   aria-current={inning === currentInning ? 'true' : undefined}
                   sx={{
-                    backgroundColor:
-                      inning === currentInning
-                        ? theme.palette.action.hover
-                        : 'transparent',
-                    borderBottom:
-                      inning === currentInning
-                        ? `3px solid ${theme.palette.primary.main}`
-                        : undefined,
+                    ...(inning === currentInning ? highlightStyles : {}),
                   }}
                 >
                   {calculateScore(homeTeam, inning, false)}
                 </TableCell>
               ))}
               <TableCell
-                align="center"
+                align="right"
                 sx={{
                   fontWeight: 'bold',
                   position: 'sticky',
