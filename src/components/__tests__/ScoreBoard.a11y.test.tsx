@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { axe } from '../../setupTests';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import ScoreBoard from '../ScoreBoard';
-import { Team } from '../../types';
+import { RunEvent, Team } from '../../types';
 
 const renderWithTheme = (ui: React.ReactElement) => {
   const theme = createTheme({});
@@ -116,6 +116,7 @@ describe('ScoreBoard accessibility', () => {
           inning: 1,
           rbi: 1,
           isOut: false,
+          isTop: false,
         },
         {
           id: 'ab-2',
@@ -124,11 +125,12 @@ describe('ScoreBoard accessibility', () => {
           inning: 2,
           rbi: 0,
           isOut: false,
+          isTop: false,
         },
       ],
     };
 
-    const scoringRunEvents = [
+    const scoringRunEvents: RunEvent[] = [
       {
         id: 'run-1',
         inning: 2,
