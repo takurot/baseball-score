@@ -14,17 +14,9 @@ import {
   TextField,
   Divider,
   Paper,
-  Grid,
   Box,
   CircularProgress,
-  Tab,
-  Tabs,
   Alert,
-  Chip,
-  Card,
-  CardContent,
-  CardHeader,
-  CardActions,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -34,7 +26,6 @@ import {
   Delete as DeleteIcon,
   Edit as EditIcon,
   ExpandMore as ExpandMoreIcon,
-  Person as PersonIcon,
   PersonAdd as PersonAddIcon,
   SportsCricket as SportsCricketIcon,
 } from '@mui/icons-material';
@@ -50,35 +41,11 @@ import {
 } from '../firebase/teamService';
 import { useAuth } from '../contexts/AuthContext';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-// タブパネルコンポーネント
-const TabPanel = (props: TabPanelProps) => {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`team-tabpanel-${index}`}
-      aria-labelledby={`team-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-};
-
 const TeamList: React.FC = () => {
   const { currentUser } = useAuth();
   const [teams, setTeams] = useState<TeamSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tabValue, setTabValue] = useState(0);
 
   // チーム関連の状態
   const [openTeamDialog, setOpenTeamDialog] = useState(false);
@@ -159,11 +126,6 @@ const TeamList: React.FC = () => {
       mounted = false;
     };
   }, [loadTeams]); // loadTeamsが変更されたときだけ実行
-
-  // タブ変更ハンドラー
-  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
 
   // チーム追加・編集ダイアログを開く
   const handleOpenTeamDialog = (team?: TeamSetting) => {
@@ -343,8 +305,8 @@ const TeamList: React.FC = () => {
     }
   };
 
-  // 選手管理タブの内容
-  const renderPlayerManagementTab = () => {
+  // チーム・選手一覧（統合後のメインリスト）
+  const renderTeamList = () => {
     if (teams.length === 0) {
       return (
         <Typography
@@ -352,7 +314,7 @@ const TeamList: React.FC = () => {
           color="textSecondary"
           sx={{ my: 4, textAlign: 'center' }}
         >
-          チームがまだ登録されていません。「チーム一覧」タブでチームを追加してください。
+          チームがまだ登録されていません。「新しいチームを作成」ボタンをクリックして、チームを追加してください。
         </Typography>
       );
     }
@@ -370,30 +332,72 @@ const TeamList: React.FC = () => {
               expandIcon={<ExpandMoreIcon />}
               aria-controls={`team-${team.id}-content`}
               id={`team-${team.id}-header`}
+              sx={{
+                '& .MuiAccordionSummary-content': {
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mr: 1,
+                },
+              }}
             >
               <Typography variant="h6">{team.name}</Typography>
+              <Box onClick={(e) => e.stopPropagation()}>
+                <IconButton
+                  size="small"
+                  onClick={() => handleOpenTeamDialog(team)}
+                  aria-label="チーム名を編集"
+                  sx={{ mr: 1 }}
+                >
+                  <EditIcon />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => handleConfirmDeleteTeam(team.id)}
+                  aria-label="チームを削除"
+                  color="error"
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </Box>
             </AccordionSummary>
             <AccordionDetails>
-              <Box sx={{ mb: 2 }}>
+              <Divider sx={{ mb: 2 }} />
+              <Box
+                sx={{
+                  mb: 2,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <Typography variant="subtitle1" color="text.secondary">
+                  所属選手 ({team.players?.length || 0}人)
+                </Typography>
                 <Button
                   variant="outlined"
                   color="primary"
                   startIcon={<PersonAddIcon />}
                   onClick={() => handleOpenPlayerDialog(team.id)}
+                  size="small"
                 >
                   選手を追加
                 </Button>
               </Box>
 
               {!team.players || team.players.length === 0 ? (
-                <Typography variant="body2" color="textSecondary">
-                  選手が登録されていません。「選手を追加」ボタンをクリックして、選手を追加してください。
+                <Typography
+                  variant="body2"
+                  color="textSecondary"
+                  sx={{ py: 2, textAlign: 'center' }}
+                >
+                  選手が登録されていません。「選手を追加」ボタンから登録してください。
                 </Typography>
               ) : (
-                <List>
+                <List disablePadding>
                   {team.players.map((player) => (
                     <React.Fragment key={player.id}>
-                      <ListItem>
+                      <ListItem sx={{ px: 1 }}>
                         <ListItemText
                           primary={`${player.name} ${player.number ? `#${player.number}` : ''}`}
                           secondary={player.position || '役職未設定'}
@@ -406,8 +410,9 @@ const TeamList: React.FC = () => {
                               setCurrentTeamId(team.id);
                               handleOpenPlayerDialog(team.id, player);
                             }}
+                            sx={{ mr: 1 }}
                           >
-                            <EditIcon />
+                            <EditIcon fontSize="small" />
                           </IconButton>
                           <IconButton
                             edge="end"
@@ -416,12 +421,13 @@ const TeamList: React.FC = () => {
                               setCurrentTeamId(team.id);
                               handleConfirmDeletePlayer(player.id);
                             }}
+                            color="error"
                           >
-                            <DeleteIcon />
+                            <DeleteIcon fontSize="small" />
                           </IconButton>
                         </ListItemSecondaryAction>
                       </ListItem>
-                      <Divider variant="inset" component="li" />
+                      <Divider component="li" />
                     </React.Fragment>
                   ))}
                 </List>
@@ -471,107 +477,18 @@ const TeamList: React.FC = () => {
         </Alert>
       )}
 
-      {/* タブナビゲーション */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs
-          value={tabValue}
-          onChange={handleTabChange}
-          aria-label="team management tabs"
+      <Box sx={{ mb: 3 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpenTeamDialog()}
         >
-          <Tab
-            label="チーム一覧"
-            id="team-tab-0"
-            aria-controls="team-tabpanel-0"
-          />
-          <Tab
-            label="選手管理"
-            id="team-tab-1"
-            aria-controls="team-tabpanel-1"
-          />
-        </Tabs>
+          新しいチームを作成
+        </Button>
       </Box>
 
-      {/* チーム一覧タブ */}
-      <TabPanel value={tabValue} index={0}>
-        <Box sx={{ mb: 2 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenTeamDialog()}
-          >
-            新しいチームを作成
-          </Button>
-        </Box>
-
-        {teams.length === 0 ? (
-          <Typography
-            variant="body1"
-            color="textSecondary"
-            sx={{ my: 4, textAlign: 'center' }}
-          >
-            チームがまだ登録されていません。「新しいチームを作成」ボタンをクリックして、チームを追加してください。
-          </Typography>
-        ) : (
-          <Grid container spacing={2}>
-            {teams.map((team) => (
-              <Grid item xs={12} sm={6} md={4} key={team.id}>
-                <Card>
-                  <CardHeader
-                    title={team.name}
-                    subheader={`登録選手数: ${team.players?.length || 0}人`}
-                  />
-                  <CardContent>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                      {team.players?.slice(0, 5).map((player) => (
-                        <Chip
-                          key={player.id}
-                          label={`${player.name} ${player.number ? `#${player.number}` : ''}`}
-                          size="small"
-                          icon={<PersonIcon />}
-                        />
-                      ))}
-                      {team.players && team.players.length > 5 && (
-                        <Chip
-                          label={`+${team.players.length - 5}人`}
-                          size="small"
-                          variant="outlined"
-                        />
-                      )}
-                      {(!team.players || team.players.length === 0) && (
-                        <Typography variant="body2" color="textSecondary">
-                          選手が登録されていません
-                        </Typography>
-                      )}
-                    </Box>
-                  </CardContent>
-                  <CardActions>
-                    <Button
-                      size="small"
-                      startIcon={<EditIcon />}
-                      onClick={() => handleOpenTeamDialog(team)}
-                    >
-                      編集
-                    </Button>
-                    <IconButton
-                      edge="end"
-                      aria-label="delete"
-                      onClick={() => handleConfirmDeleteTeam(team.id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        )}
-      </TabPanel>
-
-      {/* 選手管理タブ */}
-      <TabPanel value={tabValue} index={1}>
-        {renderPlayerManagementTab()}
-      </TabPanel>
+      {renderTeamList()}
 
       {/* チーム追加・編集ダイアログ */}
       <Dialog open={openTeamDialog} onClose={handleCloseTeamDialog}>

@@ -53,9 +53,6 @@ import {
   OutEvent,
   OutEventType,
 } from './types';
-import TeamManager from './components/TeamManager';
-import AtBatForm from './components/AtBatForm';
-import AtBatHistory from './components/AtBatHistory';
 import ScoreBoard from './components/ScoreBoard';
 import AtBatSummaryTable from './components/AtBatSummaryTable';
 import TournamentVenue from './components/TournamentVenue';
@@ -69,19 +66,21 @@ import {
 import { getTeamById, getUserTeams } from './firebase/teamService';
 import { useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
-import UserProfile from './components/UserProfile';
-import { analytics } from './firebase/config';
-import { logEvent } from 'firebase/analytics';
 import HelpIcon from '@mui/icons-material/Help';
 import { useTheme } from '@mui/material/styles';
 import { useGameState } from './hooks/useGameState';
 import { useScoreCalculation } from './hooks/useScoreCalculation';
+import { logAnalyticsEvent } from './firebase/analyticsClient';
 
 // 遅延ロード - 初期表示に不要なコンポーネント
 const GameList = lazy(() => import('./components/GameList'));
 const TeamList = lazy(() => import('./components/TeamList'));
 const TeamStatsList = lazy(() => import('./components/TeamStatsList'));
 const HelpDialog = lazy(() => import('./components/HelpDialog'));
+const TeamManager = lazy(() => import('./components/TeamManager'));
+const AtBatForm = lazy(() => import('./components/AtBatForm'));
+const AtBatHistory = lazy(() => import('./components/AtBatHistory'));
+const UserProfile = lazy(() => import('./components/UserProfile'));
 
 // 新テーマ（アクセシビリティ拡張）
 
@@ -108,10 +107,7 @@ const sendAnalyticsEvent = (
   eventName: string,
   eventParams?: Record<string, any>
 ) => {
-  if (analytics) {
-    logEvent(analytics, eventName, eventParams);
-    console.log(`Analytics event sent: ${eventName}`, eventParams);
-  }
+  logAnalyticsEvent(eventName, eventParams);
 };
 
 // アプリのメインコンテンツコンポーネント
@@ -938,7 +934,9 @@ const MainApp: React.FC<{
                 <HelpIcon fontSize={isMobile ? 'medium' : 'medium'} />
               </IconButton>
 
-              <UserProfile />
+              <Suspense fallback={null}>
+                <UserProfile />
+              </Suspense>
             </Box>
           ) : (
             // 共有モードでのボタン
@@ -1262,31 +1260,59 @@ const MainApp: React.FC<{
                   </Box>
                 </Box>
 
-                <TeamManager
-                  team={currentTeam}
-                  onTeamUpdate={handleTeamUpdate}
-                  onRegisterAtBat={handleRegisterAtBat}
-                />
-
-                <AtBatHistory
-                  atBats={currentTeam.atBats}
-                  players={currentTeam.players}
-                  inning={currentInning}
-                  runEvents={gameState.runEvents}
-                  outEvents={gameState.outEvents}
-                  onEditAtBat={handleEditAtBat}
-                  onDeleteAtBat={handleDeleteAtBat}
-                  onDeleteRunEvent={(eventId) => {
-                    gameActions.deleteRunEvent(eventId);
-                  }}
-                  onDeleteOutEvent={(eventId) => {
-                    gameActions.deleteOutEvent(eventId);
-                  }}
-                  currentTeamName={currentTeam.name}
-                  opposingTeamName={
-                    tabIndex === 0 ? homeTeam.name : awayTeam.name
+                <Suspense
+                  fallback={
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        py: 4,
+                      }}
+                    >
+                      <CircularProgress size={32} />
+                    </Box>
                   }
-                />
+                >
+                  <TeamManager
+                    team={currentTeam}
+                    onTeamUpdate={handleTeamUpdate}
+                    onRegisterAtBat={handleRegisterAtBat}
+                  />
+                </Suspense>
+
+                <Suspense
+                  fallback={
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        py: 4,
+                      }}
+                    >
+                      <CircularProgress size={32} />
+                    </Box>
+                  }
+                >
+                  <AtBatHistory
+                    atBats={currentTeam.atBats}
+                    players={currentTeam.players}
+                    inning={currentInning}
+                    runEvents={gameState.runEvents}
+                    outEvents={gameState.outEvents}
+                    onEditAtBat={handleEditAtBat}
+                    onDeleteAtBat={handleDeleteAtBat}
+                    onDeleteRunEvent={(eventId) => {
+                      gameActions.deleteRunEvent(eventId);
+                    }}
+                    onDeleteOutEvent={(eventId) => {
+                      gameActions.deleteOutEvent(eventId);
+                    }}
+                    currentTeamName={currentTeam.name}
+                    opposingTeamName={
+                      tabIndex === 0 ? homeTeam.name : awayTeam.name
+                    }
+                  />
+                </Suspense>
 
                 {/* 打席登録ダイアログ */}
                 <Dialog
@@ -1299,24 +1325,39 @@ const MainApp: React.FC<{
                     {editingAtBat ? '打席結果の編集' : '打席結果の登録'}
                   </DialogTitle>
                   <DialogContent>
-                    <AtBatForm
-                      player={selectedPlayer}
-                      inning={currentInning}
-                      isTop={tabIndex === 0}
-                      onAddAtBat={(atBat) => {
-                        handleAddAtBat(atBat);
-                        handleCloseAtBatDialog();
-                      }}
-                      editingAtBat={editingAtBat}
-                      onUpdateAtBat={(updatedAtBat) => {
-                        handleUpdateAtBat(updatedAtBat);
-                        handleCloseAtBatDialog();
-                      }}
-                      onCancelEdit={() => {
-                        handleCancelEdit();
-                        handleCloseAtBatDialog();
-                      }}
-                    />
+                    <Suspense
+                      fallback={
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            minHeight: 240,
+                          }}
+                        >
+                          <CircularProgress />
+                        </Box>
+                      }
+                    >
+                      <AtBatForm
+                        player={selectedPlayer}
+                        inning={currentInning}
+                        isTop={tabIndex === 0}
+                        onAddAtBat={(atBat) => {
+                          handleAddAtBat(atBat);
+                          handleCloseAtBatDialog();
+                        }}
+                        editingAtBat={editingAtBat}
+                        onUpdateAtBat={(updatedAtBat) => {
+                          handleUpdateAtBat(updatedAtBat);
+                          handleCloseAtBatDialog();
+                        }}
+                        onCancelEdit={() => {
+                          handleCancelEdit();
+                          handleCloseAtBatDialog();
+                        }}
+                      />
+                    </Suspense>
                   </DialogContent>
                   <DialogActions>
                     <Button onClick={handleCloseAtBatDialog} color="inherit">
