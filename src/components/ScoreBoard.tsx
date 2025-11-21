@@ -13,7 +13,16 @@ import {
   Stack,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
-import { Team, RunEvent } from '../types';
+import { Team, RunEvent, HitResult } from '../types';
+
+const HIT_RESULT_SET = new Set<HitResult>(
+  ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'] as HitResult[]
+);
+const countHits = (team: Team): number =>
+  team.atBats.filter((atBat) => HIT_RESULT_SET.has(atBat.result)).length;
+
+const countErrors = (team: Team): number =>
+  team.atBats.filter((atBat) => atBat.result === 'E').length;
 
 interface ScoreBoardProps {
   homeTeam: Team;
@@ -109,24 +118,17 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
     return () => window.removeEventListener('resize', checkScrollable);
   }, [innings.length]);
 
-  const hitResults = ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'];
-  const calculateHits = (team: Team): number =>
-    team.atBats.filter((atBat) => hitResults.includes(atBat.result)).length;
-
-  const calculateErrors = (team: Team): number =>
-    team.atBats.filter((atBat) => atBat.result === 'E').length;
-
   const summaryData = useMemo(
     () => ({
       away: {
         runs: totalScores.away,
-        hits: calculateHits(awayTeam),
-        errors: calculateErrors(awayTeam),
+        hits: countHits(awayTeam),
+        errors: countErrors(awayTeam),
       },
       home: {
         runs: totalScores.home,
-        hits: calculateHits(homeTeam),
-        errors: calculateErrors(homeTeam),
+        hits: countHits(homeTeam),
+        errors: countErrors(homeTeam),
       },
     }),
     [awayTeam, homeTeam, totalScores]
