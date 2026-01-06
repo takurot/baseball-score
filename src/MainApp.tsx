@@ -73,6 +73,7 @@ import HelpIcon from '@mui/icons-material/Help';
 import { useTheme } from '@mui/material/styles';
 import { useGameState } from './hooks/useGameState';
 import { logAnalyticsEvent } from './firebase/analyticsClient';
+import { generateDefaultPlayers } from './utils/defaultPlayers';
 
 // 遅延ロード - 初期表示に不要なコンポーネント
 const GameList = lazy(() => import('./components/GameList'));
@@ -89,7 +90,7 @@ const UserProfile = lazy(() => import('./components/UserProfile'));
 const createInitialTeam = (name: string): Team => ({
   id: uuidv4(),
   name,
-  players: [],
+  players: generateDefaultPlayers(),
   atBats: [],
 });
 
