@@ -8,15 +8,15 @@ import { v4 as uuidv4 } from 'uuid';
  * 7: LF (Left Field) - 8: C (Catcher) - 9: P (Pitcher)
  */
 export const DEFAULT_POSITIONS = [
-    'CF',
-    '2B',
-    'SS',
-    '3B',
-    'RF',
-    '1B',
-    'LF',
-    'C',
-    'P',
+  'CF',
+  '2B',
+  'SS',
+  '3B',
+  'RF',
+  '1B',
+  'LF',
+  'C',
+  'P',
 ];
 
 /**
@@ -25,12 +25,12 @@ export const DEFAULT_POSITIONS = [
  * a position from DEFAULT_POSITIONS, and is set as active.
  */
 export function generateDefaultPlayers(): Player[] {
-    return DEFAULT_POSITIONS.map((position, index) => ({
-        id: uuidv4(),
-        name: `選手${index + 1}`, // Player 1, Player 2, etc. in Japanese
-        number: `${index + 1}`,
-        position,
-        isActive: true,
-        order: index + 1,
-    }));
+  return DEFAULT_POSITIONS.map((position, index) => ({
+    id: uuidv4(),
+    name: `選手${index + 1}`, // Player 1, Player 2, etc. in Japanese
+    number: `${index + 1}`,
+    position,
+    isActive: true,
+    order: index + 1,
+  }));
 }
