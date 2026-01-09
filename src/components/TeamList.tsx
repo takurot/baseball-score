@@ -40,6 +40,7 @@ import {
   removePlayerFromTeam,
 } from '../firebase/teamService';
 import { useAuth } from '../contexts/AuthContext';
+import { generateDefaultPlayers } from '../utils/defaultPlayers';
 
 const TeamList: React.FC = () => {
   const { currentUser } = useAuth();
@@ -160,8 +161,11 @@ const TeamList: React.FC = () => {
         // 既存チームの更新
         await updateTeam(editingTeamId, { name: teamName });
       } else {
-        // 新規チーム作成
-        await createTeam({ name: teamName, players: [] });
+        // 新規チーム作成（デフォルト9名の選手を追加）
+        const defaultPlayers = generateDefaultPlayers().map(
+          ({ id, name, number, position }) => ({ id, name, number, position })
+        );
+        await createTeam({ name: teamName, players: defaultPlayers });
       }
 
       // ダイアログを閉じてデータを再読み込み

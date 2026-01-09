@@ -41,22 +41,62 @@ export const accessibilityTokens: ThemeOptions['accessibility'] = {
   },
 };
 
+// Phase 1: New color palette
+const primaryColor = '#2563EB'; // Blue 600
+const secondaryColor = '#7C3AED'; // Violet 600
+
 export const getNewTheme = (mode: 'light' | 'dark') =>
   createTheme({
     palette: {
       mode,
       primary: {
-        main: '#1976d2', // アプリのブランドカラー（例: ブルー系）
+        main: primaryColor,
+        light: '#3B82F6', // Blue 500
+        dark: '#1D4ED8', // Blue 700
       },
       secondary: {
-        main: '#dc004e', // アクセントカラー（例: ピンク系）
+        main: secondaryColor,
+        light: '#8B5CF6', // Violet 500
+        dark: '#6D28D9', // Violet 700
       },
       ...(mode === 'dark' && {
         background: {
-          default: '#121212',
-          paper: '#1e1e1e',
+          default: '#0F172A', // Slate 900
+          paper: '#1E293B', // Slate 800
         },
       }),
+    },
+    typography: {
+      fontFamily:
+        "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      h1: {
+        fontFamily: "'Outfit', 'Inter', sans-serif",
+        fontWeight: 700,
+      },
+      h2: {
+        fontFamily: "'Outfit', 'Inter', sans-serif",
+        fontWeight: 700,
+      },
+      h3: {
+        fontFamily: "'Outfit', 'Inter', sans-serif",
+        fontWeight: 600,
+      },
+      h4: {
+        fontFamily: "'Outfit', 'Inter', sans-serif",
+        fontWeight: 600,
+      },
+      h5: {
+        fontFamily: "'Outfit', 'Inter', sans-serif",
+        fontWeight: 600,
+      },
+      h6: {
+        fontFamily: "'Outfit', 'Inter', sans-serif",
+        fontWeight: 600,
+      },
+      button: {
+        fontWeight: 500,
+        textTransform: 'none', // Keep button text as-is (no uppercase)
+      },
     },
     accessibility: accessibilityTokens,
     components: {
@@ -65,6 +105,7 @@ export const getNewTheme = (mode: 'light' | 'dark') =>
           root: ({ theme }) => ({
             minHeight: theme.accessibility.touchTarget.minHeight,
             minWidth: theme.accessibility.touchTarget.minWidth,
+            borderRadius: '8px',
             '&:focus-visible': {
               outline: `${theme.accessibility.focusVisible.outline} ${
                 theme.palette.mode === 'dark'
@@ -91,6 +132,20 @@ export const getNewTheme = (mode: 'light' | 'dark') =>
               outlineOffset: theme.accessibility.focusVisible.outlineOffset,
             },
           }),
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            borderRadius: '12px',
+          },
+        },
+      },
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            borderRadius: '12px',
+          },
         },
       },
     },
