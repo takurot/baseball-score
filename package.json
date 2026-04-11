@@ -79,6 +79,22 @@
     "postcss": "^8.4.31",
     "webpack-dev-server": "^5.2.2",
     "qs": "^6.14.1",
-    "bfj": "^9.0.0"
+    "bfj": "^9.0.0",
+    "lodash": "^4.18.1",
+    "node-forge": "^1.4.0",
+    "flatted": "^3.4.2",
+    "path-to-regexp": "0.1.13",
+    "postcss-svgo": {
+      "svgo": "^2.8.1"
+    },
+    "cssnano": {
+      "yaml": "^1.10.3"
+    },
+    "cosmiconfig": {
+      "yaml": "^1.10.3"
+    },
+    "postcss-load-config": {
+      "yaml": "^2.8.3"
+    }
   }
 }
