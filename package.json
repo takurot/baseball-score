@@ -93,6 +93,17 @@
     },
     "postcss-load-config": {
       "yaml": "^2.8.3"
+    },
+    "picomatch": "^4.0.4",
+    "serialize-javascript": "^7.0.3",
+    "minimatch": "^3.1.4",
+    "sucrase": {
+      "glob": {
+        "minimatch": "^9.0.7"
+      }
+    },
+    "filelist": {
+      "minimatch": "^5.1.8"
     }
   }
 }
