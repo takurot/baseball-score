@@ -65,7 +65,7 @@
     ]
   },
   "devDependencies": {
-    "@axe-core/react": "^4.11.3",
+    "@axe-core/react": "^4.12.1",
     "@types/jest-axe": "^3.5.9",
     "eslint-config-prettier": "^10.1.8",
     "jest-axe": "^10.0.0",
