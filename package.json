@@ -68,7 +68,7 @@
     "@axe-core/react": "^4.12.1",
     "@types/jest-axe": "^3.5.9",
     "eslint-config-prettier": "^10.1.8",
-    "jest-axe": "^10.0.0",
+    "jest-axe": "^11.0.0",
     "jest-junit": "^17.0.0",
     "prettier": "^3.9.1"
   },
