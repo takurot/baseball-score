@@ -65,6 +65,23 @@ describe('check-coverage script', () => {
     fs.rmSync(fixtureDir, { recursive: true, force: true });
   });
 
+  it('treats a whitespace-only COVERAGE_THRESHOLD as unset', () => {
+    const summaryPath = writeSummary(fixtureDir, {
+      lines: 82.74,
+      functions: 90.4,
+      statements: 83.27,
+      branches: 67.13,
+    });
+
+    const { status, output } = runScript({
+      COVERAGE_THRESHOLD: '   ',
+      COVERAGE_SUMMARY_PATH: summaryPath,
+    });
+
+    expect(status).toBe(0);
+    expect(output).toMatch(/Threshold:\s+30%/);
+  });
+
   it('fails fast when COVERAGE_THRESHOLD is not a number', () => {
     const summaryPath = writeSummary(fixtureDir, {
       lines: 82.74,

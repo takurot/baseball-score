@@ -21,7 +21,7 @@ const SUMMARY_PATH = process.env.COVERAGE_SUMMARY_PATH
   ? path.resolve(process.env.COVERAGE_SUMMARY_PATH)
   : path.join(__dirname, '../coverage/coverage-summary.json');
 
-const rawThreshold = process.env.COVERAGE_THRESHOLD || '30';
+const rawThreshold = process.env.COVERAGE_THRESHOLD?.trim() || '30';
 const THRESHOLD = Number(rawThreshold);
 
 if (!Number.isFinite(THRESHOLD) || THRESHOLD < 0) {
