@@ -17,8 +17,9 @@ const fs = require('fs');
 const path = require('path');
 
 // 設定
-const SUMMARY_PATH = process.env.COVERAGE_SUMMARY_PATH
-  ? path.resolve(process.env.COVERAGE_SUMMARY_PATH)
+const rawSummaryPath = process.env.COVERAGE_SUMMARY_PATH?.trim();
+const SUMMARY_PATH = rawSummaryPath
+  ? path.resolve(rawSummaryPath)
   : path.join(__dirname, '../coverage/coverage-summary.json');
 
 const rawThreshold = process.env.COVERAGE_THRESHOLD?.trim() || '30';

@@ -92,34 +92,45 @@ jobs:
             echo "📊 Security Audit Summary"
             echo "═══════════════════════════════════════"
             node -e "
-              const report = require('./audit-report.json');
-              if (report.error) {
-                console.error('❌ npm audit error: ' + (report.error.summary || report.error.code || 'unknown'));
-                process.exit(1);
+              let failed = false;
+              let report = null;
+              try {
+                report = require('./audit-report.json');
+              } catch (error) {
+                console.error('❌ Failed to parse audit-report.json: ' + error.message);
+                failed = true;
               }
-              const vulnerabilities = report.metadata?.vulnerabilities;
-              if (!vulnerabilities) {
-                console.error('❌ Unexpected audit report format: metadata.vulnerabilities is missing');
-                process.exit(1);
+              if (report) {
+                if (report.error) {
+                  console.error('❌ npm audit error: ' + (report.error.summary || report.error.code || 'unknown'));
+                  failed = true;
+                } else if (!report.metadata?.vulnerabilities) {
+                  console.error('❌ Unexpected audit report format: metadata.vulnerabilities is missing');
+                  failed = true;
+                } else {
+                  const vulnerabilities = report.metadata.vulnerabilities;
+                  const counts = {
+                    critical: vulnerabilities.critical || 0,
+                    high: vulnerabilities.high || 0,
+                    moderate: vulnerabilities.moderate || 0,
+                    low: vulnerabilities.low || 0,
+                    info: vulnerabilities.info || 0,
+                  };
+                  console.log('Critical:', counts.critical);
+                  console.log('High:', counts.high);
+                  console.log('Moderate:', counts.moderate);
+                  console.log('Low:', counts.low);
+                  console.log('Info:', counts.info);
+                  const blocking = counts.critical + counts.high + counts.moderate;
+                  if (blocking > 0) {
+                    console.error('❌ vulnerabilities at or above moderate: ' + blocking);
+                    failed = true;
+                  } else {
+                    console.log('✅ No vulnerabilities at or above moderate');
+                  }
+                }
               }
-              const counts = {
-                critical: vulnerabilities.critical || 0,
-                high: vulnerabilities.high || 0,
-                moderate: vulnerabilities.moderate || 0,
-                low: vulnerabilities.low || 0,
-                info: vulnerabilities.info || 0,
-              };
-              console.log('Critical:', counts.critical);
-              console.log('High:', counts.high);
-              console.log('Moderate:', counts.moderate);
-              console.log('Low:', counts.low);
-              console.log('Info:', counts.info);
-              const blocking = counts.critical + counts.high + counts.moderate;
-              if (blocking > 0) {
-                console.error('❌ vulnerabilities at or above moderate: ' + blocking);
-                process.exit(1);
-              }
-              console.log('✅ No vulnerabilities at or above moderate');
+              process.exitCode = failed ? 1 : 0;
             "
             echo "═══════════════════════════════════════"
           else
