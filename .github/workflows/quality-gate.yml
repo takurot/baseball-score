@@ -72,11 +72,10 @@ jobs:
 
       - name: Run ESLint security rules
         run: npx eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 0
-        continue-on-error: true
 
       - name: Security audit
+        id: audit
         run: npm audit --audit-level=moderate --json > audit-report.json
-        continue-on-error: true
 
       - name: Upload audit report
         uses: actions/upload-artifact@v7
@@ -87,19 +86,55 @@ jobs:
           retention-days: 30
 
       - name: Check audit results
+        if: ${{ !cancelled() && steps.audit.outcome != 'skipped' }}
         run: |
           if [ -f audit-report.json ]; then
             echo "📊 Security Audit Summary"
             echo "═══════════════════════════════════════"
             node -e "
-              const report = require('./audit-report.json');
-              const vulnerabilities = report.metadata?.vulnerabilities || {};
-              console.log('Critical:', vulnerabilities.critical || 0);
-              console.log('High:', vulnerabilities.high || 0);
-              console.log('Moderate:', vulnerabilities.moderate || 0);
-              console.log('Low:', vulnerabilities.low || 0);
-              console.log('Info:', vulnerabilities.info || 0);
+              let failed = false;
+              let report = null;
+              try {
+                report = require('./audit-report.json');
+              } catch (error) {
+                console.error('❌ Failed to parse audit-report.json: ' + error.message);
+                failed = true;
+              }
+              if (report) {
+                if (report.error) {
+                  console.error('❌ npm audit error: ' + (report.error.summary || report.error.code || 'unknown'));
+                  failed = true;
+                } else if (!report.metadata?.vulnerabilities) {
+                  console.error('❌ Unexpected audit report format: metadata.vulnerabilities is missing');
+                  failed = true;
+                } else {
+                  const vulnerabilities = report.metadata.vulnerabilities;
+                  const counts = {
+                    critical: vulnerabilities.critical || 0,
+                    high: vulnerabilities.high || 0,
+                    moderate: vulnerabilities.moderate || 0,
+                    low: vulnerabilities.low || 0,
+                    info: vulnerabilities.info || 0,
+                  };
+                  console.log('Critical:', counts.critical);
+                  console.log('High:', counts.high);
+                  console.log('Moderate:', counts.moderate);
+                  console.log('Low:', counts.low);
+                  console.log('Info:', counts.info);
+                  const blocking = counts.critical + counts.high + counts.moderate;
+                  if (blocking > 0) {
+                    console.error('❌ vulnerabilities at or above moderate: ' + blocking);
+                    failed = true;
+                  } else {
+                    console.log('✅ No vulnerabilities at or above moderate');
+                  }
+                }
+              }
+              process.exitCode = failed ? 1 : 0;
             "
             echo "═══════════════════════════════════════"
+          else
+            echo "❌ audit-report.json not found (audit ran but produced no report)"
+            exit 1
           fi
 

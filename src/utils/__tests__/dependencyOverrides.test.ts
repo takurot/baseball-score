@@ -52,12 +52,13 @@ const isGte = (actual: string, minimum: string): boolean => {
 describe('dependency overrides policy', () => {
   it.each([
     ['node_modules/lodash', '4.18.1'],
-    ['node_modules/node-forge', '1.4.0'],
     ['node_modules/flatted', '3.4.2'],
     ['node_modules/path-to-regexp', '0.1.13'],
-    ['node_modules/postcss-svgo/node_modules/svgo', '2.8.1'],
+    ['node_modules/svgo', '2.8.3'],
+    ['node_modules/postcss', '8.5.23'],
     ['node_modules/postcss-load-config/node_modules/yaml', '2.8.3'],
     ['node_modules/yaml', '1.10.3'],
+    ['node_modules/sockjs/node_modules/uuid', '11.1.1'],
   ])('keeps %s at or above %s', (packagePath, minimumVersion) => {
     const packageLock = readPackageLock();
     const installedVersion = getInstalledVersion(packageLock, packagePath);
