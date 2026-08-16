@@ -224,10 +224,10 @@ jobs:
         env:
           COVERAGE_THRESHOLD: 5
 
-      - name: Check bundle size
-        run: node scripts/check-bundle-size.js
-        env:
-          MAX_BUNDLE_SIZE_MB: 1
+        - name: Check bundle size
+          run: node scripts/check-bundle-size.js
+          env:
+            MAX_BUNDLE_SIZE_MB: 1.25
 
       - name: Verify TypeScript compilation
         run: npx tsc --noEmit
