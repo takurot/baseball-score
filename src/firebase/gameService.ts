@@ -17,6 +17,15 @@ import { getCurrentUser } from './authService';
 
 const GAMES_COLLECTION = 'games';
 
+// 所有権検証付きで既存の試合データを取得（不存在・他人のデータはエラー）
+const requireOwnedGame = async (gameId: string): Promise<Game> => {
+  const game = await getGameById(gameId);
+  if (!game) {
+    throw new Error('データが見つかりません');
+  }
+  return game;
+};
+
 // 試合データを保存
 export const saveGame = async (game: Game): Promise<string> => {
   try {
@@ -53,10 +62,7 @@ export const saveGame = async (game: Game): Promise<string> => {
 
     if (game.id) {
       // 既存のドキュメントを所有権検証してから更新
-      const existing = await getGameById(game.id);
-      if (!existing) {
-        throw new Error('データが見つかりません');
-      }
+      await requireOwnedGame(game.id);
 
       // 既存のドキュメントを更新
       docRef = doc(db, GAMES_COLLECTION, game.id);
@@ -213,10 +219,7 @@ export const getSharedGameById = async (
 export const deleteGame = async (gameId: string): Promise<void> => {
   try {
     // 権限チェック
-    const game = await getGameById(gameId);
-    if (!game) {
-      throw new Error('データが見つかりません');
-    }
+    await requireOwnedGame(gameId);
 
     const docRef = doc(db, GAMES_COLLECTION, gameId);
     await deleteDoc(docRef);
@@ -239,10 +242,7 @@ export const updateGamePublicStatus = async (
     }
 
     // 権限チェック（自分のデータかどうか）
-    const game = await getGameById(gameId);
-    if (!game) {
-      throw new Error('データが見つかりません');
-    }
+    await requireOwnedGame(gameId);
 
     const docRef = doc(db, GAMES_COLLECTION, gameId);
     await updateDoc(docRef, {
