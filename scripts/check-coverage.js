@@ -5,6 +5,8 @@
  *
  * 環境変数:
  *   COVERAGE_THRESHOLD: カバレッジの最小値（デフォルト: 30）
+ *   COVERAGE_SUMMARY_PATH: coverage-summary.json のパス
+ *     （デフォルト: <repo>/coverage/coverage-summary.json、テスト用）
  *
  * 使用例:
  *   node scripts/check-coverage.js
@@ -15,8 +17,19 @@ const fs = require('fs');
 const path = require('path');
 
 // 設定
-const SUMMARY_PATH = path.join(__dirname, '../coverage/coverage-summary.json');
-const THRESHOLD = Number(process.env.COVERAGE_THRESHOLD || 30);
+const SUMMARY_PATH = process.env.COVERAGE_SUMMARY_PATH
+  ? path.resolve(process.env.COVERAGE_SUMMARY_PATH)
+  : path.join(__dirname, '../coverage/coverage-summary.json');
+
+const rawThreshold = process.env.COVERAGE_THRESHOLD || '30';
+const THRESHOLD = Number(rawThreshold);
+
+if (!Number.isFinite(THRESHOLD) || THRESHOLD < 0) {
+  console.error(
+    `❌ Invalid COVERAGE_THRESHOLD: "${rawThreshold}" (must be a non-negative number)`
+  );
+  process.exit(1);
+}
 
 // カバレッジサマリーファイルの存在確認
 if (!fs.existsSync(SUMMARY_PATH)) {
@@ -44,32 +57,38 @@ if (!total) {
   process.exit(1);
 }
 
-const linesPct = Number(total.lines?.pct || 0);
-const functionsPct = Number(total.functions?.pct || 0);
-const statementsPct = Number(total.statements?.pct || 0);
-const branchesPct = Number(total.branches?.pct || 0);
+// カバレッジ値の取得と検証
+const metricSources = [
+  ['Lines', total.lines],
+  ['Functions', total.functions],
+  ['Statements', total.statements],
+  ['Branches', total.branches],
+];
+
+const metrics = metricSources.map(([name, data]) => {
+  const value = Number(data?.pct);
+  if (!Number.isFinite(value)) {
+    console.error(
+      `❌ Invalid coverage data: ${name} pct is not a number (got: ${data?.pct})`
+    );
+    process.exit(1);
+  }
+  return { name, value };
+});
 
 // カバレッジレポート表示
 console.log('');
 console.log('📊 Test Coverage Report');
 console.log('═══════════════════════════════════════');
-console.log(`Lines:      ${linesPct.toFixed(2)}%`);
-console.log(`Functions:  ${functionsPct.toFixed(2)}%`);
-console.log(`Statements: ${statementsPct.toFixed(2)}%`);
-console.log(`Branches:   ${branchesPct.toFixed(2)}%`);
+metrics.forEach((m) => {
+  console.log(`${m.name}:`.padEnd(12) + `${m.value.toFixed(2)}%`);
+});
 console.log('═══════════════════════════════════════');
 console.log(`Threshold:  ${THRESHOLD}%`);
 console.log('');
 
 // 閾値チェック
-const metrics = [
-  { name: 'Lines', value: linesPct },
-  { name: 'Functions', value: functionsPct },
-  { name: 'Statements', value: statementsPct },
-  { name: 'Branches', value: branchesPct },
-];
-
-const failures = metrics.filter((m) => isNaN(m.value) || m.value < THRESHOLD);
+const failures = metrics.filter((m) => m.value < THRESHOLD);
 
 if (failures.length > 0) {
   console.error('❌ Coverage Check Failed');
