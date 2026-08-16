@@ -74,16 +74,16 @@
   },
   "overrides": {
     "nth-check": "^2.1.1",
-    "postcss": "^8.4.31",
+    "postcss": "^8.5.23",
+    "@svgr/webpack": "^6.5.1",
     "webpack-dev-server": "^5.2.2",
     "qs": "^6.14.1",
     "bfj": "^9.0.0",
     "lodash": "^4.18.1",
-    "node-forge": "^1.4.0",
     "flatted": "^3.4.2",
     "path-to-regexp": "0.1.13",
     "postcss-svgo": {
-      "svgo": "^2.8.1"
+      "svgo": "^2.8.3"
     },
     "cssnano": {
       "yaml": "^1.10.3"
@@ -96,7 +96,6 @@
     },
     "picomatch": "^4.0.4",
     "serialize-javascript": "^7.0.3",
-    "minimatch": "^3.1.4",
     "sucrase": {
       "glob": {
         "minimatch": "^9.0.7"
@@ -104,6 +103,12 @@
     },
     "filelist": {
       "minimatch": "^5.1.8"
+    },
+    "jsdom": {
+      "http-proxy-agent": "^5.0.0"
+    },
+    "sockjs": {
+      "uuid": "^11.1.1"
     }
   }
 }
