@@ -9,11 +9,16 @@ on:
     # 毎週月曜日の午前0時（UTC）に実行
     - cron: '0 0 * * 1'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # CodeQL セキュリティ分析
   codeql-analysis:
     name: CodeQL Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       security-events: write
       contents: read
@@ -24,16 +29,16 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           languages: javascript
           queries: security-extended
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v4
+        uses: github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           category: '/language:javascript'
 
@@ -41,6 +46,9 @@ jobs:
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     if: github.event_name == 'pull_request'
 
     steps:
@@ -48,7 +56,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Dependency Review
-        uses: actions/dependency-review-action@v5
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: moderate
 
@@ -56,6 +64,9 @@ jobs:
   sast-scan:
     name: SAST Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
