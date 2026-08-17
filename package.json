@@ -24,7 +24,7 @@
     "typescript": "^5.9.3",
     "uuid": "^14.0.1",
     "web-vitals": "^4.2.4",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.15"
   },
   "scripts": {
     "start": "react-scripts start",
