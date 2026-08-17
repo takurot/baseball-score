@@ -17,6 +17,15 @@ import { getCurrentUser } from './authService';
 
 const GAMES_COLLECTION = 'games';
 
+// 所有権検証付きで既存の試合データを取得（不存在・他人のデータはエラー）
+const requireOwnedGame = async (gameId: string): Promise<Game> => {
+  const game = await getGameById(gameId);
+  if (!game) {
+    throw new Error('データが見つかりません');
+  }
+  return game;
+};
+
 // 試合データを保存
 export const saveGame = async (game: Game): Promise<string> => {
   try {
@@ -52,11 +61,15 @@ export const saveGame = async (game: Game): Promise<string> => {
     let docRef;
 
     if (game.id) {
+      // 既存のドキュメントを所有権検証してから更新
+      await requireOwnedGame(game.id);
+
       // 既存のドキュメントを更新
       docRef = doc(db, GAMES_COLLECTION, game.id);
-      // createdAtを削除して更新用のオブジェクトを作成（作成日時は維持する）
+      // 作成日時とドキュメントIDは更新対象から除外（作成日時は維持、IDはフィールドとして保存しない）
       const updateData = { ...gameToSave };
-      delete updateData.createdAt; // createdAtフィールドは更新しない
+      delete updateData.id;
+      delete updateData.createdAt;
       await updateDoc(docRef, updateData);
       console.log('Game updated successfully with ID:', game.id);
       return game.id;
@@ -186,7 +199,12 @@ export const getSharedGameById = async (
         throw new Error('この試合データは公開されていません');
       }
 
-      return { ...data, id: docSnap.id };
+      // 公開ペイロードから所有者の個人情報を除去する
+      const publicData = { ...data };
+      delete publicData.userId;
+      delete publicData.userEmail;
+
+      return { ...publicData, id: docSnap.id };
     } else {
       console.error('Game not found:', gameId);
       return null;
@@ -201,10 +219,7 @@ export const getSharedGameById = async (
 export const deleteGame = async (gameId: string): Promise<void> => {
   try {
     // 権限チェック
-    const game = await getGameById(gameId);
-    if (!game) {
-      throw new Error('データが見つかりません');
-    }
+    await requireOwnedGame(gameId);
 
     const docRef = doc(db, GAMES_COLLECTION, gameId);
     await deleteDoc(docRef);
@@ -227,10 +242,7 @@ export const updateGamePublicStatus = async (
     }
 
     // 権限チェック（自分のデータかどうか）
-    const game = await getGameById(gameId);
-    if (!game) {
-      throw new Error('データが見つかりません');
-    }
+    await requireOwnedGame(gameId);
 
     const docRef = doc(db, GAMES_COLLECTION, gameId);
     await updateDoc(docRef, {
