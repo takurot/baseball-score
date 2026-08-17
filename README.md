@@ -70,6 +70,9 @@ REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
 
 ## デプロイ方法
 
+デプロイ先は `.firebaserc` のエイリアス（`production` / `staging`）で切り替えます。
+対象を明示するため、常に `--project` にプロジェクト ID を指定してください。
+
 1. ビルドを作成します
 
 ```
@@ -79,7 +82,11 @@ npm run build
 2. Firebase にデプロイします
 
 ```
-firebase deploy
+# 本番（baseball-score-18c48）
+firebase deploy --project baseball-score-18c48
+
+# ステージング（baseball-score-staging）
+firebase deploy --project baseball-score-staging
 ```
 
 ## ライセンス
