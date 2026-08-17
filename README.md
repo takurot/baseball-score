@@ -72,8 +72,9 @@ REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
 
 デプロイ先は `.firebaserc` のエイリアス（`production` / `staging`）で切り替えます。
 対象を明示するため、常に `--project` にプロジェクト ID を指定してください。
-エイリアスを指定しない `firebase deploy` は `default` エイリアス（= 本番プロジェクト）に
-デプロイされるため注意してください。
+`--project` を省略した `firebase` CLI コマンド（`firebase deploy`、
+`firebase hosting:disable` など）は `default` エイリアス（= 本番プロジェクト）を
+対象にするため注意してください。
 
 1. ビルドを作成します
 
