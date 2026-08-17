@@ -257,7 +257,7 @@ jobs:
             const failed = Object.entries(needs).filter(([, n]) => n.result !== "success");
             if (failed.length > 0) {
               console.error("❌ Upstream gate(s) did not succeed: " +
-                failed.map(([job, n]) => `${job}=${n.result}`).join(", "));
+                failed.map(([job, n]) => job + "=" + n.result).join(", "));
               process.exit(1);
             }
           '
