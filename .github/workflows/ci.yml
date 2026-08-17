@@ -249,11 +249,15 @@ jobs:
 
       - name: Fail if any upstream gate failed
         if: ${{ !cancelled() }}
+        env:
+          NEEDS_CONTEXT: ${{ toJSON(needs) }}
         run: |
-          results="${{ join(needs.*.result, ' ') }}"
-          for result in $results; do
-            if [ "$result" != "success" ]; then
-              echo "❌ Upstream gate did not succeed: $result"
-              exit 1
-            fi
-          done
+          node -e '
+            const needs = JSON.parse(process.env.NEEDS_CONTEXT);
+            const failed = Object.entries(needs).filter(([, n]) => n.result !== "success");
+            if (failed.length > 0) {
+              console.error("❌ Upstream gate(s) did not succeed: " +
+                failed.map(([job, n]) => `${job}=${n.result}`).join(", "));
+              process.exit(1);
+            }
+          '
