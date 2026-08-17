@@ -11,7 +11,8 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # 同一PRへの連続pushのみ先行runをキャンセル。mainへのpushとscheduled runは完了まで実行する
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # CodeQL セキュリティ分析
