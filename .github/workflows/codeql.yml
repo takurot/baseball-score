@@ -9,8 +9,9 @@ on:
     - cron: '0 6 * * 1' # 毎週月曜日 6:00 UTC
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # 同一PRへの連続pushのみ先行runをキャンセル。main/developへのpushとscheduled runは完了まで実行する
+  # scheduled run はユニークグループで必ず実行。それ以外は ref 単位とし、
+  # 同一PRへの連続pushのみ先行runをキャンセル（main/developへのpushは完了まで実行）
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && github.run_id || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
