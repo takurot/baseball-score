@@ -8,16 +8,18 @@ on:
 
 permissions:
   contents: read
-  actions: write
 
-env:
-  NODE_VERSION_MATRIX: '["16", "18", "20"]'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # 同一PRへの連続pushのみ先行runをキャンセル。main/developへのpushは完了まで実行する
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # 基本的なlintとタイプチェック
   lint-and-type-check:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -45,6 +47,7 @@ jobs:
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -66,7 +69,9 @@ jobs:
   test:
     name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         node-version: [16, 18, 20]
 
@@ -90,6 +95,7 @@ jobs:
   coverage:
     name: Generate Coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [test]
 
     steps:
@@ -122,7 +128,7 @@ jobs:
           fi
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: ./coverage/lcov.info
           flags: unittests
@@ -142,6 +148,7 @@ jobs:
   build:
     name: Build Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [lint-and-type-check]
 
     steps:
@@ -182,10 +189,13 @@ jobs:
           retention-days: 7
 
   # デプロイメント準備チェック（実質的な品質ゲート）
+  # test:ci / build の再実行はせず、各ジョブの成果物を再利用する
+  # !cancelled() で上流ジョブ失敗時もサマリーを出力し、最終ステップでジョブを失敗させる
   deployment-check:
     name: Deployment Readiness
     runs-on: ubuntu-latest
-    needs: [build, security-audit]
+    needs: [lint-and-type-check, test, coverage, build, security-audit]
+    if: ${{ !cancelled() }}
     timeout-minutes: 30
     env:
       COVERAGE_THRESHOLD: 30
@@ -199,44 +209,30 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '20'
-          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Download coverage artifacts
+        if: ${{ needs.coverage.result == 'success' }}
+        uses: actions/download-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage
 
-      - name: Run tests with coverage
-        run: npm run test:ci
-
-      - name: Debug - List files after coverage run
-        run: |
-          echo "--- Listing files in workspace root ---"
-          ls -la
-          echo "--- Checking for coverage directory ---"
-          if [ -d "coverage" ]; then
-            echo "Coverage directory exists. Listing contents:"
-            ls -laR coverage
-          else
-            echo "Coverage directory NOT found."
-          fi
-
-      - name: Build project
-        run: npm run build
+      - name: Download build artifacts
+        if: ${{ needs.build.result == 'success' }}
+        uses: actions/download-artifact@v7
+        with:
+          name: build-files
+          path: build
 
       - name: Check test coverage threshold
         id: coverage
+        if: ${{ needs.coverage.result == 'success' }}
         run: node scripts/check-coverage.js
 
       - name: Check bundle size
         id: bundle-size
+        if: ${{ needs.build.result == 'success' }}
         run: node scripts/check-bundle-size.js
-
-      - name: Verify TypeScript compilation
-        id: typecheck
-        run: npx tsc --noEmit
-
-      - name: Check for security vulnerabilities
-        id: audit
-        run: npm audit --audit-level=high --production
 
       - name: Quality gate summary
         if: ${{ !cancelled() }}
@@ -244,8 +240,24 @@ jobs:
           echo ""
           echo "📊 Quality Gate Report"
           echo "═══════════════════════════════════════"
-          echo "Test Coverage (>=${COVERAGE_THRESHOLD}%): ${{ steps.coverage.outcome || 'skipped' }}"
+          echo "Test (Node matrix): ${{ needs.test.result }}"
+          echo "Coverage (>=${COVERAGE_THRESHOLD}%): ${{ steps.coverage.outcome || 'skipped' }}"
           echo "Bundle Size (<=${MAX_BUNDLE_SIZE_MB}MB): ${{ steps.bundle-size.outcome || 'skipped' }}"
-          echo "TypeScript: ${{ steps.typecheck.outcome || 'skipped' }}"
-          echo "Security Audit: ${{ steps.audit.outcome || 'skipped' }}"
+          echo "TypeScript: ${{ needs.lint-and-type-check.result }}"
+          echo "Security Audit: ${{ needs.security-audit.result }}"
           echo "═══════════════════════════════════════"
+
+      - name: Fail if any upstream gate failed
+        if: ${{ !cancelled() }}
+        env:
+          NEEDS_CONTEXT: ${{ toJSON(needs) }}
+        run: |
+          node -e '
+            const needs = JSON.parse(process.env.NEEDS_CONTEXT);
+            const failed = Object.entries(needs).filter(([, n]) => n.result !== "success");
+            if (failed.length > 0) {
+              console.error("❌ Upstream gate(s) did not succeed: " +
+                failed.map(([job, n]) => job + "=" + n.result).join(", "));
+              process.exit(1);
+            }
+          '
