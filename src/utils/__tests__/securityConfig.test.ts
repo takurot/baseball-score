@@ -65,5 +65,15 @@ describe('security configuration', () => {
         },
       ])
     );
+
+    const productionCsp = globalHeaders?.find(
+      ({ key }) => key === 'Content-Security-Policy'
+    )?.value;
+
+    expect(productionCsp).toContain(
+      "script-src 'self' https://www.googletagmanager.com"
+    );
+    expect(productionCsp).not.toContain("script-src 'self' 'unsafe-inline'");
+    expect(productionCsp).not.toContain('localhost');
   });
 });
