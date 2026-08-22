@@ -144,4 +144,28 @@ describe('useAtBatHistory', () => {
     );
     expect(warn).toHaveBeenCalledTimes(1);
   });
+
+  test('should apply an update after an add in the same batch', () => {
+    const { result } = renderHook(() => useAtBatHistory([]));
+    const newAtBat = { ...initialAtBats[0], id: 'batched' };
+
+    act(() => {
+      result.current.addAtBat(newAtBat);
+      result.current.updateAtBat({ ...newAtBat, result: '2B' });
+    });
+
+    expect(result.current.atBats).toEqual([{ ...newAtBat, result: '2B' }]);
+  });
+
+  test('should apply a delete after an add in the same batch', () => {
+    const { result } = renderHook(() => useAtBatHistory([]));
+    const newAtBat = { ...initialAtBats[0], id: 'batched' };
+
+    act(() => {
+      result.current.addAtBat(newAtBat);
+      result.current.deleteAtBat(newAtBat.id);
+    });
+
+    expect(result.current.atBats).toEqual([]);
+  });
 });

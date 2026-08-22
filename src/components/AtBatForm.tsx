@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -22,6 +22,8 @@ import {
 import { HitResult, Player, AtBat } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { HIT_RESULTS, OUT_RESULTS } from '../services/ScoreCalculator';
+
+const DEFAULT_RESULT: HitResult = 'GO_2B';
 
 // カスタムカラー定義
 const customColors = {
@@ -160,7 +162,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
   onUpdateAtBat,
   onCancelEdit,
 }) => {
-  const [result, setResult] = useState<HitResult>('GO_2B');
+  const [result, setResult] = useState<HitResult>(DEFAULT_RESULT);
   const [description, setDescription] = useState('');
   const [rbi, setRbi] = useState<number>(0);
   const [successMessage, setSuccessMessage] = useState('');
@@ -168,19 +170,23 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
   // フォーカス管理用のref
   const submitButtonRef = useRef<HTMLButtonElement>(null);
 
+  const resetFormFields = useCallback(() => {
+    setResult(DEFAULT_RESULT);
+    setDescription('');
+    setRbi(0);
+  }, []);
+
   // 編集モードの場合、フォームに値をセット
   useEffect(() => {
     if (editingAtBat) {
       setResult(editingAtBat.result);
       setDescription(editingAtBat.description || '');
       setRbi(editingAtBat.rbi || 0);
-    } else {
-      setResult('GO_2B');
-      setDescription('');
-      setRbi(0);
       setSuccessMessage('');
+    } else {
+      resetFormFields();
     }
-  }, [editingAtBat]);
+  }, [editingAtBat, resetFormFields]);
 
   // 成功メッセージを3秒後に自動的にクリア
   useEffect(() => {
@@ -239,14 +245,10 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
 
       onAddAtBat(newAtBat);
       setSuccessMessage('打席結果を登録しました');
-    } else {
-      return;
     }
 
     // フォームをリセット
-    setResult('GO_2B');
-    setDescription('');
-    setRbi(0);
+    resetFormFields();
 
     // 送信ボタンにフォーカスを戻す
     if (submitButtonRef.current) {
@@ -261,9 +263,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
     }
 
     // フォームをリセット
-    setResult('GO_2B');
-    setDescription('');
-    setRbi(0);
+    resetFormFields();
     setSuccessMessage('');
   };
 
@@ -395,6 +395,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
                   variant="contained"
                   color="primary"
                   fullWidth
+                  disabled={!onUpdateAtBat}
                 >
                   更新
                 </Button>

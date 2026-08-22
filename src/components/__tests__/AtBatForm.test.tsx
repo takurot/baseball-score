@@ -37,7 +37,6 @@ const renderForm = (props: React.ComponentProps<typeof AtBatForm>) =>
 describe('AtBatForm', () => {
   test('更新コールバックがなくても新規打席を追加しない', async () => {
     const onAddAtBat = jest.fn();
-    const user = userEvent.setup();
 
     renderForm({
       player: null,
@@ -47,9 +46,39 @@ describe('AtBatForm', () => {
       editingAtBat,
     });
 
-    await user.click(screen.getByRole('button', { name: '更新' }));
+    expect(screen.getByRole('button', { name: '更新' })).toBeDisabled();
 
     expect(onAddAtBat).not.toHaveBeenCalled();
+  });
+
+  test('編集終了後も更新成功メッセージを表示する', async () => {
+    const user = userEvent.setup();
+    const onUpdateAtBat = jest.fn();
+    const { rerender } = renderForm({
+      player,
+      inning: 1,
+      isTop: true,
+      onAddAtBat: jest.fn(),
+      editingAtBat,
+      onUpdateAtBat,
+    });
+
+    await user.click(screen.getByRole('button', { name: '更新' }));
+    rerender(
+      <ThemeProvider theme={createTheme()}>
+        <AtBatForm
+          player={player}
+          inning={1}
+          isTop={true}
+          onAddAtBat={jest.fn()}
+          editingAtBat={null}
+        />
+      </ThemeProvider>
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '打席結果を更新しました'
+    );
   });
 
   test('編集対象が外部でクリアされたら入力値を初期化する', async () => {

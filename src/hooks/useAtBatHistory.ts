@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { AtBat } from '../types';
 
 const deduplicateAtBats = (
@@ -16,62 +16,70 @@ const deduplicateAtBats = (
   });
 };
 
+const hasAtBatId = (atBats: AtBat[], atBatId: string): boolean =>
+  atBats.some((atBat) => atBat.id === atBatId);
+
+const warn = (message: string): void => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(message);
+  }
+};
+
 export const useAtBatHistory = (initialAtBats: AtBat[]) => {
   const [atBats, setAtBats] = useState<AtBat[]>(() =>
     deduplicateAtBats(initialAtBats)
   );
+  const atBatsRef = useRef(atBats);
 
-  const warn = useCallback((message: string) => {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn(message);
-    }
-  }, []);
+  const applyAtBatUpdate = useCallback(
+    (update: (previous: AtBat[]) => AtBat[]) => {
+      atBatsRef.current = update(atBatsRef.current);
+      setAtBats(update);
+    },
+    []
+  );
 
   const addAtBat = useCallback(
     (atBat: AtBat) => {
-      if (atBats.some((existing) => existing.id === atBat.id)) {
+      if (hasAtBatId(atBatsRef.current, atBat.id)) {
         warn(`Duplicate at-bat id ignored: ${atBat.id}`);
         return;
       }
-      setAtBats((prev) =>
-        prev.some((existing) => existing.id === atBat.id)
-          ? prev
-          : [...prev, atBat]
+      applyAtBatUpdate((prev) =>
+        hasAtBatId(prev, atBat.id) ? prev : [...prev, atBat]
       );
     },
-    [atBats, warn]
+    [applyAtBatUpdate]
   );
 
   const updateAtBat = useCallback(
     (updatedAtBat: AtBat) => {
-      if (!atBats.some((atBat) => atBat.id === updatedAtBat.id)) {
+      if (!hasAtBatId(atBatsRef.current, updatedAtBat.id)) {
         warn(`At-bat id not found for update: ${updatedAtBat.id}`);
-        return;
       }
-      setAtBats((prev) =>
-        prev.some((atBat) => atBat.id === updatedAtBat.id)
+      applyAtBatUpdate((prev) =>
+        hasAtBatId(prev, updatedAtBat.id)
           ? prev.map((atBat) =>
               atBat.id === updatedAtBat.id ? updatedAtBat : atBat
             )
           : prev
       );
     },
-    [atBats, warn]
+    [applyAtBatUpdate]
   );
 
   const deleteAtBat = useCallback(
     (atBatId: string) => {
-      if (!atBats.some((atBat) => atBat.id === atBatId)) {
+      if (!hasAtBatId(atBatsRef.current, atBatId)) {
         warn(`At-bat id not found for deletion: ${atBatId}`);
-        return;
       }
-      setAtBats((prev) =>
-        prev.some((atBat) => atBat.id === atBatId)
+      applyAtBatUpdate((prev) =>
+        hasAtBatId(prev, atBatId)
           ? prev.filter((atBat) => atBat.id !== atBatId)
           : prev
       );
     },
-    [atBats, warn]
+    [applyAtBatUpdate]
   );
 
   const resetAtBats = useCallback(
@@ -79,9 +87,9 @@ export const useAtBatHistory = (initialAtBats: AtBat[]) => {
       const uniqueAtBats = deduplicateAtBats(nextAtBats, (atBatId) =>
         warn(`Duplicate at-bat id ignored during reset: ${atBatId}`)
       );
-      setAtBats(uniqueAtBats);
+      applyAtBatUpdate(() => uniqueAtBats);
     },
-    [warn]
+    [applyAtBatUpdate]
   );
 
   return { atBats, addAtBat, updateAtBat, deleteAtBat, resetAtBats };
