@@ -1170,6 +1170,7 @@ const MainApp: React.FC<{
               <AtBatSummaryTable
                 team={currentTeam}
                 maxInning={currentInning}
+                isTop={tabIndex === 0}
                 outEvents={gameState.outEvents}
               />
             ) : (
@@ -1273,6 +1274,7 @@ const MainApp: React.FC<{
                       atBats={currentTeam.atBats}
                       players={currentTeam.players}
                       inning={currentInning}
+                      isTop={tabIndex === 0}
                       runEvents={gameState.runEvents}
                       outEvents={gameState.outEvents}
                       onEditAtBat={handleEditAtBat}
