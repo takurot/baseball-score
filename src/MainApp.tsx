@@ -1,5 +1,12 @@
 /* istanbul ignore file */
-import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  lazy,
+  Suspense,
+} from 'react';
 import {
   Container,
   AppBar,
@@ -43,6 +50,8 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+import UndoIcon from '@mui/icons-material/Undo';
+import RedoIcon from '@mui/icons-material/Redo';
 import { v4 as uuidv4 } from 'uuid';
 import {
   Team,
@@ -121,7 +130,11 @@ const MainApp: React.FC<{
   const { currentUser, isLoading } = useAuth();
   const theme = useTheme();
   const initialGame = useMemo(() => createInitialGame(), []);
-  const { state: gameState, actions: gameActions } = useGameState(initialGame);
+  const {
+    state: gameState,
+    actions: gameActions,
+    history: gameHistory,
+  } = useGameState(initialGame);
   const { loadGame } = gameActions;
   const { homeTeam, awayTeam, currentInning, isTop } = gameState;
 
@@ -161,6 +174,20 @@ const MainApp: React.FC<{
 
   // 場所と大会名設定関連の状態
   const [venueDialogOpen, setVenueDialogOpen] = useState(false);
+
+  // 未保存の変更検知・「新しい試合」確認ダイアログ関連の状態
+  // resetGame/loadGame の直後に発火する gameState 変更を「変更なし」として
+  // 扱うためのフラグ（保存済みスナップショットの更新をスキップしない対象）
+  const pendingBaselineResetRef = useRef(false);
+  const [savedSnapshot, setSavedSnapshot] = useState<string>(() =>
+    JSON.stringify(gameState)
+  );
+  const [newGameConfirmOpen, setNewGameConfirmOpen] = useState(false);
+  const hasUnsavedChanges = JSON.stringify(gameState) !== savedSnapshot;
+
+  // 下書きの自動保存・復元関連の状態
+  const [draftRestoreAvailable, setDraftRestoreAvailable] = useState(false);
+  const draftRestoreDataRef = useRef<Game | null>(null);
 
   // 現在選択されているチーム
   const currentTeam = tabIndex === 0 ? awayTeam : homeTeam;
@@ -220,6 +247,7 @@ const MainApp: React.FC<{
           const sharedGame = await getSharedGameById(sharedGameId);
           if (sharedGame) {
             console.log('Successfully loaded shared game:', sharedGameId);
+            pendingBaselineResetRef.current = true;
             loadGame(sharedGame);
             setIsSharedMode(true);
             setActiveStep(1); // 共有リンクでは自動的に一覧表示モードに
@@ -250,6 +278,105 @@ const MainApp: React.FC<{
 
     checkSharedGame();
   }, [loadGame]);
+
+  // 新しい試合の作成・試合の読み込み直後は、その内容を「未保存の変更なし」の
+  // 基準として記録し直す
+  useEffect(() => {
+    if (pendingBaselineResetRef.current) {
+      pendingBaselineResetRef.current = false;
+      setSavedSnapshot(JSON.stringify(gameState));
+    }
+  }, [gameState]);
+
+  // 下書きの保存先キー（ユーザーごとに分離し、共用端末での混在を避ける）
+  const draftStorageKey = currentUser
+    ? `baseball-score:draft:${currentUser.uid}`
+    : null;
+
+  // 起動時（ログイン直後）に、前回保存されなかった下書きが残っていないか確認する
+  useEffect(() => {
+    if (!draftStorageKey) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('gameId')) {
+      // 共有リンクからの読み込みを優先する
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem(draftStorageKey);
+      if (!raw) return;
+
+      const draftGame = JSON.parse(raw) as Game;
+      const hasContent =
+        (draftGame.homeTeam?.atBats?.length ?? 0) > 0 ||
+        (draftGame.awayTeam?.atBats?.length ?? 0) > 0 ||
+        (draftGame.runEvents?.length ?? 0) > 0 ||
+        (draftGame.outEvents?.length ?? 0) > 0;
+
+      if (hasContent) {
+        draftRestoreDataRef.current = draftGame;
+        setDraftRestoreAvailable(true);
+      } else {
+        localStorage.removeItem(draftStorageKey);
+      }
+    } catch (error) {
+      console.error('Failed to read draft from localStorage:', error);
+    }
+    // draftStorageKey が確定した最初のタイミングでのみ確認する
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftStorageKey]);
+
+  // gameState の変更を一定時間デバウンスして下書きとして localStorage に保存する
+  useEffect(() => {
+    if (!draftStorageKey || isSharedMode) return;
+
+    const timer = setTimeout(() => {
+      try {
+        const draftGame: Game = {
+          id: gameState.id,
+          date: gameState.date,
+          venue: gameState.venue,
+          tournament: gameState.tournament,
+          homeTeam: gameState.homeTeam,
+          awayTeam: gameState.awayTeam,
+          currentInning: gameState.currentInning,
+          isTop: gameState.isTop,
+          runEvents: gameState.runEvents,
+          outEvents: gameState.outEvents,
+          lastUpdated: new Date().toISOString(),
+        };
+        localStorage.setItem(draftStorageKey, JSON.stringify(draftGame));
+      } catch (error) {
+        console.error('Failed to save draft to localStorage:', error);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [gameState, draftStorageKey, isSharedMode]);
+
+  // 下書きを復元する
+  const handleRestoreDraft = () => {
+    const draftGame = draftRestoreDataRef.current;
+    if (draftGame) {
+      pendingBaselineResetRef.current = true;
+      loadGame(draftGame);
+      setSnackbarOpen(true);
+      setSnackbarMessage('前回の入力途中の試合を復元しました');
+      setSnackbarSeverity('info');
+    }
+    draftRestoreDataRef.current = null;
+    setDraftRestoreAvailable(false);
+  };
+
+  // 下書きを破棄する
+  const handleDiscardDraft = () => {
+    if (draftStorageKey) {
+      localStorage.removeItem(draftStorageKey);
+    }
+    draftRestoreDataRef.current = null;
+    setDraftRestoreAvailable(false);
+  };
 
   // ローディング中表示
   if (sharedGameLoading || isLoading) {
@@ -430,8 +557,9 @@ const MainApp: React.FC<{
     handleMenuClose();
   };
 
-  // 新しい試合を作成
-  const handleNewGame = () => {
+  // 新しい試合を実際に作成する（確認済み、または未保存の変更がない場合）
+  const performNewGame = () => {
+    pendingBaselineResetRef.current = true;
     gameActions.resetGame();
     handleMenuClose();
     // 試合一覧画面が表示されている場合は閉じる
@@ -448,6 +576,27 @@ const MainApp: React.FC<{
     }
     // チーム選択ダイアログを表示せず、直接新しい試合画面に遷移
     // showTeamSelectionDialog();
+  };
+
+  // 新しい試合を作成（未保存の変更がある場合は確認ダイアログを挟む）
+  const handleNewGame = () => {
+    if (hasUnsavedChanges) {
+      setNewGameConfirmOpen(true);
+      handleMenuClose();
+      return;
+    }
+    performNewGame();
+  };
+
+  // 「新しい試合」確認ダイアログで実行を選んだ
+  const handleConfirmNewGame = () => {
+    setNewGameConfirmOpen(false);
+    performNewGame();
+  };
+
+  // 「新しい試合」確認ダイアログをキャンセルした
+  const handleCancelNewGame = () => {
+    setNewGameConfirmOpen(false);
   };
 
   // 表示モードの切り替え
@@ -519,6 +668,10 @@ const MainApp: React.FC<{
       let gameId: string;
       let message: string;
 
+      // 保存成功後に setGameId で変わる gameState を「未保存の変更なし」の
+      // 基準として扱う
+      pendingBaselineResetRef.current = true;
+
       if (saveAsNew) {
         // 新しい試合データとして保存
         gameId = await saveGameAsNew(gameToSave);
@@ -547,6 +700,11 @@ const MainApp: React.FC<{
 
       // 最後に保存した試合のIDをローカルストレージに保存
       localStorage.setItem('lastGameId', gameId);
+
+      // Firestoreへの保存に成功したので、ローカルの下書きは不要になる
+      if (draftStorageKey) {
+        localStorage.removeItem(draftStorageKey);
+      }
 
       // 保存ダイアログを閉じる
       setSaveDialogOpen(false);
@@ -599,6 +757,7 @@ const MainApp: React.FC<{
     try {
       const loadedGame = await getGameById(gameId);
       if (loadedGame) {
+        pendingBaselineResetRef.current = true;
         loadGame(loadedGame);
         setSnackbarMessage('試合データを読み込みました');
         setSnackbarSeverity('success');
@@ -1231,6 +1390,32 @@ const MainApp: React.FC<{
                       アウト追加
                     </Button>
                   </Stack>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1.5}
+                    sx={{ width: '100%', mt: 1.5 }}
+                  >
+                    <Button
+                      variant="outlined"
+                      onClick={gameHistory.undo}
+                      disabled={!gameHistory.canUndo}
+                      startIcon={<UndoIcon />}
+                      fullWidth={isMobile}
+                      sx={{ minHeight: isMobile ? 48 : 40 }}
+                    >
+                      元に戻す
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={gameHistory.redo}
+                      disabled={!gameHistory.canRedo}
+                      startIcon={<RedoIcon />}
+                      fullWidth={isMobile}
+                      sx={{ minHeight: isMobile ? 48 : 40 }}
+                    >
+                      やり直す
+                    </Button>
+                  </Stack>
                 </SectionCard>
 
                 <SectionCard title="選手一覧">
@@ -1508,6 +1693,39 @@ const MainApp: React.FC<{
         </DialogContent>
         <DialogActions>
           <Button onClick={closeTeamSelectionDialog}>キャンセル</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 新しい試合の確認ダイアログ（未保存の変更がある場合） */}
+      <Dialog open={newGameConfirmOpen} onClose={handleCancelNewGame}>
+        <DialogTitle>保存されていない変更があります</DialogTitle>
+        <DialogContent>
+          <Typography>
+            現在の試合データは保存されていません。新しい試合を開始すると、
+            この内容は失われます。よろしいですか？
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelNewGame}>キャンセル</Button>
+          <Button onClick={handleConfirmNewGame} color="error">
+            新しい試合を開始
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 下書き復元の確認ダイアログ */}
+      <Dialog open={draftRestoreAvailable} onClose={handleDiscardDraft}>
+        <DialogTitle>前回の入力途中の試合があります</DialogTitle>
+        <DialogContent>
+          <Typography>
+            保存されていない試合データが見つかりました。復元しますか？
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDiscardDraft}>破棄する</Button>
+          <Button onClick={handleRestoreDraft} color="primary" autoFocus>
+            復元する
+          </Button>
         </DialogActions>
       </Dialog>
 

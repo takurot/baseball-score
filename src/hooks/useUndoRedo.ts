@@ -9,14 +9,18 @@ interface UndoRedoState<T> {
   future: T[];
 }
 
+// past 履歴の上限。長時間の試合入力でメモリが際限なく増えるのを防ぐ
+const MAX_HISTORY_LENGTH = 50;
+
 /**
  * Return type for the useUndoRedo hook
  */
 export interface UseUndoRedoReturn<T> {
   /** Current state */
   state: T;
-  /** Set new state (adds current to history) */
-  set: (newState: T) => void;
+  /** Set new state (adds current to history). Accepts a value or an updater
+   * function that receives the current present state, like React's setState. */
+  set: (newState: T | ((prevState: T) => T)) => void;
   /** Undo to previous state */
   undo: () => void;
   /** Redo to next state */
@@ -63,12 +67,25 @@ export function useUndoRedo<T>(initialState: T): UseUndoRedoReturn<T> {
     [history.future.length]
   );
 
-  const set = useCallback((newState: T) => {
-    setHistory((prev) => ({
-      past: [...prev.past, prev.present],
-      present: newState,
-      future: [], // Clear future on new change
-    }));
+  const set = useCallback((newStateOrUpdater: T | ((prevState: T) => T)) => {
+    setHistory((prev) => {
+      const newPresent =
+        typeof newStateOrUpdater === 'function'
+          ? (newStateOrUpdater as (prevState: T) => T)(prev.present)
+          : newStateOrUpdater;
+
+      const newPast = [...prev.past, prev.present];
+      // 上限を超えた分は古い履歴から破棄する
+      if (newPast.length > MAX_HISTORY_LENGTH) {
+        newPast.splice(0, newPast.length - MAX_HISTORY_LENGTH);
+      }
+
+      return {
+        past: newPast,
+        present: newPresent,
+        future: [], // Clear future on new change
+      };
+    });
   }, []);
 
   const undo = useCallback(() => {
