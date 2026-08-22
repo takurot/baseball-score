@@ -164,6 +164,58 @@ describe('ScoreCalculator', () => {
     });
   });
 
+  describe('calculateOnBasePercentage', () => {
+    test('犠打を出塁率の分母に含めない', () => {
+      const atBats: AtBat[] = [
+        {
+          id: 'a1',
+          playerId: 'p1',
+          result: 'HR',
+          inning: 1,
+          rbi: 1,
+          isOut: false,
+          isTop: true,
+        },
+        {
+          id: 'a2',
+          playerId: 'p1',
+          result: 'SAC',
+          inning: 1,
+          rbi: 0,
+          isOut: true,
+          isTop: true,
+        },
+      ];
+
+      expect(ScoreCalculator.calculateOnBasePercentage(atBats)).toBe(1);
+    });
+
+    test('犠飛を出塁率の分母に含める', () => {
+      const atBats: AtBat[] = [
+        {
+          id: 'a1',
+          playerId: 'p1',
+          result: 'IH',
+          inning: 1,
+          rbi: 0,
+          isOut: false,
+          isTop: true,
+        },
+        {
+          id: 'a2',
+          playerId: 'p1',
+          result: 'SF',
+          inning: 1,
+          rbi: 1,
+          isOut: true,
+          isTop: true,
+        },
+      ];
+
+      expect(ScoreCalculator.calculateOnBasePercentage(atBats)).toBe(0.5);
+    });
+  });
+
   describe('determineWinner', () => {
     test('ホームの勝利を正しく判定する', () => {
       expect(ScoreCalculator.determineWinner(5, 3)).toBe('home');

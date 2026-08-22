@@ -180,9 +180,9 @@ const TeamStatsList: React.FC = () => {
                   <TableCell align="center">{stats.draws}</TableCell>
                   <TableCell align="center">
                     {stats.wins + stats.losses > 0
-                      ? (stats.wins / (stats.wins + stats.losses))
-                          .toFixed(3)
-                          .substring(1)
+                      ? formatBattingAvg(
+                          stats.wins / (stats.wins + stats.losses)
+                        )
                       : '.000'}
                   </TableCell>
                   <TableCell align="center">{stats.totalRuns}</TableCell>

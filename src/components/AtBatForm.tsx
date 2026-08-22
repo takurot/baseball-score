@@ -21,6 +21,7 @@ import {
 } from '@mui/icons-material';
 import { HitResult, Player, AtBat } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { HIT_RESULTS } from '../services/ScoreCalculator';
 
 // カスタムカラー定義
 const customColors = {
@@ -32,7 +33,6 @@ const customColors = {
 
 // 結果に応じた色を返す関数
 const getResultColor = (result: HitResult): string => {
-  const hitPatterns = ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'];
   const outPatterns = [
     'GO_P',
     'GO_C',
@@ -53,7 +53,7 @@ const getResultColor = (result: HitResult): string => {
   ];
   const walkPatterns = ['BB', 'HBP'];
 
-  if (hitPatterns.includes(result)) {
+  if (HIT_RESULTS.includes(result)) {
     return customColors.hit;
   }
   if (outPatterns.includes(result)) {
@@ -138,7 +138,7 @@ const isOutResult = (result: HitResult): boolean => {
 const hitOptions = [
   {
     category: 'ヒット',
-    items: ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'] as HitResult[],
+    items: [...HIT_RESULTS],
   },
   {
     category: 'ゴロアウト',

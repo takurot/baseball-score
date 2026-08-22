@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Team, RunEvent } from '../types';
+import { ScoreCalculator } from '../services/ScoreCalculator';
 
 export interface ScoreData {
   totalScore: number;
@@ -20,20 +21,6 @@ export interface UseScoreCalculationReturn {
  * - RunEvent は runCount を用いる
  * - 先攻(away)は表(isTop: true)、後攻(home)は裏(isTop: false)
  */
-const HIT_RESULTS = ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'];
-
-const calculateTotalScore = (
-  team: Team,
-  isAwayTeam: boolean,
-  runEvents: RunEvent[]
-): number => {
-  const atBatTotal = team.atBats.reduce((sum, ab) => sum + (ab.rbi || 0), 0);
-  const runEventTotal = runEvents
-    .filter((e) => e.isTop === isAwayTeam)
-    .reduce((sum, e) => sum + (e.runCount || 0), 0);
-  return atBatTotal + runEventTotal;
-};
-
 const calculateInningScores = (
   team: Team,
   isAwayTeam: boolean,
@@ -42,22 +29,18 @@ const calculateInningScores = (
 ): number[] => {
   const scores: number[] = [];
   for (let i = 1; i <= maxInning; i++) {
-    const atBatInning = team.atBats
-      .filter((ab) => ab.inning === i)
-      .reduce((sum, ab) => sum + (ab.rbi || 0), 0);
-    const runEventInning = runEvents
-      .filter((e) => e.inning === i && e.isTop === isAwayTeam)
-      .reduce((sum, e) => sum + (e.runCount || 0), 0);
-    scores.push(atBatInning + runEventInning);
+    scores.push(
+      ScoreCalculator.calculateTeamInningScore(team, runEvents, i, isAwayTeam)
+    );
   }
   return scores;
 };
 
 const calculateHits = (team: Team): number =>
-  team.atBats.filter((ab) => HIT_RESULTS.includes(ab.result)).length;
+  ScoreCalculator.calculateHits(team.atBats);
 
 const calculateErrors = (team: Team): number =>
-  team.atBats.filter((ab) => ab.result === 'E').length;
+  ScoreCalculator.calculateErrors(team.atBats);
 
 const determineMaxInning = (runEvents: RunEvent[]): number => {
   if (runEvents.length === 0) {
@@ -75,7 +58,11 @@ export const useScoreCalculation = (
 
   const homeScore = useMemo<ScoreData>(
     () => ({
-      totalScore: calculateTotalScore(homeTeam, false, runEvents),
+      totalScore: ScoreCalculator.calculateTotalScore(
+        homeTeam,
+        runEvents,
+        false
+      ),
       inningScores: calculateInningScores(
         homeTeam,
         false,
@@ -90,7 +77,11 @@ export const useScoreCalculation = (
 
   const awayScore = useMemo<ScoreData>(
     () => ({
-      totalScore: calculateTotalScore(awayTeam, true, runEvents),
+      totalScore: ScoreCalculator.calculateTotalScore(
+        awayTeam,
+        runEvents,
+        true
+      ),
       inningScores: calculateInningScores(awayTeam, true, runEvents, maxInning),
       hits: calculateHits(awayTeam),
       errors: calculateErrors(awayTeam),
@@ -100,13 +91,12 @@ export const useScoreCalculation = (
 
   const calculateInningScore = (team: Team, inning: number): number => {
     const isAwayTeam = team === awayTeam;
-    const atBatInning = team.atBats
-      .filter((ab) => ab.inning === inning)
-      .reduce((sum, ab) => sum + (ab.rbi || 0), 0);
-    const runEventInning = runEvents
-      .filter((e) => e.inning === inning && e.isTop === isAwayTeam)
-      .reduce((sum, e) => sum + (e.runCount || 0), 0);
-    return atBatInning + runEventInning;
+    return ScoreCalculator.calculateTeamInningScore(
+      team,
+      runEvents,
+      inning,
+      isAwayTeam
+    );
   };
 
   return { homeScore, awayScore, calculateInningScore };

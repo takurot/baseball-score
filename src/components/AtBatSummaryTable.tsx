@@ -22,6 +22,11 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Team, AtBat, HitResult, OutEvent } from '../types';
+import {
+  HIT_RESULTS,
+  SINGLE_RESULTS,
+  ScoreCalculator,
+} from '../services/ScoreCalculator';
 
 interface AtBatSummaryTableProps {
   team: Team;
@@ -81,7 +86,7 @@ const customColors = {
 // 結果に応じた色を返す関数
 const getResultColor = (result: HitResult): string => {
   // ヒット系
-  if (['IH', 'LH', 'CH', 'RH'].includes(result)) {
+  if (SINGLE_RESULTS.includes(result)) {
     return customColors.hit;
   }
   // 二塁打
@@ -113,100 +118,11 @@ const getResultColor = (result: HitResult): string => {
 // 結果に応じたテキスト色を返す関数
 const getTextColor = (result: HitResult): string => {
   // ヒット系、長打系、ホームランは白文字
-  if (['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'].includes(result)) {
+  if (HIT_RESULTS.includes(result)) {
     return '#FFFFFF';
   }
   // その他は黒文字
   return '#000000';
-};
-
-// 打撃成績を計算するヘルパー関数
-interface BattingStats {
-  atBats: number; // 打数
-  hits: number; // 安打数
-  rbis: number; // 打点
-  walks: number; // 四球/死球
-  singles: number; // 単打
-  doubles: number; // 二塁打
-  triples: number; // 三塁打
-  homeRuns: number; // ホームラン
-  battingAvg: number; // 打率
-  obp: number; // 出塁率
-  slg: number; // 長打率
-  ops: number; // OPS
-}
-
-// 選手の打撃成績を計算
-const calculateBattingStats = (playerAtBats: AtBat[]): BattingStats => {
-  const stats: BattingStats = {
-    atBats: 0,
-    hits: 0,
-    rbis: 0,
-    walks: 0,
-    singles: 0,
-    doubles: 0,
-    triples: 0,
-    homeRuns: 0,
-    battingAvg: 0,
-    obp: 0,
-    slg: 0,
-    ops: 0,
-  };
-
-  // 打点の合計
-  stats.rbis = playerAtBats.reduce((sum, atBat) => sum + (atBat.rbi || 0), 0);
-
-  // 打撃結果の集計
-  playerAtBats.forEach((atBat) => {
-    const result = atBat.result;
-
-    // 四球/死球はカウント
-    if (result === 'BB' || result === 'HBP') {
-      stats.walks++;
-      return;
-    }
-
-    // 犠打/犠飛はカウントしない
-    if (result === 'SAC' || result === 'SF') {
-      return;
-    }
-
-    // 打数にカウントするケース
-    stats.atBats++;
-
-    // 安打の種類に応じてカウント
-    if (['IH', 'LH', 'CH', 'RH'].includes(result)) {
-      stats.hits++;
-      stats.singles++;
-    } else if (result === '2B') {
-      stats.hits++;
-      stats.doubles++;
-    } else if (result === '3B') {
-      stats.hits++;
-      stats.triples++;
-    } else if (result === 'HR') {
-      stats.hits++;
-      stats.homeRuns++;
-    }
-  });
-
-  // 打率計算 (打数が0の場合は0)
-  stats.battingAvg = stats.atBats > 0 ? stats.hits / stats.atBats : 0;
-
-  // 出塁率計算 (打数+四球が0の場合は0)
-  const plateAppearances = stats.atBats + stats.walks;
-  stats.obp =
-    plateAppearances > 0 ? (stats.hits + stats.walks) / plateAppearances : 0;
-
-  // 長打率計算 (打数が0の場合は0)
-  const totalBases =
-    stats.singles + stats.doubles * 2 + stats.triples * 3 + stats.homeRuns * 4;
-  stats.slg = stats.atBats > 0 ? totalBases / stats.atBats : 0;
-
-  // OPS計算
-  stats.ops = stats.obp + stats.slg;
-
-  return stats;
 };
 
 // 打率などを表示するフォーマット関数
@@ -543,7 +459,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
 
         {sortedPlayers.map((player) => {
           const playerAtBats = getPlayerAllAtBats(player.id);
-          const stats = calculateBattingStats(playerAtBats);
+          const stats = ScoreCalculator.calculateBattingStats(playerAtBats);
 
           return (
             <Accordion key={player.id} sx={{ mb: 1 }}>
@@ -686,7 +602,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
           <TableBody>
             {sortedPlayers.map((player) => {
               const playerAtBats = getPlayerAllAtBats(player.id);
-              const stats = calculateBattingStats(playerAtBats);
+              const stats = ScoreCalculator.calculateBattingStats(playerAtBats);
 
               return (
                 <TableRow key={player.id}>
