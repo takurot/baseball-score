@@ -219,4 +219,44 @@ describe('useUndoRedo', () => {
     expect(result.current.canUndo).toBe(false);
     expect(result.current.canRedo).toBe(false);
   });
+
+  it('should accept an updater function like React setState', () => {
+    const { result } = renderHook(() => useUndoRedo({ count: 0 }));
+
+    act(() => {
+      result.current.set((prev) => ({ count: prev.count + 1 }));
+      result.current.set((prev) => ({ count: prev.count + 1 }));
+    });
+
+    expect(result.current.state).toEqual({ count: 2 });
+
+    act(() => {
+      result.current.undo();
+    });
+
+    expect(result.current.state).toEqual({ count: 1 });
+  });
+
+  it('should cap history length so memory does not grow without bound', () => {
+    const { result } = renderHook(() => useUndoRedo({ count: 0 }));
+
+    act(() => {
+      // 上限（50）を超える回数、状態を更新する
+      for (let i = 1; i <= 60; i += 1) {
+        result.current.set({ count: i });
+      }
+    });
+
+    expect(result.current.state).toEqual({ count: 60 });
+
+    // 何度 undo しても、破棄された履歴より前には戻れない
+    act(() => {
+      for (let i = 0; i < 60; i += 1) {
+        result.current.undo();
+      }
+    });
+
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.state).toEqual({ count: 10 });
+  });
 });

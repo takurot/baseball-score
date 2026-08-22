@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { Game, Team, AtBat, RunEvent, OutEvent } from '../types';
+import { useUndoRedo } from './useUndoRedo';
 
 type RunnerState = { first: boolean; second: boolean; third: boolean };
 
@@ -37,9 +38,18 @@ export interface GameStateActions {
   loadGame: (game: Game) => void;
 }
 
+// 打席登録・削除、得点/アウトイベント追加などの取り消し・やり直し操作
+export interface GameStateHistory {
+  canUndo: boolean;
+  canRedo: boolean;
+  undo: () => void;
+  redo: () => void;
+}
+
 export interface UseGameStateReturn {
   state: GameState;
   actions: GameStateActions;
+  history: GameStateHistory;
 }
 
 const emptyRunners = (): RunnerState => ({
@@ -142,185 +152,238 @@ const advanceRunners = (runners: RunnerState, bases: number): RunnerState => {
 };
 
 export const useGameState = (initialGame?: Game): UseGameStateReturn => {
-  const [state, setState] = useState<GameState>(() =>
-    buildInitialState(initialGame)
+  const {
+    state,
+    set: setState,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    reset: resetHistory,
+  } = useUndoRedo<GameState>(buildInitialState(initialGame));
+
+  const setHomeTeam = useCallback(
+    (team: Team) => {
+      setState((prev) => ({
+        ...prev,
+        homeTeam: normalizeTeam(team),
+      }));
+    },
+    [setState]
   );
 
-  const setHomeTeam = useCallback((team: Team) => {
-    setState((prev) => ({
-      ...prev,
-      homeTeam: normalizeTeam(team),
-    }));
-  }, []);
-
-  const setAwayTeam = useCallback((team: Team) => {
-    setState((prev) => ({
-      ...prev,
-      awayTeam: normalizeTeam(team),
-    }));
-  }, []);
-
-  const setGameId = useCallback((id: string) => {
-    setState((prev) => ({
-      ...prev,
-      id,
-    }));
-  }, []);
-
-  const setDate = useCallback((date: string) => {
-    setState((prev) => ({
-      ...prev,
-      date,
-    }));
-  }, []);
-
-  const setVenue = useCallback((venue: string) => {
-    setState((prev) => ({
-      ...prev,
-      venue,
-    }));
-  }, []);
-
-  const setTournament = useCallback((tournament: string) => {
-    setState((prev) => ({
-      ...prev,
-      tournament,
-    }));
-  }, []);
-
-  const updateInning = useCallback((inning: number, isTop: boolean) => {
-    setState((prev) => ({
-      ...prev,
-      currentInning: inning,
-      isTop,
-      outs: 0,
-      runners: emptyRunners(),
-    }));
-  }, []);
-
-  const addAtBat = useCallback((atBat: AtBat) => {
-    setState((prev) => {
-      const teamKey = atBat.isTop ? 'awayTeam' : 'homeTeam';
-      const targetTeam = prev[teamKey];
-      const updatedTeam: Team = {
-        ...targetTeam,
-        atBats: [...targetTeam.atBats, atBat],
-      };
-
-      let nextState: GameState = {
+  const setAwayTeam = useCallback(
+    (team: Team) => {
+      setState((prev) => ({
         ...prev,
-        [teamKey]: updatedTeam,
-      };
+        awayTeam: normalizeTeam(team),
+      }));
+    },
+    [setState]
+  );
 
-      if (atBat.isOut) {
-        const newOuts = prev.outs + 1;
-        if (newOuts >= 3) {
-          const nextInning = prev.isTop
-            ? prev.currentInning
-            : prev.currentInning + 1;
-          nextState = {
-            ...nextState,
-            outs: 0,
-            runners: emptyRunners(),
-            currentInning: nextInning,
-            isTop: !prev.isTop,
-          };
+  const setGameId = useCallback(
+    (id: string) => {
+      setState((prev) => ({
+        ...prev,
+        id,
+      }));
+    },
+    [setState]
+  );
+
+  const setDate = useCallback(
+    (date: string) => {
+      setState((prev) => ({
+        ...prev,
+        date,
+      }));
+    },
+    [setState]
+  );
+
+  const setVenue = useCallback(
+    (venue: string) => {
+      setState((prev) => ({
+        ...prev,
+        venue,
+      }));
+    },
+    [setState]
+  );
+
+  const setTournament = useCallback(
+    (tournament: string) => {
+      setState((prev) => ({
+        ...prev,
+        tournament,
+      }));
+    },
+    [setState]
+  );
+
+  const updateInning = useCallback(
+    (inning: number, isTop: boolean) => {
+      setState((prev) => ({
+        ...prev,
+        currentInning: inning,
+        isTop,
+        outs: 0,
+        runners: emptyRunners(),
+      }));
+    },
+    [setState]
+  );
+
+  const addAtBat = useCallback(
+    (atBat: AtBat) => {
+      setState((prev) => {
+        const teamKey = atBat.isTop ? 'awayTeam' : 'homeTeam';
+        const targetTeam = prev[teamKey];
+        const updatedTeam: Team = {
+          ...targetTeam,
+          atBats: [...targetTeam.atBats, atBat],
+        };
+
+        let nextState: GameState = {
+          ...prev,
+          [teamKey]: updatedTeam,
+        };
+
+        if (atBat.isOut) {
+          const newOuts = prev.outs + 1;
+          if (newOuts >= 3) {
+            const nextInning = prev.isTop
+              ? prev.currentInning
+              : prev.currentInning + 1;
+            nextState = {
+              ...nextState,
+              outs: 0,
+              runners: emptyRunners(),
+              currentInning: nextInning,
+              isTop: !prev.isTop,
+            };
+          } else {
+            nextState = {
+              ...nextState,
+              outs: newOuts,
+            };
+          }
         } else {
+          const bases = getBaseAdvancement(atBat.result);
           nextState = {
             ...nextState,
-            outs: newOuts,
+            runners: advanceRunners(prev.runners, bases),
           };
         }
-      } else {
-        const bases = getBaseAdvancement(atBat.result);
-        nextState = {
-          ...nextState,
-          runners: advanceRunners(prev.runners, bases),
-        };
-      }
 
-      return nextState;
-    });
-  }, []);
-
-  const updateAtBat = useCallback((updatedAtBat: AtBat) => {
-    setState((prev) => {
-      const updateTeam = (team: Team): Team => ({
-        ...team,
-        atBats: team.atBats.map((ab) =>
-          ab.id === updatedAtBat.id ? updatedAtBat : ab
-        ),
+        return nextState;
       });
+    },
+    [setState]
+  );
 
-      if (prev.homeTeam.atBats.some((ab) => ab.id === updatedAtBat.id)) {
-        return { ...prev, homeTeam: updateTeam(prev.homeTeam) };
-      }
-      if (prev.awayTeam.atBats.some((ab) => ab.id === updatedAtBat.id)) {
-        return { ...prev, awayTeam: updateTeam(prev.awayTeam) };
-      }
-      return prev;
-    });
-  }, []);
+  const updateAtBat = useCallback(
+    (updatedAtBat: AtBat) => {
+      setState((prev) => {
+        const updateTeam = (team: Team): Team => ({
+          ...team,
+          atBats: team.atBats.map((ab) =>
+            ab.id === updatedAtBat.id ? updatedAtBat : ab
+          ),
+        });
 
-  const deleteAtBat = useCallback((atBatId: string) => {
-    setState((prev) => {
-      if (prev.homeTeam.atBats.some((ab) => ab.id === atBatId)) {
-        return {
-          ...prev,
-          homeTeam: {
-            ...prev.homeTeam,
-            atBats: prev.homeTeam.atBats.filter((ab) => ab.id !== atBatId),
-          },
-        };
-      }
-      if (prev.awayTeam.atBats.some((ab) => ab.id === atBatId)) {
-        return {
-          ...prev,
-          awayTeam: {
-            ...prev.awayTeam,
-            atBats: prev.awayTeam.atBats.filter((ab) => ab.id !== atBatId),
-          },
-        };
-      }
-      return prev;
-    });
-  }, []);
+        if (prev.homeTeam.atBats.some((ab) => ab.id === updatedAtBat.id)) {
+          return { ...prev, homeTeam: updateTeam(prev.homeTeam) };
+        }
+        if (prev.awayTeam.atBats.some((ab) => ab.id === updatedAtBat.id)) {
+          return { ...prev, awayTeam: updateTeam(prev.awayTeam) };
+        }
+        return prev;
+      });
+    },
+    [setState]
+  );
 
-  const addRunEvent = useCallback((event: RunEvent) => {
-    setState((prev) => ({
-      ...prev,
-      runEvents: [...prev.runEvents, event],
-    }));
-  }, []);
+  const deleteAtBat = useCallback(
+    (atBatId: string) => {
+      setState((prev) => {
+        if (prev.homeTeam.atBats.some((ab) => ab.id === atBatId)) {
+          return {
+            ...prev,
+            homeTeam: {
+              ...prev.homeTeam,
+              atBats: prev.homeTeam.atBats.filter((ab) => ab.id !== atBatId),
+            },
+          };
+        }
+        if (prev.awayTeam.atBats.some((ab) => ab.id === atBatId)) {
+          return {
+            ...prev,
+            awayTeam: {
+              ...prev.awayTeam,
+              atBats: prev.awayTeam.atBats.filter((ab) => ab.id !== atBatId),
+            },
+          };
+        }
+        return prev;
+      });
+    },
+    [setState]
+  );
 
-  const deleteRunEvent = useCallback((eventId: string) => {
-    setState((prev) => ({
-      ...prev,
-      runEvents: prev.runEvents.filter((event) => event.id !== eventId),
-    }));
-  }, []);
+  const addRunEvent = useCallback(
+    (event: RunEvent) => {
+      setState((prev) => ({
+        ...prev,
+        runEvents: [...prev.runEvents, event],
+      }));
+    },
+    [setState]
+  );
 
-  const addOutEvent = useCallback((event: OutEvent) => {
-    setState((prev) => ({
-      ...prev,
-      outEvents: [...prev.outEvents, event],
-    }));
-  }, []);
+  const deleteRunEvent = useCallback(
+    (eventId: string) => {
+      setState((prev) => ({
+        ...prev,
+        runEvents: prev.runEvents.filter((event) => event.id !== eventId),
+      }));
+    },
+    [setState]
+  );
 
-  const deleteOutEvent = useCallback((eventId: string) => {
-    setState((prev) => ({
-      ...prev,
-      outEvents: prev.outEvents.filter((event) => event.id !== eventId),
-    }));
-  }, []);
+  const addOutEvent = useCallback(
+    (event: OutEvent) => {
+      setState((prev) => ({
+        ...prev,
+        outEvents: [...prev.outEvents, event],
+      }));
+    },
+    [setState]
+  );
+
+  const deleteOutEvent = useCallback(
+    (eventId: string) => {
+      setState((prev) => ({
+        ...prev,
+        outEvents: prev.outEvents.filter((event) => event.id !== eventId),
+      }));
+    },
+    [setState]
+  );
 
   const resetGame = useCallback(() => {
-    setState(buildInitialState());
-  }, []);
+    // 新しい試合を開始する際は、前の試合の undo/redo 履歴も破棄する
+    resetHistory(buildInitialState());
+  }, [resetHistory]);
 
-  const loadGame = useCallback((game: Game) => {
-    setState(buildInitialState(game));
-  }, []);
+  const loadGame = useCallback(
+    (game: Game) => {
+      // 別の試合を読み込む際は、以前の試合の undo/redo 履歴も破棄する
+      resetHistory(buildInitialState(game));
+    },
+    [resetHistory]
+  );
 
   return {
     state,
@@ -341,6 +404,12 @@ export const useGameState = (initialGame?: Game): UseGameStateReturn => {
       updateInning,
       resetGame,
       loadGame,
+    },
+    history: {
+      canUndo,
+      canRedo,
+      undo,
+      redo,
     },
   };
 };
