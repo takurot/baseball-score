@@ -320,4 +320,106 @@ describe('useGameState', () => {
     expect(result.current.state.venue).toBe('Tokyo Dome');
     expect(result.current.state.tournament).toBe('Winter Cup');
   });
+
+  test('history.undo/redo can revert and reapply addAtBat', () => {
+    const { result } = renderHook(() => useGameState());
+
+    act(() => {
+      result.current.actions.setAwayTeam({
+        id: 'test-team',
+        name: 'Test Team',
+        players: [
+          {
+            id: 'p1',
+            name: 'Player 1',
+            number: '1',
+            position: 'P',
+            isActive: true,
+            order: 1,
+          },
+        ],
+        atBats: [],
+      });
+    });
+
+    // setAwayTeam 自体も履歴に積まれる
+    expect(result.current.history.canUndo).toBe(true);
+
+    const atBat: AtBat = {
+      id: 'atbat1',
+      playerId: 'p1',
+      result: 'IH',
+      inning: 1,
+      isTop: true,
+      rbi: 0,
+      isOut: false,
+    };
+
+    act(() => {
+      result.current.actions.addAtBat(atBat);
+    });
+
+    expect(result.current.state.awayTeam.atBats).toHaveLength(1);
+    expect(result.current.history.canUndo).toBe(true);
+    expect(result.current.history.canRedo).toBe(false);
+
+    act(() => {
+      result.current.history.undo();
+    });
+
+    expect(result.current.state.awayTeam.atBats).toHaveLength(0);
+    expect(result.current.history.canRedo).toBe(true);
+
+    act(() => {
+      result.current.history.redo();
+    });
+
+    expect(result.current.state.awayTeam.atBats).toHaveLength(1);
+    expect(result.current.state.awayTeam.atBats[0].id).toBe('atbat1');
+  });
+
+  test('resetGame and loadGame clear the undo/redo history', () => {
+    const { result } = renderHook(() => useGameState());
+
+    act(() => {
+      result.current.actions.updateInning(3, false);
+    });
+    expect(result.current.history.canUndo).toBe(true);
+
+    act(() => {
+      result.current.actions.resetGame();
+    });
+    expect(result.current.history.canUndo).toBe(false);
+    expect(result.current.history.canRedo).toBe(false);
+
+    act(() => {
+      result.current.actions.updateInning(2, false);
+    });
+    expect(result.current.history.canUndo).toBe(true);
+
+    act(() => {
+      result.current.actions.loadGame({
+        id: 'game-1',
+        date: '2025-01-01',
+        venue: '',
+        tournament: '',
+        homeTeam: {
+          id: 'home',
+          name: 'Home Team',
+          players: [],
+          atBats: [],
+        },
+        awayTeam: {
+          id: 'away',
+          name: 'Away Team',
+          players: [],
+          atBats: [],
+        },
+        currentInning: 1,
+        isTop: true,
+      } as Game);
+    });
+    expect(result.current.history.canUndo).toBe(false);
+    expect(result.current.history.canRedo).toBe(false);
+  });
 });

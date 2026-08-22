@@ -53,6 +53,10 @@ const registerAtBatFor = async (
   await user.click(within(row).getByRole('button', { name: '打席登録' }));
 };
 
+const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: 'メニューを開く' }));
+};
+
 // 打席を登録する（結果選択→登録）ところまで実行する
 const registerAndSubmitAtBat = async (
   user: ReturnType<typeof userEvent.setup>,
@@ -64,6 +68,13 @@ const registerAndSubmitAtBat = async (
   await user.click(screen.getByRole('button', { name: resultLabel }));
   await user.click(screen.getByRole('button', { name: '登録' }));
 };
+
+// localStorage の下書きはテスト間で共有されるため、各テストの開始前に必ずクリアする
+// （前のテストが残した下書きが後続テストで復元ダイアログを誘発し、背景が
+// aria-hidden になって要素が見つからなくなるのを防ぐ）
+beforeEach(() => {
+  localStorage.clear();
+});
 
 describe('MainApp - 打席登録フロー', () => {
   test('初期状態では打順1番の選手が次打者として表示される', async () => {
@@ -99,6 +110,125 @@ describe('MainApp - 打席登録フロー', () => {
       expect(
         within(nextRow).getByRole('button', { name: '打席登録' })
       ).toHaveFocus();
+    });
+  }, 30000);
+});
+
+describe('MainApp - 試合データの損失防止', () => {
+  test('未保存の変更がない状態で「新しい試合」を選ぶと確認なしでリセットされる', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+
+    await openMenu(user);
+    await user.click(screen.getByRole('menuitem', { name: /新しい試合/ }));
+
+    // 確認ダイアログは表示されない
+    expect(
+      screen.queryByText('保存されていない変更があります')
+    ).not.toBeInTheDocument();
+  }, 30000);
+
+  test('未保存の変更がある状態で「新しい試合」を選ぶと確認ダイアログが出て、キャンセルするとデータが残る', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+
+    // 選手1の打席を登録して未保存の変更を作る
+    await registerAndSubmitAtBat(user, '選手1');
+    await screen.findByRole('button', { name: '編集' });
+
+    await openMenu(user);
+    await user.click(screen.getByRole('menuitem', { name: /新しい試合/ }));
+
+    const dialogTitle =
+      await screen.findByText('保存されていない変更があります');
+    expect(dialogTitle).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'キャンセル' }));
+
+    // ダイアログが閉じ、打席記録は残っている
+    await waitFor(() => {
+      expect(
+        screen.queryByText('保存されていない変更があります')
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: '編集' })).toBeInTheDocument();
+  }, 30000);
+
+  test('確認ダイアログで「新しい試合を開始」を選ぶと打席記録がリセットされる', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+
+    await registerAndSubmitAtBat(user, '選手1');
+    await screen.findByRole('button', { name: '編集' });
+
+    await openMenu(user);
+    await user.click(screen.getByRole('menuitem', { name: /新しい試合/ }));
+    await screen.findByText('保存されていない変更があります');
+
+    await user.click(screen.getByRole('button', { name: '新しい試合を開始' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('保存されていない変更があります')
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole('button', { name: '編集' })
+    ).not.toBeInTheDocument();
+  }, 30000);
+
+  test('「元に戻す」で打席登録を取り消し、「やり直す」で再度反映できる', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+
+    await registerAndSubmitAtBat(user, '選手1');
+    await screen.findByRole('button', { name: '編集' });
+
+    await user.click(screen.getByRole('button', { name: '元に戻す' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: '編集' })
+      ).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'やり直す' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '編集' })).toBeInTheDocument();
+    });
+  }, 30000);
+
+  test('リロードを想定した再マウント時に下書きの復元を提案する', async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderMainApp();
+
+    await registerAndSubmitAtBat(user, '選手1');
+    await screen.findByRole('button', { name: '編集' });
+
+    // デバウンス後に下書きが localStorage に保存されるのを待つ
+    await waitFor(
+      () => {
+        expect(
+          localStorage.getItem('baseball-score:draft:test-user')
+        ).not.toBeNull();
+      },
+      { timeout: 3000 }
+    );
+
+    unmount();
+
+    // リロード相当の再マウント
+    renderMainApp();
+
+    const restoreDialog =
+      await screen.findByText('前回の入力途中の試合があります');
+    expect(restoreDialog).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '復元する' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '編集' })).toBeInTheDocument();
     });
   }, 30000);
 });
