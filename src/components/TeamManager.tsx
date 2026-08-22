@@ -26,6 +26,7 @@ import { Team, Player, TeamSetting } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import PlayerList from './PlayerList';
 import { getUserTeams, getTeamById } from '../firebase/teamService';
+import { getNextBatterPlayerId } from '../services/BattingOrder';
 
 interface TeamManagerProps {
   team: Team;
@@ -291,6 +292,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         onToggleStatus={handleTogglePlayerStatus}
         onEditPlayer={handleEditPlayer}
         onUpdatePlayerOrder={handleUpdatePlayerOrder}
+        nextBatterPlayerId={getNextBatterPlayerId(team)}
       />
 
       {/* 選手追加/編集ダイアログ */}

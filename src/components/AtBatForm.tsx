@@ -10,8 +10,9 @@ import {
   TextField,
   Typography,
   Grid,
-  ListSubheader,
   Stack,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
@@ -22,8 +23,6 @@ import {
 import { HitResult, Player, AtBat } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { HIT_RESULTS, OUT_RESULTS } from '../services/ScoreCalculator';
-
-const DEFAULT_RESULT: HitResult = 'GO_2B';
 
 // カスタムカラー定義
 const customColors = {
@@ -162,7 +161,8 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
   onUpdateAtBat,
   onCancelEdit,
 }) => {
-  const [result, setResult] = useState<HitResult>(DEFAULT_RESULT);
+  // 誤入力を防ぐため、初期状態では結果を未選択（null）にする
+  const [result, setResult] = useState<HitResult | null>(null);
   const [description, setDescription] = useState('');
   const [rbi, setRbi] = useState<number>(0);
   const [successMessage, setSuccessMessage] = useState('');
@@ -171,7 +171,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
   const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   const resetFormFields = useCallback(() => {
-    setResult(DEFAULT_RESULT);
+    setResult(null);
     setDescription('');
     setRbi(0);
   }, []);
@@ -214,6 +214,9 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 結果が未選択の場合は登録・更新できない（送信ボタンも disabled にしているが、念のため型ガード）
+    if (!result) return;
 
     if (isEditMode && editingAtBat) {
       if (!onUpdateAtBat) return;
@@ -304,48 +307,73 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
 
       <Box component="form" onSubmit={handleSubmit}>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel id="result-label">打席結果</InputLabel>
-              <Select
-                labelId="result-label"
-                value={result}
-                onChange={(e) => setResult(e.target.value as HitResult)}
-                label="打席結果"
-                required
-                aria-required="true"
-                aria-describedby="result-helper-text"
-              >
-                {hitOptions.map((group) => [
-                  <ListSubheader key={group.category}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {getCategoryIcon(group.category)}
-                      <span>{group.category}</span>
-                    </Box>
-                  </ListSubheader>,
-                  ...group.items.map((hit) => (
-                    <MenuItem key={hit} value={hit}>
-                      <Typography
+          <Grid item xs={12}>
+            <Typography
+              id="result-group-label"
+              variant="subtitle2"
+              gutterBottom
+            >
+              打席結果（必須）
+            </Typography>
+            <Box
+              role="group"
+              aria-labelledby="result-group-label"
+              aria-describedby="result-helper-text"
+            >
+              {hitOptions.map((group) => (
+                <Box key={group.category} sx={{ mb: 1.5 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      mb: 0.5,
+                    }}
+                  >
+                    {getCategoryIcon(group.category)}
+                    {group.category}
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={
+                      result && group.items.includes(result) ? result : null
+                    }
+                    exclusive
+                    onChange={(_e, value: HitResult | null) => {
+                      if (value) setResult(value);
+                    }}
+                    aria-label={group.category}
+                    sx={{ flexWrap: 'wrap', rowGap: 0.5, columnGap: 0.5 }}
+                  >
+                    {group.items.map((hit) => (
+                      <ToggleButton
+                        key={hit}
+                        value={hit}
+                        size="small"
                         sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          width: '100%',
+                          textTransform: 'none',
+                          minHeight: 40,
+                          borderColor: getResultColor(hit),
                           color: getResultColor(hit),
+                          '&.Mui-selected, &.Mui-selected:hover': {
+                            backgroundColor: getResultColor(hit),
+                            color: '#fff',
+                          },
                         }}
                       >
-                        <span>{hitResultLabels[hit]}</span>
-                        <span style={{ color: 'gray', fontSize: '0.8em' }}>
-                          {hit}
-                        </span>
-                      </Typography>
-                    </MenuItem>
-                  )),
-                ])}
-              </Select>
-              <FormHelperText id="result-helper-text">
-                打席の結果を選択してください
-              </FormHelperText>
-            </FormControl>
+                        {hitResultLabels[hit]}
+                      </ToggleButton>
+                    ))}
+                  </ToggleButtonGroup>
+                </Box>
+              ))}
+            </Box>
+            <FormHelperText id="result-helper-text" error={!result}>
+              {result
+                ? `選択中: ${hitResultLabels[result]}`
+                : '打席の結果をタップして選択してください'}
+            </FormHelperText>
           </Grid>
 
           <Grid item xs={12} sm={6}>
@@ -395,7 +423,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
                   variant="contained"
                   color="primary"
                   fullWidth
-                  disabled={!onUpdateAtBat}
+                  disabled={!onUpdateAtBat || !result}
                 >
                   更新
                 </Button>
@@ -415,6 +443,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
                 variant="contained"
                 color="primary"
                 fullWidth
+                disabled={!result}
               >
                 登録
               </Button>

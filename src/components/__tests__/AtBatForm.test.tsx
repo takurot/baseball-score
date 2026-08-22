@@ -81,7 +81,7 @@ describe('AtBatForm', () => {
     );
   });
 
-  test('編集対象が外部でクリアされたら入力値を初期化する', async () => {
+  test('編集対象が外部でクリアされたら入力値を初期化し、結果が未選択の間は登録できない', async () => {
     const onAddAtBat = jest.fn();
     const user = userEvent.setup();
     const { rerender } = renderForm({
@@ -104,14 +104,43 @@ describe('AtBatForm', () => {
         />
       </ThemeProvider>
     );
+
+    // 結果が未選択の間は登録できない（誤った既定値での登録を防ぐ）
+    expect(screen.getByRole('button', { name: '登録' })).toBeDisabled();
+    expect(onAddAtBat).not.toHaveBeenCalled();
+
+    // 結果をタップして選択すると登録できるようになる
+    await user.click(screen.getByRole('button', { name: '内野安打' }));
     await user.click(screen.getByRole('button', { name: '登録' }));
 
     expect(onAddAtBat).toHaveBeenCalledWith(
       expect.objectContaining({
-        result: 'GO_2B',
+        result: 'IH',
         description: undefined,
         rbi: 0,
       })
+    );
+  });
+
+  test('打席結果をボタンでタップして選択できる', async () => {
+    const onAddAtBat = jest.fn();
+    const user = userEvent.setup();
+    renderForm({
+      player,
+      inning: 1,
+      isTop: true,
+      onAddAtBat,
+    });
+
+    expect(screen.getByRole('button', { name: '登録' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'ホームラン' }));
+    expect(screen.getByRole('button', { name: '登録' })).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: '登録' }));
+
+    expect(onAddAtBat).toHaveBeenCalledWith(
+      expect.objectContaining({ result: 'HR', isOut: false })
     );
   });
 });
