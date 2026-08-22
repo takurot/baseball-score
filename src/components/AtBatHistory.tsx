@@ -23,6 +23,7 @@ interface AtBatHistoryProps {
   atBats: AtBat[];
   players: Player[];
   inning: number;
+  isTop: boolean; // 現在表示中のタブが表（true）か裏（false）か
   runEvents?: RunEvent[];
   outEvents?: OutEvent[];
   onEditAtBat?: (atBat: AtBat) => void;
@@ -74,6 +75,7 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
   atBats,
   players,
   inning,
+  isTop,
   runEvents = [],
   outEvents = [],
   onEditAtBat,
@@ -86,14 +88,14 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
   // 指定されたイニングの打席結果のみをフィルタリング
   const filteredAtBats = atBats.filter((atBat) => atBat.inning === inning);
 
-  // 指定されたイニングの得点イベントのみをフィルタリング
+  // 指定されたイニング・表裏の得点イベントのみをフィルタリング
   const filteredRunEvents = runEvents.filter(
-    (event) => event.inning === inning
+    (event) => event.inning === inning && event.isTop === isTop
   );
 
-  // 指定されたイニングのアウトイベントのみをフィルタリング
+  // 指定されたイニング・表裏のアウトイベントのみをフィルタリング
   const filteredOutEvents = outEvents.filter(
-    (event) => event.inning === inning
+    (event) => event.inning === inning && event.isTop === isTop
   );
 
   // 打席結果も得点イベントもアウトイベントもない場合
