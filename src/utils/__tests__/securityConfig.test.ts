@@ -35,6 +35,9 @@ describe('security configuration', () => {
     expect(html).toContain(
       "connect-src 'self' ws://localhost:3000 http://localhost:8080 ws://localhost:8080"
     );
+    expect(html).toMatch(
+      /connect-src[^;]*https:\/\/www\.googletagmanager\.com/
+    );
     expect(html).toContain("object-src 'none'");
     expect(html).toContain("base-uri 'self'");
   });
@@ -75,5 +78,8 @@ describe('security configuration', () => {
     );
     expect(productionCsp).not.toContain("script-src 'self' 'unsafe-inline'");
     expect(productionCsp).not.toContain('localhost');
+    expect(productionCsp).toMatch(
+      /connect-src[^;]*https:\/\/www\.googletagmanager\.com/
+    );
   });
 });
