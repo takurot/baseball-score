@@ -375,6 +375,10 @@ const MainApp: React.FC<{
 
   // 打席結果の編集ハンドラー
   const handleEditAtBat = (atBat: AtBat) => {
+    // 編集対象の打席の選手を、現在選択中の選手ではなく playerId から解決する
+    const atBatPlayer =
+      currentTeam.players.find((p) => p.id === atBat.playerId) || null;
+    setSelectedPlayer(atBatPlayer);
     setEditingAtBat(atBat);
     setAtBatDialogOpen(true); // 編集時もダイアログを開く
   };
@@ -1203,6 +1207,7 @@ const MainApp: React.FC<{
               <AtBatSummaryTable
                 team={currentTeam}
                 maxInning={currentInning}
+                isTop={tabIndex === 0}
                 outEvents={gameState.outEvents}
               />
             ) : (
@@ -1306,6 +1311,7 @@ const MainApp: React.FC<{
                       atBats={currentTeam.atBats}
                       players={currentTeam.players}
                       inning={currentInning}
+                      isTop={tabIndex === 0}
                       runEvents={gameState.runEvents}
                       outEvents={gameState.outEvents}
                       onEditAtBat={handleEditAtBat}
