@@ -13,6 +13,9 @@ describe('security configuration', () => {
     expect(gitignore).toMatch(/^\.env\*$/m);
     expect(gitignore).toMatch(/^!\.env\.example$/m);
     expect(gitignore).toMatch(/^serviceAccountKey\*\.json$/m);
+    expect(gitignore).toMatch(/^serviceAccount\*\.json$/m);
+    expect(gitignore).toMatch(/^\*-service-account\*\.json$/m);
+    expect(gitignore).toMatch(/^\*firebase-adminsdk\*\.json$/m);
     expect(gitignore).toMatch(/^node_modules\/$/m);
   });
 
@@ -26,6 +29,9 @@ describe('security configuration', () => {
       '<meta name="referrer" content="strict-origin-when-cross-origin" />'
     );
     expect(html).toContain('http-equiv="Content-Security-Policy"');
+    expect(html).toContain(
+      "script-src 'self' https://www.googletagmanager.com"
+    );
     expect(html).toContain("object-src 'none'");
     expect(html).toContain("base-uri 'self'");
   });
