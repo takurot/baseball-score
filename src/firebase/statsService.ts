@@ -1,7 +1,8 @@
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from './config';
-import { Game, Team, AtBat, RunEvent, Player } from '../types';
+import { Game, Team, AtBat, Player } from '../types';
 import { getCurrentUser } from './authService';
+import { BattingStats, ScoreCalculator } from '../services/ScoreCalculator';
 
 // チームの通算成績インターフェース
 export interface TeamStats {
@@ -13,44 +14,17 @@ export interface TeamStats {
   draws: number;
   totalRuns: number;
   totalRunsAllowed: number;
-  battingStats: {
-    atBats: number;
-    hits: number;
-    singles: number;
-    doubles: number;
-    triples: number;
-    homeRuns: number;
-    walks: number;
-    strikeouts: number;
-    rbis: number;
-    battingAvg: number;
-    obp: number;
-    slg: number;
-    ops: number;
-  };
+  battingStats: BattingStats;
   playerStats: PlayerBattingStats[]; // 選手ごとの打撃成績を追加
 }
 
 // 選手の打撃成績インターフェース
-export interface PlayerBattingStats {
+export interface PlayerBattingStats extends BattingStats {
   playerId: string;
   playerName: string;
   playerNumber: string;
   playerPosition: string;
   gameCount: number;
-  atBats: number;
-  hits: number;
-  singles: number;
-  doubles: number;
-  triples: number;
-  homeRuns: number;
-  walks: number;
-  strikeouts: number;
-  rbis: number;
-  battingAvg: number;
-  obp: number;
-  slg: number;
-  ops: number;
 }
 
 // ゲームコレクションの定数
@@ -129,12 +103,12 @@ const processTeamStats = (
   teamStats.gameCount++;
 
   // 得点計算
-  const homeScore = calculateTotalScore(
+  const homeScore = ScoreCalculator.calculateTotalScore(
     game.homeTeam,
     game.runEvents || [],
     false
   );
-  const awayScore = calculateTotalScore(
+  const awayScore = ScoreCalculator.calculateTotalScore(
     game.awayTeam,
     game.runEvents || [],
     true
@@ -170,7 +144,7 @@ const processTeamStats = (
   }
 
   // 打撃成績の集計
-  aggregateBattingStats(teamStats, team.atBats);
+  aggregateBattingStats(teamStats.battingStats, team.atBats);
 
   // 選手ごとの打撃成績を集計
   aggregatePlayerBattingStats(teamStats, team);
@@ -195,6 +169,7 @@ const createEmptyTeamStats = (teamId: string, teamName: string): TeamStats => {
       triples: 0,
       homeRuns: 0,
       walks: 0,
+      sacrificeFlies: 0,
       strikeouts: 0,
       rbis: 0,
       battingAvg: 0,
@@ -207,66 +182,25 @@ const createEmptyTeamStats = (teamId: string, teamName: string): TeamStats => {
 };
 
 // 打撃成績を集計
-const aggregateBattingStats = (teamStats: TeamStats, atBats: AtBat[]) => {
-  const stats = teamStats.battingStats;
+const BATTING_COUNT_KEYS = [
+  'atBats',
+  'hits',
+  'singles',
+  'doubles',
+  'triples',
+  'homeRuns',
+  'walks',
+  'sacrificeFlies',
+  'strikeouts',
+  'rbis',
+] as const;
 
-  // 打点の合計
-  stats.rbis += atBats.reduce((sum, atBat) => sum + (atBat.rbi || 0), 0);
-
-  // 打撃結果の集計
-  atBats.forEach((atBat) => {
-    const result = atBat.result;
-
-    // 四球/死球はカウント
-    if (result === 'BB' || result === 'HBP') {
-      stats.walks++;
-      return;
-    }
-
-    // 犠打/犠飛はカウントしない
-    if (result === 'SAC' || result === 'SF') {
-      return;
-    }
-
-    // 三振のカウント
-    if (result === 'SO') {
-      stats.strikeouts++;
-    }
-
-    // 打数にカウントするケース
-    stats.atBats++;
-
-    // 安打の種類に応じてカウント
-    if (['IH', 'LH', 'CH', 'RH'].includes(result)) {
-      stats.hits++;
-      stats.singles++;
-    } else if (result === '2B') {
-      stats.hits++;
-      stats.doubles++;
-    } else if (result === '3B') {
-      stats.hits++;
-      stats.triples++;
-    } else if (result === 'HR') {
-      stats.hits++;
-      stats.homeRuns++;
-    }
-  });
-
-  // 打率計算 (打数が0の場合は0)
-  stats.battingAvg = stats.atBats > 0 ? stats.hits / stats.atBats : 0;
-
-  // 出塁率計算 (打数+四球が0の場合は0)
-  const plateAppearances = stats.atBats + stats.walks;
-  stats.obp =
-    plateAppearances > 0 ? (stats.hits + stats.walks) / plateAppearances : 0;
-
-  // 長打率計算 (打数が0の場合は0)
-  const totalBases =
-    stats.singles + stats.doubles * 2 + stats.triples * 3 + stats.homeRuns * 4;
-  stats.slg = stats.atBats > 0 ? totalBases / stats.atBats : 0;
-
-  // OPS計算
-  stats.ops = stats.obp + stats.slg;
+const aggregateBattingStats = (stats: BattingStats, atBats: AtBat[]) => {
+  const addedStats = ScoreCalculator.calculateBattingStats(atBats);
+  for (const key of BATTING_COUNT_KEYS) {
+    stats[key] += addedStats[key];
+  }
+  Object.assign(stats, ScoreCalculator.calculateBattingRates(stats));
 };
 
 // 選手ごとの打撃成績を集計
@@ -292,73 +226,7 @@ const aggregatePlayerBattingStats = (teamStats: TeamStats, team: Team) => {
       (atBat) => atBat.playerId === player.id
     );
 
-    // 打点の合計
-    playerStats.rbis += playerAtBats.reduce(
-      (sum, atBat) => sum + (atBat.rbi || 0),
-      0
-    );
-
-    // 打撃結果の集計
-    playerAtBats.forEach((atBat) => {
-      const result = atBat.result;
-
-      // 四球/死球はカウント
-      if (result === 'BB' || result === 'HBP') {
-        playerStats!.walks++;
-        return;
-      }
-
-      // 犠打/犠飛はカウントしない
-      if (result === 'SAC' || result === 'SF') {
-        return;
-      }
-
-      // 三振のカウント
-      if (result === 'SO') {
-        playerStats!.strikeouts++;
-      }
-
-      // 打数にカウントするケース
-      playerStats!.atBats++;
-
-      // 安打の種類に応じてカウント
-      if (['IH', 'LH', 'CH', 'RH'].includes(result)) {
-        playerStats!.hits++;
-        playerStats!.singles++;
-      } else if (result === '2B') {
-        playerStats!.hits++;
-        playerStats!.doubles++;
-      } else if (result === '3B') {
-        playerStats!.hits++;
-        playerStats!.triples++;
-      } else if (result === 'HR') {
-        playerStats!.hits++;
-        playerStats!.homeRuns++;
-      }
-    });
-
-    // 打率計算 (打数が0の場合は0)
-    playerStats.battingAvg =
-      playerStats.atBats > 0 ? playerStats.hits / playerStats.atBats : 0;
-
-    // 出塁率計算 (打数+四球が0の場合は0)
-    const plateAppearances = playerStats.atBats + playerStats.walks;
-    playerStats.obp =
-      plateAppearances > 0
-        ? (playerStats.hits + playerStats.walks) / plateAppearances
-        : 0;
-
-    // 長打率計算 (打数が0の場合は0)
-    const totalBases =
-      playerStats.singles +
-      playerStats.doubles * 2 +
-      playerStats.triples * 3 +
-      playerStats.homeRuns * 4;
-    playerStats.slg =
-      playerStats.atBats > 0 ? totalBases / playerStats.atBats : 0;
-
-    // OPS計算
-    playerStats.ops = playerStats.obp + playerStats.slg;
+    aggregateBattingStats(playerStats, playerAtBats);
   });
 
   // プレイヤー成績を打率の降順でソート
@@ -393,6 +261,7 @@ const createEmptyPlayerStats = (player: Player): PlayerBattingStats => {
     triples: 0,
     homeRuns: 0,
     walks: 0,
+    sacrificeFlies: 0,
     strikeouts: 0,
     rbis: 0,
     battingAvg: 0,
@@ -400,24 +269,4 @@ const createEmptyPlayerStats = (player: Player): PlayerBattingStats => {
     slg: 0,
     ops: 0,
   };
-};
-
-// チームの合計得点を計算
-const calculateTotalScore = (
-  team: Team,
-  runEvents: RunEvent[],
-  isAwayTeam: boolean
-): number => {
-  // 全ての打席結果の打点を合計
-  const atBatTotal = team.atBats.reduce(
-    (total, atBat) => total + (atBat.rbi || 0),
-    0
-  );
-
-  // 全ての得点イベントを合計
-  const runEventTotal = runEvents
-    .filter((event) => event.isTop === isAwayTeam)
-    .reduce((total, event) => total + (event.runCount || 0), 0);
-
-  return atBatTotal + runEventTotal;
 };

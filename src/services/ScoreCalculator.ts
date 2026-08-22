@@ -1,7 +1,50 @@
-import { RunEvent, AtBat } from '../types';
+import { RunEvent, AtBat, HitResult, Team } from '../types';
+
+export const SINGLE_RESULTS: readonly HitResult[] = ['IH', 'LH', 'CH', 'RH'];
+export const HIT_RESULTS: readonly HitResult[] = [
+  ...SINGLE_RESULTS,
+  '2B',
+  '3B',
+  'HR',
+];
+export const NON_AT_BAT_RESULTS: readonly HitResult[] = [
+  'BB',
+  'HBP',
+  'SAC',
+  'SF',
+];
+
+export interface BattingStats {
+  atBats: number;
+  hits: number;
+  singles: number;
+  doubles: number;
+  triples: number;
+  homeRuns: number;
+  walks: number; // 四球と死球の合計
+  sacrificeFlies: number;
+  strikeouts: number;
+  rbis: number;
+  battingAvg: number;
+  obp: number;
+  slg: number;
+  ops: number;
+}
+
+type BattingRateCounts = Pick<
+  BattingStats,
+  | 'atBats'
+  | 'hits'
+  | 'singles'
+  | 'doubles'
+  | 'triples'
+  | 'homeRuns'
+  | 'walks'
+  | 'sacrificeFlies'
+>;
 
 /**
- * スコア計算を行う純粋関数群
+ * スコアと打撃成績を計算する純粋関数群
  */
 export class ScoreCalculator {
   static calculateInningScore(
@@ -10,8 +53,8 @@ export class ScoreCalculator {
     isTop: boolean
   ): number {
     return runEvents
-      .filter((e) => e.inning === inning && e.isTop === isTop)
-      .reduce((sum, e) => sum + (e.runCount || 0), 0);
+      .filter((event) => event.inning === inning && event.isTop === isTop)
+      .reduce((sum, event) => sum + (event.runCount || 0), 0);
   }
 
   static calculateTotalRunEvents(
@@ -19,63 +62,113 @@ export class ScoreCalculator {
     isTop: boolean
   ): number {
     return runEvents
-      .filter((e) => e.isTop === isTop)
-      .reduce((sum, e) => sum + (e.runCount || 0), 0);
+      .filter((event) => event.isTop === isTop)
+      .reduce((sum, event) => sum + (event.runCount || 0), 0);
+  }
+
+  /** 先攻は表、後攻は裏としてチームのイニング得点を計算する。 */
+  static calculateTeamInningScore(
+    team: Team,
+    runEvents: RunEvent[],
+    inning: number,
+    isAwayTeam: boolean
+  ): number {
+    const atBatRuns = team.atBats
+      .filter((atBat) => atBat.inning === inning)
+      .reduce((sum, atBat) => sum + (atBat.rbi || 0), 0);
+    return atBatRuns + this.calculateInningScore(runEvents, inning, isAwayTeam);
+  }
+
+  static calculateTotalScore(
+    team: Team,
+    runEvents: RunEvent[],
+    isAwayTeam: boolean
+  ): number {
+    const atBatRuns = team.atBats.reduce(
+      (sum, atBat) => sum + (atBat.rbi || 0),
+      0
+    );
+    return atBatRuns + this.calculateTotalRunEvents(runEvents, isAwayTeam);
   }
 
   static calculateHits(atBats: AtBat[]): number {
-    const hitResults = ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR'];
-    return atBats.filter((ab) => hitResults.includes(ab.result)).length;
+    return atBats.filter((atBat) => HIT_RESULTS.includes(atBat.result)).length;
   }
 
-  static calculateBattingAverage(atBats: AtBat[]): number {
-    const validAtBats = atBats.filter(
-      (ab) => !['BB', 'HBP', 'SAC', 'SF'].includes(ab.result)
-    );
-    if (validAtBats.length === 0) return 0;
-    const hits = this.calculateHits(validAtBats);
-    return hits / validAtBats.length;
+  static calculateErrors(atBats: AtBat[]): number {
+    return atBats.filter((atBat) => atBat.result === 'E').length;
   }
 
-  static calculateSluggingPercentage(atBats: AtBat[]): number {
-    const validAtBats = atBats.filter(
-      (ab) => !['BB', 'HBP', 'SAC', 'SF'].includes(ab.result)
-    );
-    if (validAtBats.length === 0) return 0;
-    const totalBases = validAtBats.reduce((sum, ab) => {
-      switch (ab.result) {
-        case 'IH':
-        case 'LH':
-        case 'CH':
-        case 'RH':
-          return sum + 1;
-        case '2B':
-          return sum + 2;
-        case '3B':
-          return sum + 3;
-        case 'HR':
-          return sum + 4;
-        default:
-          return sum;
+  static calculateBattingRates(
+    counts: BattingRateCounts
+  ): Pick<BattingStats, 'battingAvg' | 'obp' | 'slg' | 'ops'> {
+    const battingAvg = counts.atBats > 0 ? counts.hits / counts.atBats : 0;
+    const onBaseDenominator =
+      counts.atBats + counts.walks + counts.sacrificeFlies;
+    const obp =
+      onBaseDenominator > 0
+        ? (counts.hits + counts.walks) / onBaseDenominator
+        : 0;
+    const totalBases =
+      counts.singles +
+      counts.doubles * 2 +
+      counts.triples * 3 +
+      counts.homeRuns * 4;
+    const slg = counts.atBats > 0 ? totalBases / counts.atBats : 0;
+
+    return { battingAvg, obp, slg, ops: obp + slg };
+  }
+
+  static calculateBattingStats(atBats: AtBat[]): BattingStats {
+    const stats: BattingStats = {
+      atBats: 0,
+      hits: 0,
+      singles: 0,
+      doubles: 0,
+      triples: 0,
+      homeRuns: 0,
+      walks: 0,
+      sacrificeFlies: 0,
+      strikeouts: 0,
+      rbis: 0,
+      battingAvg: 0,
+      obp: 0,
+      slg: 0,
+      ops: 0,
+    };
+
+    for (const atBat of atBats) {
+      stats.rbis += atBat.rbi || 0;
+
+      if (NON_AT_BAT_RESULTS.includes(atBat.result)) {
+        if (atBat.result === 'BB' || atBat.result === 'HBP') {
+          stats.walks++;
+        } else if (atBat.result === 'SF') {
+          stats.sacrificeFlies++;
+        }
+        continue;
       }
-    }, 0);
-    return totalBases / validAtBats.length;
-  }
 
-  static calculateOnBasePercentage(atBats: AtBat[]): number {
-    if (atBats.length === 0) return 0;
-    const timesOnBase = atBats.filter((ab) =>
-      ['IH', 'LH', 'CH', 'RH', '2B', '3B', 'HR', 'BB', 'HBP'].includes(
-        ab.result
-      )
-    ).length;
-    return timesOnBase / atBats.length;
-  }
+      stats.atBats++;
+      if (atBat.result === 'SO') {
+        stats.strikeouts++;
+      }
+      if (SINGLE_RESULTS.includes(atBat.result)) {
+        stats.hits++;
+        stats.singles++;
+      } else if (atBat.result === '2B') {
+        stats.hits++;
+        stats.doubles++;
+      } else if (atBat.result === '3B') {
+        stats.hits++;
+        stats.triples++;
+      } else if (atBat.result === 'HR') {
+        stats.hits++;
+        stats.homeRuns++;
+      }
+    }
 
-  static calculateOPS(atBats: AtBat[]): number {
-    const obp = this.calculateOnBasePercentage(atBats);
-    const slg = this.calculateSluggingPercentage(atBats);
-    return obp + slg;
+    return { ...stats, ...this.calculateBattingRates(stats) };
   }
 
   static determineWinner(

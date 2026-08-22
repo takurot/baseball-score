@@ -13,22 +13,14 @@ import {
   Stack,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
-import { Team, RunEvent, HitResult } from '../types';
+import { Team, RunEvent } from '../types';
+import { ScoreCalculator } from '../services/ScoreCalculator';
 
-const HIT_RESULT_SET = new Set<HitResult>([
-  'IH',
-  'LH',
-  'CH',
-  'RH',
-  '2B',
-  '3B',
-  'HR',
-] as HitResult[]);
 const countHits = (team: Team): number =>
-  team.atBats.filter((atBat) => HIT_RESULT_SET.has(atBat.result)).length;
+  ScoreCalculator.calculateHits(team.atBats);
 
 const countErrors = (team: Team): number =>
-  team.atBats.filter((atBat) => atBat.result === 'E').length;
+  ScoreCalculator.calculateErrors(team.atBats);
 
 interface ScoreBoardProps {
   homeTeam: Team;
@@ -57,53 +49,12 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
     [displayInnings]
   );
 
-  // 得点イベントから得点を計算
-  const calculateRunEventsScore = (inning: number, isTop: boolean): number => {
-    return runEvents
-      .filter((event) => event.inning === inning && event.isTop === isTop)
-      .reduce((total, event) => total + (event.runCount || 0), 0);
-  };
-
-  // チームの得点を計算
-  const calculateScore = (
-    team: Team,
-    inning: number,
-    isAwayTeam: boolean
-  ): number => {
-    // 打席結果からの得点
-    const atBatScore = team.atBats
-      .filter((atBat) => atBat.inning === inning)
-      .reduce((total, atBat) => total + (atBat.rbi || 0), 0);
-
-    // 得点イベントからの得点（先攻チームは表、後攻チームは裏）
-    const runEventScore = calculateRunEventsScore(inning, isAwayTeam);
-
-    return atBatScore + runEventScore;
-  };
-
-  // チームの合計得点を計算
-  const calculateTotalScore = (team: Team, isAwayTeam: boolean): number => {
-    // 全ての打席結果の打点を合計
-    const atBatTotal = team.atBats.reduce(
-      (total, atBat) => total + (atBat.rbi || 0),
-      0
-    );
-
-    // 全ての得点イベントを合計（イニングごとにフィルタリング）
-    const runEventTotal = runEvents
-      .filter((event) => event.isTop === isAwayTeam)
-      .reduce((total, event) => total + (event.runCount || 0), 0);
-
-    return atBatTotal + runEventTotal;
-  };
-
   // 合計得点を事前に計算してメモ化
   const totalScores = useMemo(
     () => ({
-      away: calculateTotalScore(awayTeam, true),
-      home: calculateTotalScore(homeTeam, false),
+      away: ScoreCalculator.calculateTotalScore(awayTeam, runEvents, true),
+      home: ScoreCalculator.calculateTotalScore(homeTeam, runEvents, false),
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [awayTeam, homeTeam, runEvents]
   );
 
@@ -345,7 +296,12 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                     ...(inning === currentInning ? highlightStyles : {}),
                   }}
                 >
-                  {calculateScore(awayTeam, inning, true)}
+                  {ScoreCalculator.calculateTeamInningScore(
+                    awayTeam,
+                    runEvents,
+                    inning,
+                    true
+                  )}
                 </TableCell>
               ))}
               <TableCell
@@ -397,7 +353,12 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                     ...(inning === currentInning ? highlightStyles : {}),
                   }}
                 >
-                  {calculateScore(homeTeam, inning, false)}
+                  {ScoreCalculator.calculateTeamInningScore(
+                    homeTeam,
+                    runEvents,
+                    inning,
+                    false
+                  )}
                 </TableCell>
               ))}
               <TableCell

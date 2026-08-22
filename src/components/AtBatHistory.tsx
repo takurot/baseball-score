@@ -17,6 +17,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { AtBat, Player, HitResult, RunEvent, OutEvent } from '../types';
+import { SINGLE_RESULTS } from '../services/ScoreCalculator';
 
 interface AtBatHistoryProps {
   atBats: AtBat[];
@@ -122,7 +123,7 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
     result: HitResult
   ): 'success' | 'error' | 'warning' | 'default' | 'info' | 'secondary' => {
     // ヒット系
-    if (['IH', 'LH', 'CH', 'RH'].includes(result)) {
+    if (SINGLE_RESULTS.includes(result)) {
       return 'success';
     }
     // 長打系

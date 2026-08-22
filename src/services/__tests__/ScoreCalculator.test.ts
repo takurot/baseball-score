@@ -42,7 +42,7 @@ describe('ScoreCalculator', () => {
     });
   });
 
-  describe('calculateBattingAverage', () => {
+  describe('calculateBattingStats', () => {
     test('打率を正しく計算する', () => {
       const atBats: AtBat[] = [
         {
@@ -82,7 +82,9 @@ describe('ScoreCalculator', () => {
           isTop: true,
         },
       ];
-      expect(ScoreCalculator.calculateBattingAverage(atBats)).toBe(0.5);
+      expect(ScoreCalculator.calculateBattingStats(atBats).battingAvg).toBe(
+        0.5
+      );
     });
 
     test('四球は打数に含めない', () => {
@@ -115,11 +117,13 @@ describe('ScoreCalculator', () => {
           isTop: true,
         },
       ];
-      expect(ScoreCalculator.calculateBattingAverage(atBats)).toBe(0.5);
+      expect(ScoreCalculator.calculateBattingStats(atBats).battingAvg).toBe(
+        0.5
+      );
     });
   });
 
-  describe('calculateOPS', () => {
+  describe('OPS', () => {
     test('OPSを正しく計算する', () => {
       const atBats: AtBat[] = [
         {
@@ -159,8 +163,60 @@ describe('ScoreCalculator', () => {
           isTop: true,
         },
       ];
-      const ops = ScoreCalculator.calculateOPS(atBats);
+      const { ops } = ScoreCalculator.calculateBattingStats(atBats);
       expect(ops).toBeGreaterThan(0);
+    });
+  });
+
+  describe('出塁率', () => {
+    test('犠打を出塁率の分母に含めない', () => {
+      const atBats: AtBat[] = [
+        {
+          id: 'a1',
+          playerId: 'p1',
+          result: 'HR',
+          inning: 1,
+          rbi: 1,
+          isOut: false,
+          isTop: true,
+        },
+        {
+          id: 'a2',
+          playerId: 'p1',
+          result: 'SAC',
+          inning: 1,
+          rbi: 0,
+          isOut: true,
+          isTop: true,
+        },
+      ];
+
+      expect(ScoreCalculator.calculateBattingStats(atBats).obp).toBe(1);
+    });
+
+    test('犠飛を出塁率の分母に含める', () => {
+      const atBats: AtBat[] = [
+        {
+          id: 'a1',
+          playerId: 'p1',
+          result: 'IH',
+          inning: 1,
+          rbi: 0,
+          isOut: false,
+          isTop: true,
+        },
+        {
+          id: 'a2',
+          playerId: 'p1',
+          result: 'SF',
+          inning: 1,
+          rbi: 1,
+          isOut: true,
+          isTop: true,
+        },
+      ];
+
+      expect(ScoreCalculator.calculateBattingStats(atBats).obp).toBe(0.5);
     });
   });
 
