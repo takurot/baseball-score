@@ -31,6 +31,7 @@ import {
 interface AtBatSummaryTableProps {
   team: Team;
   maxInning: number;
+  isTop: boolean; // 表示中のチームが表（true）か裏（false）か
   outEvents?: OutEvent[];
 }
 
@@ -139,6 +140,7 @@ const formatOPS = (value: number): string => {
 const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
   team,
   maxInning,
+  isTop,
   outEvents = [],
 }): JSX.Element => {
   const theme = useTheme();
@@ -204,7 +206,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
 
   // イニングごとにアウトイベントがあるかどうかを確認
   const hasOutEventsForInning = (inning: number): boolean => {
-    return getOutEventsForInning(inning, true).length > 0;
+    return getOutEventsForInning(inning, isTop).length > 0;
   };
 
   // 打席結果を表示するセル（複数の結果に対応）
@@ -262,7 +264,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
 
   // アウトイベントを表示する行（デスクトップ表示用）
   const renderOutEventRow = (inning: number) => {
-    const outEvents = getOutEventsForInning(inning, true);
+    const outEvents = getOutEventsForInning(inning, isTop);
     if (!outEvents.length) return null;
 
     return (
@@ -413,7 +415,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
                   回のその他のアウト:
                 </Typography>
                 <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                  {getOutEventsForInning(inning, true).map((event) => (
+                  {getOutEventsForInning(inning, isTop).map((event) => (
                     <Tooltip
                       key={event.id}
                       title={`${event.outType}${event.note ? ` - ${event.note}` : ''}`}
@@ -434,11 +436,11 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
                   ))}
                 </Stack>
                 {/* 注記があれば表示 */}
-                {getOutEventsForInning(inning, true).some(
+                {getOutEventsForInning(inning, isTop).some(
                   (event) => event.note
                 ) && (
                   <Box sx={{ mt: 1, pl: 1, borderLeft: '2px solid #e0e0e0' }}>
-                    {getOutEventsForInning(inning, true)
+                    {getOutEventsForInning(inning, isTop)
                       .filter((event) => event.note)
                       .map((event) => (
                         <Typography
