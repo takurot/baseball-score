@@ -62,11 +62,14 @@ const registerAndSubmitAtBat = async (
   await user.click(screen.getByRole('button', { name: '登録' }));
 };
 
-describe('MainApp - 試合データの損失防止', () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
+// localStorage の下書きはテスト間で共有されるため、各テストの開始前に必ずクリアする
+// （前のテストが残した下書きが後続テストで復元ダイアログを誘発し、背景が
+// aria-hidden になって要素が見つからなくなるのを防ぐ）
+beforeEach(() => {
+  localStorage.clear();
+});
 
+describe('MainApp - 試合データの損失防止', () => {
   test('未保存の変更がない状態で「新しい試合」を選ぶと確認なしでリセットされる', async () => {
     const user = userEvent.setup();
     renderMainApp();
@@ -182,5 +185,38 @@ describe('MainApp - 試合データの損失防止', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '編集' })).toBeInTheDocument();
     });
+  }, 15000);
+});
+
+describe('MainApp - 打席結果編集ダイアログ', () => {
+  test('編集対象打席の選手名が正しく表示される（選択中の選手と異なる場合も）', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+
+    // 選手1の打席を登録する
+    await registerAtBatFor(user, '選手1');
+    expect(
+      await screen.findByRole('heading', { name: /打席結果登録: 選手1/ })
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '登録' }));
+
+    // 登録完了でダイアログが閉じ、selectedPlayer は null に戻る
+    await screen.findByRole('button', { name: '編集' });
+
+    // 選手2の打席を登録する（selectedPlayer が別の選手に変わる状況を作る）
+    await registerAtBatFor(user, '選手2');
+    await user.click(screen.getByRole('button', { name: '登録' }));
+
+    // 選手1の打席を編集する
+    const editButtons = await screen.findAllByRole('button', {
+      name: '編集',
+    });
+    await user.click(editButtons[0]);
+
+    const title = await screen.findByRole('heading', {
+      name: /打席結果編集/,
+    });
+    expect(title).toHaveTextContent('選手1');
+    expect(title).not.toHaveTextContent('不明な選手');
   }, 15000);
 });

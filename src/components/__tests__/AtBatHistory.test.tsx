@@ -59,7 +59,12 @@ const mockAtBats: AtBat[] = [
 describe('AtBatHistory', () => {
   test('displays at-bat records correctly', () => {
     render(
-      <AtBatHistory atBats={mockAtBats} players={mockPlayers} inning={1} />
+      <AtBatHistory
+        atBats={mockAtBats}
+        players={mockPlayers}
+        inning={1}
+        isTop={true}
+      />
     );
 
     // 1イニングの打席記録が表示されることを確認（名前と守備位置を含む）
@@ -71,7 +76,12 @@ describe('AtBatHistory', () => {
 
   test('filters at-bats by inning', () => {
     render(
-      <AtBatHistory atBats={mockAtBats} players={mockPlayers} inning={2} />
+      <AtBatHistory
+        atBats={mockAtBats}
+        players={mockPlayers}
+        inning={2}
+        isTop={true}
+      />
     );
 
     // 2イニングの記録のみ表示
@@ -101,6 +111,7 @@ describe('AtBatHistory', () => {
         atBats={atBatsWithUnknownPlayer}
         players={mockPlayers}
         inning={1}
+        isTop={true}
       />
     );
 
@@ -115,6 +126,7 @@ describe('AtBatHistory', () => {
         atBats={mockAtBats}
         players={mockPlayers}
         inning={1}
+        isTop={true}
         onEditAtBat={handleEdit}
       />
     );
@@ -134,6 +146,7 @@ describe('AtBatHistory', () => {
         atBats={mockAtBats}
         players={mockPlayers}
         inning={1}
+        isTop={true}
         onDeleteAtBat={handleDelete}
       />
     );
@@ -148,7 +161,12 @@ describe('AtBatHistory', () => {
 
   test('does not show edit/delete buttons when handlers are not provided', () => {
     render(
-      <AtBatHistory atBats={mockAtBats} players={mockPlayers} inning={1} />
+      <AtBatHistory
+        atBats={mockAtBats}
+        players={mockPlayers}
+        inning={1}
+        isTop={true}
+      />
     );
 
     expect(screen.queryByLabelText('編集')).not.toBeInTheDocument();
@@ -157,7 +175,12 @@ describe('AtBatHistory', () => {
 
   test('displays memo when provided', () => {
     render(
-      <AtBatHistory atBats={mockAtBats} players={mockPlayers} inning={1} />
+      <AtBatHistory
+        atBats={mockAtBats}
+        players={mockPlayers}
+        inning={1}
+        isTop={true}
+      />
     );
 
     // memoカラムに「センターに抜けた」が表示される、もしくは詳細カラムに表示
@@ -167,7 +190,12 @@ describe('AtBatHistory', () => {
 
   test('displays message when no at-bats for the inning', () => {
     render(
-      <AtBatHistory atBats={mockAtBats} players={mockPlayers} inning={5} />
+      <AtBatHistory
+        atBats={mockAtBats}
+        players={mockPlayers}
+        inning={5}
+        isTop={true}
+      />
     );
 
     expect(screen.getByText(/まだ記録がありません/)).toBeInTheDocument();
@@ -191,6 +219,7 @@ describe('AtBatHistory', () => {
         atBats={[]}
         players={mockPlayers}
         inning={1}
+        isTop={true}
         runEvents={runEvents}
       />
     );
@@ -217,6 +246,7 @@ describe('AtBatHistory', () => {
         atBats={[]}
         players={mockPlayers}
         inning={1}
+        isTop={true}
         outEvents={outEvents}
       />
     );
@@ -245,6 +275,7 @@ describe('AtBatHistory', () => {
         atBats={[]}
         players={mockPlayers}
         inning={1}
+        isTop={true}
         runEvents={runEvents}
         onDeleteRunEvent={handleDeleteRunEvent}
       />
@@ -274,6 +305,7 @@ describe('AtBatHistory', () => {
         atBats={[]}
         players={mockPlayers}
         inning={1}
+        isTop={true}
         outEvents={outEvents}
         onDeleteOutEvent={handleDeleteOutEvent}
       />
@@ -303,6 +335,7 @@ describe('AtBatHistory', () => {
         atBats={[]}
         players={mockPlayers}
         inning={1}
+        isTop={true}
         runEvents={runEvents}
         currentTeamName="ホークス"
         opposingTeamName="タイガース"
@@ -312,5 +345,98 @@ describe('AtBatHistory', () => {
     // チーム名はテーブルヘッダーやイベントの説明で使用される可能性がある
     // ここでは最低限レンダリングできることを確認
     expect(screen.getByText('その他の得点')).toBeInTheDocument();
+  });
+
+  test('表のイベントのみを表示し、裏のイベントは表示しない', () => {
+    const runEvents = [
+      {
+        id: 're-top',
+        inning: 1,
+        isTop: true,
+        runType: '押し出し' as const,
+        runCount: 1,
+        note: '表チームの得点',
+        timestamp: new Date(),
+      },
+      {
+        id: 're-bottom',
+        inning: 1,
+        isTop: false,
+        runType: '押し出し' as const,
+        runCount: 1,
+        note: '裏チームの得点',
+        timestamp: new Date(),
+      },
+    ];
+    const outEvents = [
+      {
+        id: 'oe-top',
+        inning: 1,
+        isTop: true,
+        outType: '牽制アウト' as const,
+        note: '表チームのアウト',
+        timestamp: new Date(),
+      },
+      {
+        id: 'oe-bottom',
+        inning: 1,
+        isTop: false,
+        outType: '牽制アウト' as const,
+        note: '裏チームのアウト',
+        timestamp: new Date(),
+      },
+    ];
+
+    render(
+      <AtBatHistory
+        atBats={[]}
+        players={mockPlayers}
+        inning={1}
+        isTop={true}
+        runEvents={runEvents}
+        outEvents={outEvents}
+      />
+    );
+
+    expect(screen.getByText('表チームの得点')).toBeInTheDocument();
+    expect(screen.queryByText('裏チームの得点')).not.toBeInTheDocument();
+    expect(screen.getByText('表チームのアウト')).toBeInTheDocument();
+    expect(screen.queryByText('裏チームのアウト')).not.toBeInTheDocument();
+  });
+
+  test('裏のタブでは裏のイベントのみを表示する', () => {
+    const runEvents = [
+      {
+        id: 're-top',
+        inning: 1,
+        isTop: true,
+        runType: '押し出し' as const,
+        runCount: 1,
+        note: '表チームの得点',
+        timestamp: new Date(),
+      },
+      {
+        id: 're-bottom',
+        inning: 1,
+        isTop: false,
+        runType: '押し出し' as const,
+        runCount: 1,
+        note: '裏チームの得点',
+        timestamp: new Date(),
+      },
+    ];
+
+    render(
+      <AtBatHistory
+        atBats={[]}
+        players={mockPlayers}
+        inning={1}
+        isTop={false}
+        runEvents={runEvents}
+      />
+    );
+
+    expect(screen.getByText('裏チームの得点')).toBeInTheDocument();
+    expect(screen.queryByText('表チームの得点')).not.toBeInTheDocument();
   });
 });
