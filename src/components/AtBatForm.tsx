@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -21,7 +21,9 @@ import {
 } from '@mui/icons-material';
 import { HitResult, Player, AtBat } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { HIT_RESULTS } from '../services/ScoreCalculator';
+import { HIT_RESULTS, OUT_RESULTS } from '../services/ScoreCalculator';
+
+const DEFAULT_RESULT: HitResult = 'GO_2B';
 
 // カスタムカラー定義
 const customColors = {
@@ -33,30 +35,12 @@ const customColors = {
 
 // 結果に応じた色を返す関数
 const getResultColor = (result: HitResult): string => {
-  const outPatterns = [
-    'GO_P',
-    'GO_C',
-    'GO_1B',
-    'GO_2B',
-    'GO_3B',
-    'GO_SS',
-    'GO_RF',
-    'FO_LF',
-    'FO_CF',
-    'FO_RF',
-    'FO_IF',
-    'LO',
-    'DP',
-    'SO',
-    'SAC',
-    'SF',
-  ];
   const walkPatterns = ['BB', 'HBP'];
 
   if (HIT_RESULTS.includes(result)) {
     return customColors.hit;
   }
-  if (outPatterns.includes(result)) {
+  if (OUT_RESULTS.includes(result)) {
     return customColors.out;
   }
   if (walkPatterns.includes(result)) {
@@ -114,24 +98,7 @@ const hitResultLabels: Record<HitResult, string> = {
 
 // 結果がアウトかどうかを判定する関数
 const isOutResult = (result: HitResult): boolean => {
-  return [
-    'GO_P',
-    'GO_C',
-    'GO_1B',
-    'GO_2B',
-    'GO_3B',
-    'GO_SS',
-    'GO_RF',
-    'FO_LF',
-    'FO_CF',
-    'FO_RF',
-    'FO_IF',
-    'LO',
-    'DP',
-    'SAC',
-    'SF',
-    'SO',
-  ].includes(result);
+  return OUT_RESULTS.includes(result);
 };
 
 // 打撃結果をカテゴリごとにグループ化（定数なのでコンポーネント外に配置）
@@ -176,7 +143,7 @@ const getCategoryIcon = (category: string) => {
     case 'その他アウト':
       return <CancelIcon fontSize="small" sx={{ color: customColors.out }} />;
     case '犠打/犠飛':
-      return <SportsIcon fontSize="small" sx={{ color: customColors.other }} />;
+      return <SportsIcon fontSize="small" sx={{ color: customColors.out }} />;
     case 'その他':
       return (
         <MoreHorizIcon fontSize="small" sx={{ color: customColors.walk }} />
@@ -195,14 +162,19 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
   onUpdateAtBat,
   onCancelEdit,
 }) => {
-  const [result, setResult] = useState<HitResult>('GO_2B');
+  const [result, setResult] = useState<HitResult>(DEFAULT_RESULT);
   const [description, setDescription] = useState('');
   const [rbi, setRbi] = useState<number>(0);
   const [successMessage, setSuccessMessage] = useState('');
 
   // フォーカス管理用のref
-  const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const submitButtonRef = useRef<HTMLButtonElement>(null);
+
+  const resetFormFields = useCallback(() => {
+    setResult(DEFAULT_RESULT);
+    setDescription('');
+    setRbi(0);
+  }, []);
 
   // 編集モードの場合、フォームに値をセット
   useEffect(() => {
@@ -210,8 +182,11 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
       setResult(editingAtBat.result);
       setDescription(editingAtBat.description || '');
       setRbi(editingAtBat.rbi || 0);
+      setSuccessMessage('');
+    } else {
+      resetFormFields();
     }
-  }, [editingAtBat]);
+  }, [editingAtBat, resetFormFields]);
 
   // 成功メッセージを3秒後に自動的にクリア
   useEffect(() => {
@@ -240,7 +215,9 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isEditMode && editingAtBat && onUpdateAtBat) {
+    if (isEditMode && editingAtBat) {
+      if (!onUpdateAtBat) return;
+
       // 編集モードの場合
       const updatedAtBat: AtBat = {
         ...editingAtBat,
@@ -252,11 +229,11 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
 
       onUpdateAtBat(updatedAtBat);
       setSuccessMessage('打席結果を更新しました');
-    } else {
+    } else if (player) {
       // 新規登録モードの場合
       const newAtBat: AtBat = {
         id: uuidv4(),
-        playerId: player!.id,
+        playerId: player.id,
         inning,
         isTop,
         result,
@@ -271,9 +248,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
     }
 
     // フォームをリセット
-    setResult('GO_2B');
-    setDescription('');
-    setRbi(0);
+    resetFormFields();
 
     // 送信ボタンにフォーカスを戻す
     if (submitButtonRef.current) {
@@ -288,9 +263,7 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
     }
 
     // フォームをリセット
-    setResult('GO_2B');
-    setDescription('');
-    setRbi(0);
+    resetFormFields();
     setSuccessMessage('');
   };
 
@@ -422,11 +395,11 @@ const AtBatForm: React.FC<AtBatFormProps> = ({
                   variant="contained"
                   color="primary"
                   fullWidth
+                  disabled={!onUpdateAtBat}
                 >
                   更新
                 </Button>
                 <Button
-                  ref={cancelButtonRef}
                   variant="outlined"
                   color="secondary"
                   fullWidth
