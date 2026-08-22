@@ -24,6 +24,10 @@ const initialAtBats: AtBat[] = [
 ];
 
 describe('useAtBatHistory', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test('should add an at-bat', () => {
     const { result } = renderHook(() => useAtBatHistory(initialAtBats));
     const newAtBat: AtBat = {
@@ -66,13 +70,67 @@ describe('useAtBatHistory', () => {
     expect(result.current.atBats.find((ab) => ab.id === 'ab1')).toBeUndefined();
   });
 
-  test('should set at-bats directly', () => {
+  test('should reset at-bats loaded asynchronously', () => {
     const { result } = renderHook(() => useAtBatHistory([]));
 
     act(() => {
-      result.current.setAtBats(initialAtBats);
+      result.current.resetAtBats(initialAtBats);
     });
 
     expect(result.current.atBats).toHaveLength(2);
+  });
+
+  test('should reject a duplicate id when adding an at-bat', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = renderHook(() => useAtBatHistory(initialAtBats));
+
+    act(() => {
+      result.current.addAtBat({ ...initialAtBats[0], result: 'HR' });
+    });
+
+    expect(result.current.atBats).toEqual(initialAtBats);
+    expect(warn).toHaveBeenCalledWith('Duplicate at-bat id ignored: ab1');
+  });
+
+  test('should remove duplicate ids when resetting at-bats', () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = renderHook(() => useAtBatHistory([]));
+
+    act(() => {
+      result.current.resetAtBats([
+        initialAtBats[0],
+        { ...initialAtBats[0], result: 'HR' },
+      ]);
+    });
+
+    expect(result.current.atBats).toEqual([initialAtBats[0]]);
+  });
+
+  test('should warn and preserve history when updating a missing id', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = renderHook(() => useAtBatHistory(initialAtBats));
+
+    act(() => {
+      result.current.updateAtBat({ ...initialAtBats[0], id: 'missing' });
+    });
+
+    expect(result.current.atBats).toEqual(initialAtBats);
+    expect(warn).toHaveBeenCalledWith(
+      'At-bat id not found for update: missing'
+    );
+  });
+
+  test('should warn and preserve history when deleting a missing id', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = renderHook(() => useAtBatHistory(initialAtBats));
+
+    act(() => {
+      result.current.deleteAtBat('missing');
+    });
+
+    expect(result.current.atBats).toEqual(initialAtBats);
+    expect(warn).toHaveBeenCalledWith(
+      'At-bat id not found for deletion: missing'
+    );
   });
 });

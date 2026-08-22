@@ -13,6 +13,24 @@ export const NON_AT_BAT_RESULTS: readonly HitResult[] = [
   'SAC',
   'SF',
 ];
+export const OUT_RESULTS: readonly HitResult[] = [
+  'GO_P',
+  'GO_C',
+  'GO_1B',
+  'GO_2B',
+  'GO_3B',
+  'GO_SS',
+  'GO_RF',
+  'FO_LF',
+  'FO_CF',
+  'FO_RF',
+  'FO_IF',
+  'LO',
+  'DP',
+  'SO',
+  'SAC',
+  'SF',
+];
 
 export interface BattingStats {
   atBats: number;
