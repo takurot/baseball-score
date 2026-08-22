@@ -1,8 +1,25 @@
 import { useState, useCallback } from 'react';
 import { AtBat } from '../types';
 
+const deduplicateAtBats = (
+  atBats: AtBat[],
+  onDuplicate?: (atBatId: string) => void
+): AtBat[] => {
+  const seenIds = new Set<string>();
+  return atBats.filter((atBat) => {
+    if (seenIds.has(atBat.id)) {
+      onDuplicate?.(atBat.id);
+      return false;
+    }
+    seenIds.add(atBat.id);
+    return true;
+  });
+};
+
 export const useAtBatHistory = (initialAtBats: AtBat[]) => {
-  const [atBats, setAtBats] = useState<AtBat[]>(initialAtBats);
+  const [atBats, setAtBats] = useState<AtBat[]>(() =>
+    deduplicateAtBats(initialAtBats)
+  );
 
   const warn = useCallback((message: string) => {
     if (process.env.NODE_ENV !== 'production') {
@@ -12,56 +29,56 @@ export const useAtBatHistory = (initialAtBats: AtBat[]) => {
 
   const addAtBat = useCallback(
     (atBat: AtBat) => {
-      setAtBats((prev) => {
-        if (prev.some((existing) => existing.id === atBat.id)) {
-          warn(`Duplicate at-bat id ignored: ${atBat.id}`);
-          return prev;
-        }
-        return [...prev, atBat];
-      });
+      if (atBats.some((existing) => existing.id === atBat.id)) {
+        warn(`Duplicate at-bat id ignored: ${atBat.id}`);
+        return;
+      }
+      setAtBats((prev) =>
+        prev.some((existing) => existing.id === atBat.id)
+          ? prev
+          : [...prev, atBat]
+      );
     },
-    [warn]
+    [atBats, warn]
   );
 
   const updateAtBat = useCallback(
     (updatedAtBat: AtBat) => {
-      setAtBats((prev) => {
-        if (!prev.some((atBat) => atBat.id === updatedAtBat.id)) {
-          warn(`At-bat id not found for update: ${updatedAtBat.id}`);
-          return prev;
-        }
-        return prev.map((atBat) =>
-          atBat.id === updatedAtBat.id ? updatedAtBat : atBat
-        );
-      });
+      if (!atBats.some((atBat) => atBat.id === updatedAtBat.id)) {
+        warn(`At-bat id not found for update: ${updatedAtBat.id}`);
+        return;
+      }
+      setAtBats((prev) =>
+        prev.some((atBat) => atBat.id === updatedAtBat.id)
+          ? prev.map((atBat) =>
+              atBat.id === updatedAtBat.id ? updatedAtBat : atBat
+            )
+          : prev
+      );
     },
-    [warn]
+    [atBats, warn]
   );
 
   const deleteAtBat = useCallback(
     (atBatId: string) => {
-      setAtBats((prev) => {
-        if (!prev.some((atBat) => atBat.id === atBatId)) {
-          warn(`At-bat id not found for deletion: ${atBatId}`);
-          return prev;
-        }
-        return prev.filter((atBat) => atBat.id !== atBatId);
-      });
+      if (!atBats.some((atBat) => atBat.id === atBatId)) {
+        warn(`At-bat id not found for deletion: ${atBatId}`);
+        return;
+      }
+      setAtBats((prev) =>
+        prev.some((atBat) => atBat.id === atBatId)
+          ? prev.filter((atBat) => atBat.id !== atBatId)
+          : prev
+      );
     },
-    [warn]
+    [atBats, warn]
   );
 
   const resetAtBats = useCallback(
     (nextAtBats: AtBat[]) => {
-      const seenIds = new Set<string>();
-      const uniqueAtBats = nextAtBats.filter((atBat) => {
-        if (seenIds.has(atBat.id)) {
-          warn(`Duplicate at-bat id ignored during reset: ${atBat.id}`);
-          return false;
-        }
-        seenIds.add(atBat.id);
-        return true;
-      });
+      const uniqueAtBats = deduplicateAtBats(nextAtBats, (atBatId) =>
+        warn(`Duplicate at-bat id ignored during reset: ${atBatId}`)
+      );
       setAtBats(uniqueAtBats);
     },
     [warn]

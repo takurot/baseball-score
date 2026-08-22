@@ -90,6 +90,15 @@ describe('useAtBatHistory', () => {
 
     expect(result.current.atBats).toEqual(initialAtBats);
     expect(warn).toHaveBeenCalledWith('Duplicate at-bat id ignored: ab1');
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  test('should remove duplicate ids from initial history', () => {
+    const { result } = renderHook(() =>
+      useAtBatHistory([initialAtBats[0], { ...initialAtBats[0], result: 'HR' }])
+    );
+
+    expect(result.current.atBats).toEqual([initialAtBats[0]]);
   });
 
   test('should remove duplicate ids when resetting at-bats', () => {
@@ -118,6 +127,7 @@ describe('useAtBatHistory', () => {
     expect(warn).toHaveBeenCalledWith(
       'At-bat id not found for update: missing'
     );
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 
   test('should warn and preserve history when deleting a missing id', () => {
@@ -132,5 +142,6 @@ describe('useAtBatHistory', () => {
     expect(warn).toHaveBeenCalledWith(
       'At-bat id not found for deletion: missing'
     );
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 });
