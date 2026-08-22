@@ -1,5 +1,12 @@
 /* istanbul ignore file */
-import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  lazy,
+  Suspense,
+} from 'react';
 import {
   Container,
   AppBar,
@@ -74,6 +81,8 @@ import { useTheme } from '@mui/material/styles';
 import { useGameState } from './hooks/useGameState';
 import { logAnalyticsEvent } from './firebase/analyticsClient';
 import { generateDefaultPlayers } from './utils/defaultPlayers';
+import { getNextBatterPlayerId } from './services/BattingOrder';
+import { registerAtBatButtonId } from './components/PlayerList';
 
 // 遅延ロード - 初期表示に不要なコンポーネント
 const GameList = lazy(() => import('./components/GameList'));
@@ -165,6 +174,9 @@ const MainApp: React.FC<{
   // 現在選択されているチーム
   const currentTeam = tabIndex === 0 ? awayTeam : homeTeam;
 
+  // 打席登録後、次打者の「打席登録」ボタンへフォーカスを進めるための対象選手ID
+  const pendingNextBatterFocusIdRef = useRef<string | null>(null);
+
   // 打席結果の編集関連の状態
   const [editingAtBat, setEditingAtBat] = useState<AtBat | null>(null);
 
@@ -250,6 +262,20 @@ const MainApp: React.FC<{
 
     checkSharedGame();
   }, [loadGame]);
+
+  // 打席登録後、次打者の「打席登録」ボタンへフォーカスを移す
+  useEffect(() => {
+    if (!pendingNextBatterFocusIdRef.current) return;
+
+    const nextBatterId = pendingNextBatterFocusIdRef.current;
+    pendingNextBatterFocusIdRef.current = null;
+
+    // ダイアログが閉じてボタンが再描画されるのを待ってからフォーカスする
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(registerAtBatButtonId(nextBatterId))?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [currentTeam.atBats]);
 
   // ローディング中表示
   if (sharedGameLoading || isLoading) {
@@ -338,6 +364,13 @@ const MainApp: React.FC<{
   const handleAddAtBat = (atBat: AtBat) => {
     gameActions.addAtBat(atBat);
     setSelectedPlayer(null);
+
+    // 登録後に次打者の「打席登録」ボタンへフォーカスを進める
+    const updatedTeam = {
+      ...currentTeam,
+      atBats: [...currentTeam.atBats, atBat],
+    };
+    pendingNextBatterFocusIdRef.current = getNextBatterPlayerId(updatedTeam);
   };
 
   // 打席結果の編集ハンドラー

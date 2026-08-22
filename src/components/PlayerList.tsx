@@ -16,6 +16,7 @@ import {
   FormControl,
   SelectChangeEvent,
   Box,
+  Chip,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -25,12 +26,17 @@ import PersonOffIcon from '@mui/icons-material/PersonOff';
 import PersonIcon from '@mui/icons-material/Person';
 import { Player } from '../types';
 
+// 打席登録ボタンの id プレフィックス。次打者へフォーカスを進める際に使う
+export const registerAtBatButtonId = (playerId: string): string =>
+  `register-atbat-${playerId}`;
+
 interface PlayerListProps {
   players: Player[];
   onRegisterAtBat?: (player: Player) => void;
   onToggleStatus?: (playerId: string) => void;
   onEditPlayer?: (playerId: string) => void;
   onUpdatePlayerOrder?: (playerId: string, order: number) => void;
+  nextBatterPlayerId?: string | null;
 }
 
 const PlayerList: React.FC<PlayerListProps> = ({
@@ -39,6 +45,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
   onToggleStatus,
   onEditPlayer,
   onUpdatePlayerOrder,
+  nextBatterPlayerId = null,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -92,96 +99,118 @@ const PlayerList: React.FC<PlayerListProps> = ({
         </TableHead>
         <TableBody>
           {activePlayers.length > 0 ? (
-            activePlayers.map((player) => (
-              <TableRow
-                key={player.id}
-                sx={{
-                  '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
-                }}
-              >
-                <TableCell>
-                  {onUpdatePlayerOrder ? (
-                    <FormControl size="small" sx={{ minWidth: 65 }}>
-                      <Select
-                        value={player.order === 0 ? '' : player.order}
-                        onChange={(e: SelectChangeEvent<number>) =>
-                          handleOrderChange(player.id, e)
-                        }
-                        displayEmpty
-                      >
-                        <MenuItem value="">
-                          <em>未設定</em>
-                        </MenuItem>
-                        {orderOptions.map((order) => (
-                          <MenuItem key={order} value={order}>
-                            {order}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  ) : (
-                    player.order || '未設定'
-                  )}
-                </TableCell>
-                <TableCell>{player.number}</TableCell>
-                <TableCell>{player.name}</TableCell>
-                <TableCell>{player.position}</TableCell>
-                <TableCell>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 0.5,
-                      '& .MuiButton-root': {
-                        minWidth: isMobile ? '36px' : '64px',
-                        padding: isMobile ? '4px 8px' : undefined,
-                      },
-                    }}
-                  >
-                    {onRegisterAtBat && (
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => onRegisterAtBat(player)}
-                        color="primary"
-                        startIcon={
-                          isMobile ? (
-                            <AssignmentIcon fontSize="small" />
-                          ) : undefined
-                        }
-                      >
-                        {isMobile ? '打席' : '打席登録'}
-                      </Button>
-                    )}
-                    {onToggleStatus && (
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => onToggleStatus(player.id)}
-                        color="secondary"
-                        startIcon={
-                          isMobile ? (
-                            <PersonOffIcon fontSize="small" />
-                          ) : undefined
-                        }
-                      >
-                        {isMobile ? '控え' : '控えに'}
-                      </Button>
-                    )}
-                    {onEditPlayer && (
-                      <Tooltip title="選手情報を編集">
-                        <IconButton
-                          size="small"
-                          onClick={() => onEditPlayer(player.id)}
+            activePlayers.map((player) => {
+              const isNextBatter = player.id === nextBatterPlayerId;
+              return (
+                <TableRow
+                  key={player.id}
+                  selected={isNextBatter}
+                  sx={{
+                    '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
+                    ...(isNextBatter && {
+                      backgroundColor: 'action.selected',
+                    }),
+                  }}
+                >
+                  <TableCell>
+                    {onUpdatePlayerOrder ? (
+                      <FormControl size="small" sx={{ minWidth: 65 }}>
+                        <Select
+                          value={player.order === 0 ? '' : player.order}
+                          onChange={(e: SelectChangeEvent<number>) =>
+                            handleOrderChange(player.id, e)
+                          }
+                          displayEmpty
                         >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                          <MenuItem value="">
+                            <em>未設定</em>
+                          </MenuItem>
+                          {orderOptions.map((order) => (
+                            <MenuItem key={order} value={order}>
+                              {order}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    ) : (
+                      player.order || '未設定'
                     )}
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ))
+                  </TableCell>
+                  <TableCell>{player.number}</TableCell>
+                  <TableCell>
+                    <Box
+                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                    >
+                      {player.name}
+                      {isNextBatter && (
+                        <Chip
+                          label="次打者"
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                        />
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell>{player.position}</TableCell>
+                  <TableCell>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 0.5,
+                        '& .MuiButton-root': {
+                          minWidth: isMobile ? '36px' : '64px',
+                          padding: isMobile ? '4px 8px' : undefined,
+                        },
+                      }}
+                    >
+                      {onRegisterAtBat && (
+                        <Button
+                          id={registerAtBatButtonId(player.id)}
+                          variant="outlined"
+                          size="small"
+                          onClick={() => onRegisterAtBat(player)}
+                          color="primary"
+                          startIcon={
+                            isMobile ? (
+                              <AssignmentIcon fontSize="small" />
+                            ) : undefined
+                          }
+                        >
+                          {isMobile ? '打席' : '打席登録'}
+                        </Button>
+                      )}
+                      {onToggleStatus && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => onToggleStatus(player.id)}
+                          color="secondary"
+                          startIcon={
+                            isMobile ? (
+                              <PersonOffIcon fontSize="small" />
+                            ) : undefined
+                          }
+                        >
+                          {isMobile ? '控え' : '控えに'}
+                        </Button>
+                      )}
+                      {onEditPlayer && (
+                        <Tooltip title="選手情報を編集">
+                          <IconButton
+                            size="small"
+                            onClick={() => onEditPlayer(player.id)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              );
+            })
           ) : (
             <TableRow>
               <TableCell colSpan={5} align="center">
