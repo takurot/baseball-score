@@ -30,10 +30,10 @@ describe('security configuration', () => {
     );
     expect(html).toContain('http-equiv="Content-Security-Policy"');
     expect(html).toContain(
-      "script-src 'self' https://www.googletagmanager.com"
+      "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com"
     );
     expect(html).toContain(
-      "connect-src 'self' http://localhost:8080 ws://localhost:8080"
+      "connect-src 'self' ws://localhost:3000 http://localhost:8080 ws://localhost:8080"
     );
     expect(html).toContain("object-src 'none'");
     expect(html).toContain("base-uri 'self'");
