@@ -80,12 +80,6 @@ function applyProductionCspToHtml(html, productionCsp) {
 }
 
 function main() {
-  if (!fs.existsSync(BUILD_INDEX_PATH)) {
-    console.error(`❌ Build output not found: ${BUILD_INDEX_PATH}`);
-    console.error('先に `npm run build` を実行してください');
-    process.exit(1);
-  }
-
   let firebaseConfig;
   try {
     firebaseConfig = JSON.parse(fs.readFileSync(FIREBASE_CONFIG_PATH, 'utf8'));
@@ -104,7 +98,19 @@ function main() {
     return;
   }
 
-  const originalHtml = fs.readFileSync(BUILD_INDEX_PATH, 'utf8');
+  let originalHtml;
+  try {
+    originalHtml = fs.readFileSync(BUILD_INDEX_PATH, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      console.error(`❌ Build output not found: ${BUILD_INDEX_PATH}`);
+      console.error('先に `npm run build` を実行してください');
+    } else {
+      console.error(`❌ Failed to read build/index.html: ${error.message}`);
+    }
+    process.exit(1);
+    return;
+  }
 
   let updatedHtml;
   try {
