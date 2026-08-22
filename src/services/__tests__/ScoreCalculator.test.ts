@@ -42,7 +42,7 @@ describe('ScoreCalculator', () => {
     });
   });
 
-  describe('calculateBattingAverage', () => {
+  describe('calculateBattingStats', () => {
     test('打率を正しく計算する', () => {
       const atBats: AtBat[] = [
         {
@@ -82,7 +82,9 @@ describe('ScoreCalculator', () => {
           isTop: true,
         },
       ];
-      expect(ScoreCalculator.calculateBattingAverage(atBats)).toBe(0.5);
+      expect(ScoreCalculator.calculateBattingStats(atBats).battingAvg).toBe(
+        0.5
+      );
     });
 
     test('四球は打数に含めない', () => {
@@ -115,11 +117,13 @@ describe('ScoreCalculator', () => {
           isTop: true,
         },
       ];
-      expect(ScoreCalculator.calculateBattingAverage(atBats)).toBe(0.5);
+      expect(ScoreCalculator.calculateBattingStats(atBats).battingAvg).toBe(
+        0.5
+      );
     });
   });
 
-  describe('calculateOPS', () => {
+  describe('OPS', () => {
     test('OPSを正しく計算する', () => {
       const atBats: AtBat[] = [
         {
@@ -159,12 +163,12 @@ describe('ScoreCalculator', () => {
           isTop: true,
         },
       ];
-      const ops = ScoreCalculator.calculateOPS(atBats);
+      const { ops } = ScoreCalculator.calculateBattingStats(atBats);
       expect(ops).toBeGreaterThan(0);
     });
   });
 
-  describe('calculateOnBasePercentage', () => {
+  describe('出塁率', () => {
     test('犠打を出塁率の分母に含めない', () => {
       const atBats: AtBat[] = [
         {
@@ -187,7 +191,7 @@ describe('ScoreCalculator', () => {
         },
       ];
 
-      expect(ScoreCalculator.calculateOnBasePercentage(atBats)).toBe(1);
+      expect(ScoreCalculator.calculateBattingStats(atBats).obp).toBe(1);
     });
 
     test('犠飛を出塁率の分母に含める', () => {
@@ -212,7 +216,7 @@ describe('ScoreCalculator', () => {
         },
       ];
 
-      expect(ScoreCalculator.calculateOnBasePercentage(atBats)).toBe(0.5);
+      expect(ScoreCalculator.calculateBattingStats(atBats).obp).toBe(0.5);
     });
   });
 

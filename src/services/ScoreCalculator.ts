@@ -21,7 +21,7 @@ export interface BattingStats {
   doubles: number;
   triples: number;
   homeRuns: number;
-  walks: number;
+  walks: number; // 四球と死球の合計
   sacrificeFlies: number;
   strikeouts: number;
   rbis: number;
@@ -66,6 +66,7 @@ export class ScoreCalculator {
       .reduce((sum, event) => sum + (event.runCount || 0), 0);
   }
 
+  /** 先攻は表、後攻は裏としてチームのイニング得点を計算する。 */
   static calculateTeamInningScore(
     team: Team,
     runEvents: RunEvent[],
@@ -168,22 +169,6 @@ export class ScoreCalculator {
     }
 
     return { ...stats, ...this.calculateBattingRates(stats) };
-  }
-
-  static calculateBattingAverage(atBats: AtBat[]): number {
-    return this.calculateBattingStats(atBats).battingAvg;
-  }
-
-  static calculateSluggingPercentage(atBats: AtBat[]): number {
-    return this.calculateBattingStats(atBats).slg;
-  }
-
-  static calculateOnBasePercentage(atBats: AtBat[]): number {
-    return this.calculateBattingStats(atBats).obp;
-  }
-
-  static calculateOPS(atBats: AtBat[]): number {
-    return this.calculateBattingStats(atBats).ops;
   }
 
   static determineWinner(
