@@ -19,6 +19,8 @@ import {
   Switch,
   Tooltip,
   TextField,
+  Snackbar,
+  Alert,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -36,27 +38,23 @@ import { Game } from '../types';
 interface GameListProps {
   onSelectGame: (gameId: string) => void;
   onGameDeleted?: () => void;
-  onShareGame?: (gameId: string) => void;
 }
 
-const GameList: React.FC<GameListProps> = ({
-  onSelectGame,
-  onGameDeleted,
-  onShareGame,
-}) => {
+const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [gameToDelete, setGameToDelete] = useState<string | null>(null);
   const [shareUrlDialogOpen, setShareUrlDialogOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
-  const [updatingPublicStatus, setUpdatingPublicStatus] = useState<
-    string | null
-  >(null);
+  const [updatingPublicStatus, setUpdatingPublicStatus] = useState<Set<string>>(
+    new Set()
+  );
 
   const fetchGames = async () => {
     try {
@@ -105,9 +103,9 @@ const GameList: React.FC<GameListProps> = ({
     if (!gameToDelete) return;
 
     try {
+      setActionError(null);
       await deleteGame(gameToDelete);
-      // 削除後にリストを更新
-      await fetchGames();
+      setGames((prev) => prev.filter((game) => game.id !== gameToDelete));
       // 親コンポーネントに通知
       if (onGameDeleted) {
         onGameDeleted();
@@ -116,33 +114,36 @@ const GameList: React.FC<GameListProps> = ({
       setGameToDelete(null);
     } catch (err) {
       console.error('Failed to delete game:', err);
-      setError('試合データの削除に失敗しました。');
+      setActionError('試合データの削除に失敗しました。');
     }
   };
 
   // 公開状態の切り替え
   const handleTogglePublic = async (
     gameId: string,
-    currentPublicStatus: boolean,
-    event: React.MouseEvent
+    nextPublicStatus: boolean,
+    event: React.ChangeEvent<HTMLInputElement>
   ) => {
     event.stopPropagation();
     try {
-      setUpdatingPublicStatus(gameId);
-      await updateGamePublicStatus(gameId, !currentPublicStatus);
+      setActionError(null);
+      setUpdatingPublicStatus((prev) => new Set(prev).add(gameId));
+      await updateGamePublicStatus(gameId, nextPublicStatus);
       // 状態を更新
-      setGames(
-        games.map((game) =>
-          game.id === gameId
-            ? { ...game, isPublic: !currentPublicStatus }
-            : game
+      setGames((prev) =>
+        prev.map((game) =>
+          game.id === gameId ? { ...game, isPublic: nextPublicStatus } : game
         )
       );
     } catch (err) {
       console.error('Failed to update public status:', err);
-      setError('公開設定の更新に失敗しました。');
+      setActionError('公開設定の更新に失敗しました。');
     } finally {
-      setUpdatingPublicStatus(null);
+      setUpdatingPublicStatus((prev) => {
+        const next = new Set(prev);
+        next.delete(gameId);
+        return next;
+      });
     }
   };
 
@@ -156,9 +157,9 @@ const GameList: React.FC<GameListProps> = ({
   };
 
   // URLをクリップボードにコピー
-  const handleCopyToClipboard = () => {
+  const handleCopyToClipboard = async () => {
     try {
-      navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(shareUrl);
       alert('URLをクリップボードにコピーしました');
     } catch (err) {
       console.error('Failed to copy:', err);
@@ -207,11 +208,10 @@ const GameList: React.FC<GameListProps> = ({
                     <span>
                       <Switch
                         checked={Boolean(game.isPublic)}
-                        onChange={(e) => {}}
-                        onClick={(e) =>
-                          handleTogglePublic(game.id, Boolean(game.isPublic), e)
+                        onChange={(event, checked) =>
+                          handleTogglePublic(game.id, checked, event)
                         }
-                        disabled={updatingPublicStatus === game.id}
+                        disabled={updatingPublicStatus.has(game.id)}
                         color="primary"
                         size="small"
                         icon={<PublicOffIcon />}
@@ -268,7 +268,9 @@ const GameList: React.FC<GameListProps> = ({
                           {formatDate(game.date)}
                           {game.tournament && ` | ${game.tournament}`}
                           {game.venue && ` @ ${game.venue}`}
-                          {game.currentInning && ` | ${game.currentInning}回`}
+                          {game.currentInning > 0
+                            ? ` | ${game.currentInning}回`
+                            : ''}
                           {game.isPublic && ' | 公開中'}
                         </Typography>
                       )}
@@ -280,7 +282,9 @@ const GameList: React.FC<GameListProps> = ({
                         {formatDate(game.date)}
                         {game.tournament && ` | ${game.tournament}`}
                         {game.venue && ` @ ${game.venue}`}
-                        {game.currentInning && ` | ${game.currentInning}回`}
+                        {game.currentInning > 0
+                          ? ` | ${game.currentInning}回`
+                          : ''}
                         {game.isPublic && ' | 公開中'}
                       </>
                     ) : null
@@ -343,6 +347,16 @@ const GameList: React.FC<GameListProps> = ({
           <Button onClick={() => setShareUrlDialogOpen(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={Boolean(actionError)}
+        autoHideDuration={6000}
+        onClose={() => setActionError(null)}
+      >
+        <Alert severity="error" onClose={() => setActionError(null)}>
+          {actionError}
+        </Alert>
+      </Snackbar>
     </Paper>
   );
 };
