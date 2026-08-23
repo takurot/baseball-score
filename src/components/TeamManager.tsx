@@ -27,6 +27,7 @@ import { v4 as uuidv4 } from 'uuid';
 import PlayerList from './PlayerList';
 import { getUserTeams, getTeamById } from '../firebase/teamService';
 import { getNextBatterPlayerId } from '../services/BattingOrder';
+import { useAuth } from '../contexts/AuthContext';
 
 interface TeamManagerProps {
   team: Team;
@@ -39,6 +40,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   onTeamUpdate,
   onRegisterAtBat,
 }) => {
+  const { currentUser } = useAuth();
   const [openPlayerDialog, setOpenPlayerDialog] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [playerName, setPlayerName] = useState('');
@@ -57,6 +59,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   const [teamSelectionError, setTeamSelectionError] = useState<string | null>(
     null
   );
+  // 打席が既に記録された状態でチームを差し替える前の確認用
+  const [pendingTeamReplacement, setPendingTeamReplacement] =
+    useState<TeamSetting | null>(null);
 
   // teamプロップが変更されたらチーム名の状態を更新
   useEffect(() => {
@@ -178,6 +183,12 @@ const TeamManager: React.FC<TeamManagerProps> = ({
 
   // チーム選択ダイアログを開く
   const handleOpenTeamSelectionDialog = async () => {
+    if (!currentUser) {
+      setTeamSelectionError('チームを読み込むにはログインしてください');
+      setOpenTeamSelectionDialog(true);
+      return;
+    }
+
     try {
       setLoadingTeams(true);
       setTeamSelectionError(null);
@@ -199,12 +210,30 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   // チーム選択ダイアログを閉じる
   const handleCloseTeamSelectionDialog = () => {
     setOpenTeamSelectionDialog(false);
+    setPendingTeamReplacement(null);
     // ダイアログを閉じるときに状態をリセット
     setTimeout(() => {
       setTeamSelectionError(null);
       setAvailableTeams([]);
     }, 300); // ダイアログのアニメーション終了後にリセット
   };
+
+  // 登録済みのチーム情報から現在の試合用のチームデータを作成する
+  const buildUpdatedTeam = (teamSetting: TeamSetting): Team => ({
+    ...team,
+    id: teamSetting.id,
+    name: teamSetting.name,
+    players:
+      teamSetting.players?.map((player) => ({
+        id: player.id,
+        name: player.name,
+        number: player.number,
+        position: player.position,
+        isActive: true,
+        order: 0, // 初期値は0に設定
+      })) || [],
+    // 注意: atBats は維持される（打席データを無言で破棄しない）
+  });
 
   // 選択したチームでデータを更新
   const handleSelectTeam = async (teamSettingId: string) => {
@@ -219,24 +248,15 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         throw new Error('チームデータの取得に失敗しました');
       }
 
-      // 登録済みのチーム情報から現在の試合用のチームデータを作成
-      const updatedTeam: Team = {
-        ...team,
-        id: teamSetting.id,
-        name: teamSetting.name,
-        players:
-          teamSetting.players?.map((player) => ({
-            id: player.id,
-            name: player.name,
-            number: player.number,
-            position: player.position,
-            isActive: true,
-            order: 0, // 初期値は0に設定
-          })) || [],
-        // 注意: atBatsは維持されます
-      };
+      // 既にこの試合で打席が記録されている場合は、選手が入れ替わることを
+      // 確認してから反映する（打席データ自体は消えないが、記録済みの
+      // 打席が指す選手が変わるため、無言で進めない）
+      if (team.atBats.length > 0) {
+        setPendingTeamReplacement(teamSetting);
+        return;
+      }
 
-      onTeamUpdate(updatedTeam);
+      onTeamUpdate(buildUpdatedTeam(teamSetting));
       handleCloseTeamSelectionDialog();
     } catch (error: any) {
       console.error('チームの選択に失敗しました:', error);
@@ -246,6 +266,19 @@ const TeamManager: React.FC<TeamManagerProps> = ({
     } finally {
       setLoadingTeams(false);
     }
+  };
+
+  // 確認ダイアログでチーム差し替えを実行
+  const handleConfirmTeamReplacement = () => {
+    if (!pendingTeamReplacement) return;
+    onTeamUpdate(buildUpdatedTeam(pendingTeamReplacement));
+    setPendingTeamReplacement(null);
+    handleCloseTeamSelectionDialog();
+  };
+
+  // 確認ダイアログをキャンセル（チーム選択ダイアログには戻る）
+  const handleCancelTeamReplacement = () => {
+    setPendingTeamReplacement(null);
   };
 
   return (
@@ -422,6 +455,33 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseTeamSelectionDialog}>キャンセル</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 打席記録がある状態でのチーム差し替え確認ダイアログ */}
+      <Dialog
+        open={!!pendingTeamReplacement}
+        onClose={handleCancelTeamReplacement}
+      >
+        <DialogTitle>選手を入れ替えます</DialogTitle>
+        <DialogContent>
+          <Typography>
+            この試合には既に記録された打席があります。「
+            {pendingTeamReplacement?.name}
+            」を選択すると選手が入れ替わりますが、記録済みの打席データ自体は
+            削除されません（入れ替え後の選手一覧とは一致しなくなる場合が
+            あります）。よろしいですか？
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelTeamReplacement}>キャンセル</Button>
+          <Button
+            onClick={handleConfirmTeamReplacement}
+            color="primary"
+            variant="contained"
+          >
+            入れ替える
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

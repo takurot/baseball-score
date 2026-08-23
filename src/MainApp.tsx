@@ -58,7 +58,6 @@ import {
   Player,
   AtBat,
   Game,
-  TeamSetting,
   RunEvent,
   RunEventType,
   OutEvent,
@@ -75,7 +74,6 @@ import {
   getSharedGameById,
   saveGameAsNew,
 } from './firebase/gameService';
-import { getTeamById, getUserTeams } from './firebase/teamService';
 import { useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import HelpIcon from '@mui/icons-material/Help';
@@ -157,12 +155,6 @@ const MainApp: React.FC<{
 
   // チーム管理関連の状態
   const [showTeamManagement, setShowTeamManagement] = useState(false);
-  const [teamSelectionDialogOpen, setTeamSelectionDialogOpen] = useState(false);
-  const [teamSelectionMode, setTeamSelectionMode] = useState<'home' | 'away'>(
-    'home'
-  );
-  const [availableTeams, setAvailableTeams] = useState<TeamSetting[]>([]);
-  const [loadingTeams, setLoadingTeams] = useState(false);
 
   // 通算成績関連の状態
   const [showTeamStats, setShowTeamStats] = useState(false);
@@ -752,36 +744,6 @@ const MainApp: React.FC<{
     }
   };
 
-  const handleOpenTeamSelection = async (mode: 'home' | 'away') => {
-    if (!currentUser) {
-      setSnackbarMessage('チームを読み込むにはログインしてください');
-      setSnackbarSeverity('warning');
-      setSnackbarOpen(true);
-      return;
-    }
-
-    setTeamSelectionMode(mode);
-    setTeamSelectionDialogOpen(true);
-    setLoadingTeams(true);
-
-    try {
-      const teams = await getUserTeams();
-      setAvailableTeams(teams ?? []);
-    } catch (error) {
-      console.error('Failed to load teams:', error);
-      setSnackbarMessage(
-        error instanceof Error
-          ? `チーム一覧の取得に失敗しました: ${error.message}`
-          : 'チーム一覧の取得に失敗しました'
-      );
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-      setAvailableTeams([]);
-    } finally {
-      setLoadingTeams(false);
-    }
-  };
-
   // 既存の試合データを選択
   const handleSelectGame = async (gameId: string) => {
     try {
@@ -803,63 +765,6 @@ const MainApp: React.FC<{
     } catch (error: any) {
       console.error('Error loading game:', error);
       setSnackbarMessage(`読み込みに失敗しました: ${error.message}`);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    }
-  };
-
-  // チーム選択ダイアログを閉じる
-  const closeTeamSelectionDialog = () => {
-    setTeamSelectionDialogOpen(false);
-  };
-
-  // 選択したチームをゲームに設定
-  const handleSelectTeamForGame = async (teamSettingId: string) => {
-    try {
-      const teamSetting = await getTeamById(teamSettingId);
-      if (!teamSetting) {
-        throw new Error('チームデータの取得に失敗しました');
-      }
-
-      // 保存済みのチーム情報からゲーム用のチームデータを作成
-      const gameTeam: Team = {
-        id: teamSetting.id,
-        name: teamSetting.name,
-        players: teamSetting.players.map((player) => ({
-          id: player.id,
-          name: player.name,
-          number: player.number,
-          position: player.position,
-          isActive: true,
-          order: 0, // 初期値は0に設定
-        })),
-        atBats: [],
-      };
-
-      // ホームチームかアウェイチームのどちらを更新するか
-      if (teamSelectionMode === 'home') {
-        // setGame((prevGame) => ({
-        //   ...prevGame,
-        //   homeTeam: gameTeam,
-        // }));
-        gameActions.setHomeTeam(gameTeam);
-      } else {
-        // setGame((prevGame) => ({
-        //   ...prevGame,
-        //   awayTeam: gameTeam,
-        // }));
-        gameActions.setAwayTeam(gameTeam);
-      }
-
-      closeTeamSelectionDialog();
-      setSnackbarMessage(
-        `${teamSetting.name}を${teamSelectionMode === 'home' ? '後攻' : '先攻'}チームに設定しました`
-      );
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    } catch (error: any) {
-      console.error('Failed to set team:', error);
-      setSnackbarMessage(`チーム設定に失敗しました: ${error.message}`);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
@@ -1273,32 +1178,6 @@ const MainApp: React.FC<{
               isSharedMode={isSharedMode}
               onClick={handleOpenVenueDialog}
             />
-            {!isSharedMode && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: 1,
-                  flexWrap: 'wrap',
-                  mt: 1,
-                }}
-              >
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => handleOpenTeamSelection('away')}
-                >
-                  先攻チームを読み込む
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => handleOpenTeamSelection('home')}
-                >
-                  後攻チームを読み込む
-                </Button>
-              </Box>
-            )}
             <Stepper
               activeStep={activeStep}
               alternativeLabel
@@ -1679,52 +1558,6 @@ const MainApp: React.FC<{
           <Button onClick={handleCloseVenueDialog} color="primary">
             設定
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* チーム選択ダイアログ */}
-      <Dialog
-        open={teamSelectionDialogOpen}
-        onClose={closeTeamSelectionDialog}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          {teamSelectionMode === 'home' ? '後攻' : '先攻'}チームを選択
-        </DialogTitle>
-        <DialogContent>
-          {loadingTeams ? (
-            <Box display="flex" justifyContent="center" padding={3}>
-              <CircularProgress />
-            </Box>
-          ) : availableTeams.length === 0 ? (
-            <Typography>
-              登録済みのチームがありません。先に「チーム・選手管理」からチームを作成してください。
-            </Typography>
-          ) : (
-            <Box
-              sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
-            >
-              {availableTeams.map((team) => (
-                <Button
-                  key={team.id}
-                  variant="outlined"
-                  onClick={() => handleSelectTeamForGame(team.id)}
-                  sx={{ justifyContent: 'flex-start', textAlign: 'left' }}
-                >
-                  <Box>
-                    <Typography variant="subtitle1">{team.name}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      選手数: {team.players?.length || 0}人
-                    </Typography>
-                  </Box>
-                </Button>
-              ))}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeTeamSelectionDialog}>キャンセル</Button>
         </DialogActions>
       </Dialog>
 
