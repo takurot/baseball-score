@@ -1,0 +1,102 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+# Super Skills - Codex baseline
+#
+# This file is intentionally lean.
+# Additional MCP servers and higher-risk capabilities should be enabled by
+# profile or generated config later, not added to the default baseline.
+#
+# Baseline is conservative on purpose: an unattended run (no --profile flag)
+# must never get unattended writes or a live web connection. Anything more
+# permissive requires explicitly passing --profile yolo (or another
+# escalation profile below).
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "cached"
+
+[features]
+multi_agent = true
+
+# Lean MCP baseline only. Every stdio server below is version-pinned so a
+# session never silently picks up whatever the current npm dist-tag
+# resolves to. Bump these deliberately (and re-review) rather than tracking
+# @latest.
+[mcp_servers.github]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-github@2025.4.8"]
+# GITHUB_PERSONAL_ACCESS_TOKEN must already be exported in the host shell;
+# this only passes it through to the subprocess, it never stores a value
+# here.
+env_vars = ["GITHUB_PERSONAL_ACCESS_TOKEN"]
+
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp@4.0.3"]
+
+[mcp_servers.memory]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-memory@2026.7.4"]
+
+[mcp_servers.sequential-thinking]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-sequential-thinking@2026.7.4"]
+
+# exa and playwright are NOT part of the lean baseline:
+# - exa was an unauthenticated remote MCP endpoint with no version pin.
+# - playwright used --extension, which attaches to the user's *real*
+#   browser profile (live cookies/login state) — unsafe to expose under a
+#   "never approve" policy.
+# Both are disabled by default via `enabled = false` (the documented
+# activation flag) rather than deleted, so they stay discoverable. Flip
+# `enabled = true` deliberately in a local/session override — do not turn
+# this on in the shared baseline. If your Codex build supports per-profile
+# mcp_servers overrides, prefer scoping the override to a dedicated
+# research/browser profile instead of enabling these globally; verify that
+# syntax against your installed version before relying on it.
+[mcp_servers.exa]
+enabled = false
+url = "https://mcp.exa.ai/mcp"
+# Set EXA_API_KEY in the host shell before enabling; never hardcode the key.
+bearer_token_env_var = "EXA_API_KEY"
+
+[mcp_servers.playwright]
+enabled = false
+command = "npx"
+args = ["-y", "@playwright/mcp@0.0.79"]
+# No --extension: an isolated browser context only. Do not add --extension
+# back to a server that runs under approval_policy = "never".
+
+# Safety-oriented profiles.
+[profiles.strict]
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+web_search = "cached"
+
+# Explicit, opt-in escalation. This is now the ONLY place unattended writes
+# and live web search are enabled — baseline no longer matches this.
+[profiles.yolo]
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+web_search = "live"
+
+[agents]
+max_threads = 6
+max_depth = 1
+# Convention (not currently enforced by the schema): every agent listed
+# below is expected to run with sandbox_mode = "read-only" in its own
+# agents/*.toml. Keep that explicit in each file rather than relying on
+# this comment — see agents/explorer.toml, agents/reviewer.toml,
+# agents/docs-researcher.toml.
+
+[agents.explorer]
+description = "Read-only codebase exploration for evidence gathering before changes."
+config_file = "agents/explorer.toml"
+
+[agents.reviewer]
+description = "Change review focused on correctness, regressions, security, and missing tests."
+config_file = "agents/reviewer.toml"
+
+[agents.docs_researcher]
+description = "Documentation specialist for primary-source API, SDK, and release-note verification."
+config_file = "agents/docs-researcher.toml"
