@@ -270,7 +270,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
     return (
       <TableRow
         key={`out-events-${inning}`}
-        sx={{ backgroundColor: '#f8f8f8' }}
+        sx={{ backgroundColor: 'action.hover' }}
       >
         <TableCell />
         <TableCell>
@@ -381,7 +381,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
                 sx={{
                   mb: 2,
                   mt: 1,
-                  backgroundColor: '#f8f8f8',
+                  backgroundColor: 'action.hover',
                   p: 1.5,
                   borderRadius: 1,
                   borderLeft: `4px solid ${customColors.outEvent}`,
@@ -439,7 +439,9 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
                 {getOutEventsForInning(inning, isTop).some(
                   (event) => event.note
                 ) && (
-                  <Box sx={{ mt: 1, pl: 1, borderLeft: '2px solid #e0e0e0' }}>
+                  <Box
+                    sx={{ mt: 1, pl: 1, borderLeft: 1, borderColor: 'divider' }}
+                  >
                     {getOutEventsForInning(inning, isTop)
                       .filter((event) => event.note)
                       .map((event) => (
@@ -524,7 +526,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
                 <Box
                   sx={{
                     mt: 2,
-                    backgroundColor: '#f5f5f5',
+                    backgroundColor: 'action.hover',
                     p: 1,
                     borderRadius: 1,
                   }}

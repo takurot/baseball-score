@@ -83,7 +83,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
       {/* 出場中の選手 */}
       <Typography
         variant="subtitle1"
-        sx={{ px: 2, fontWeight: 'bold', bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+        sx={{ px: 2, fontWeight: 'bold', bgcolor: 'action.hover' }}
       >
         出場中の選手
       </Typography>
@@ -106,7 +106,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                   key={player.id}
                   selected={isNextBatter}
                   sx={{
-                    '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
+                    '&:hover': { backgroundColor: 'action.hover' },
                     ...(isNextBatter && {
                       backgroundColor: 'action.selected',
                     }),
@@ -230,7 +230,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
               px: 2,
               mt: 2,
               fontWeight: 'bold',
-              bgcolor: 'rgba(0, 0, 0, 0.03)',
+              bgcolor: 'action.hover',
             }}
           >
             控えの選手
@@ -250,8 +250,8 @@ const PlayerList: React.FC<PlayerListProps> = ({
                 <TableRow
                   key={player.id}
                   sx={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                    '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+                    backgroundColor: 'action.hover',
+                    '&:hover': { backgroundColor: 'action.selected' },
                   }}
                 >
                   <TableCell>

@@ -168,14 +168,16 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
         sx={{
           position: 'relative',
           overflowX: 'auto',
+          // Firefox 用（-webkit- はブラウザにより無視される）
+          scrollbarColor: `${alpha(theme.palette.text.primary, 0.4)} ${alpha(theme.palette.text.primary, 0.2)}`,
           '&::-webkit-scrollbar': {
             height: 8,
           },
           '&::-webkit-scrollbar-track': {
-            backgroundColor: '#f1f1f1',
+            backgroundColor: alpha(theme.palette.text.primary, 0.2),
           },
           '&::-webkit-scrollbar-thumb': {
-            backgroundColor: '#888',
+            backgroundColor: alpha(theme.palette.text.primary, 0.4),
             borderRadius: 4,
           },
           // 横スクロールインジケータ（グラデーション）
@@ -186,8 +188,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
             top: 0,
             height: '100%',
             width: '30px',
-            background:
-              'linear-gradient(to left, rgba(0,0,0,0.1), transparent)',
+            background: `linear-gradient(to left, ${alpha(theme.palette.text.primary, 0.1)}, transparent)`,
             pointerEvents: 'none',
             opacity: isScrollable ? 1 : 0,
             transition: 'opacity 0.3s',
