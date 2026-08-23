@@ -246,12 +246,10 @@ const MainApp: React.FC<{
       const sharedGameId = urlParams.get('gameId');
 
       if (sharedGameId) {
-        console.log('Found gameId in URL:', sharedGameId);
         try {
           setSharedGameLoading(true);
           const sharedGame = await getSharedGameById(sharedGameId);
           if (sharedGame) {
-            console.log('Successfully loaded shared game:', sharedGameId);
             pendingBaselineResetRef.current = true;
             loadGame(sharedGame);
             setIsSharedMode(true);
@@ -604,8 +602,6 @@ const MainApp: React.FC<{
     if (showTeamStats) {
       setShowTeamStats(false);
     }
-    // チーム選択ダイアログを表示せず、直接新しい試合画面に遷移
-    // showTeamSelectionDialog();
   };
 
   // 新しい試合を作成（未保存の変更がある場合は確認ダイアログを挟む）
@@ -838,16 +834,8 @@ const MainApp: React.FC<{
 
       // ホームチームかアウェイチームのどちらを更新するか
       if (teamSelectionMode === 'home') {
-        // setGame((prevGame) => ({
-        //   ...prevGame,
-        //   homeTeam: gameTeam,
-        // }));
         gameActions.setHomeTeam(gameTeam);
       } else {
-        // setGame((prevGame) => ({
-        //   ...prevGame,
-        //   awayTeam: gameTeam,
-        // }));
         gameActions.setAwayTeam(gameTeam);
       }
 
@@ -1061,7 +1049,7 @@ const MainApp: React.FC<{
                       aria-describedby="game-date-text"
                     >
                       <span id="game-date-text">
-                        {/* {new Date(game.date).toLocaleDateString('ja-JP')} */}
+                        {new Date(gameState.date).toLocaleDateString('ja-JP')}
                       </span>
                     </Button>
                   </Hidden>
@@ -1073,7 +1061,7 @@ const MainApp: React.FC<{
                     sx={{ mr: isMobile ? 0.5 : 1 }}
                     aria-label="試合データを保存"
                   >
-                    {isMobile ? '保存' : '保存'}
+                    保存
                   </Button>
 
                   <Button
@@ -1114,14 +1102,14 @@ const MainApp: React.FC<{
                 onClick={handleOpenHelpDialog}
                 aria-label="help"
                 title="ヘルプ"
-                size={isMobile ? 'medium' : 'medium'}
+                size="medium"
                 sx={{
                   mr: isMobile ? 0.5 : 0,
                   minWidth: isMobile ? '44px' : undefined,
                   minHeight: isMobile ? '44px' : undefined,
                 }}
               >
-                <HelpIcon fontSize={isMobile ? 'medium' : 'medium'} />
+                <HelpIcon fontSize="medium" />
               </IconButton>
 
               <Suspense fallback={null}>
@@ -1572,14 +1560,16 @@ const MainApp: React.FC<{
           <Typography>現在の試合データを保存しますか？</Typography>
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2">
-              {/* 日付: {new Date(game.date).toLocaleDateString('ja-JP')} */}
+              日付: {new Date(gameState.date).toLocaleDateString('ja-JP')}
             </Typography>
-            {/* {game.tournament && (
-              <Typography variant="body2">大会名: {game.tournament}</Typography>
+            {gameState.tournament && (
+              <Typography variant="body2">
+                大会名: {gameState.tournament}
+              </Typography>
             )}
-            {game.venue && (
-              <Typography variant="body2">場所: {game.venue}</Typography>
-            )} */}
+            {gameState.venue && (
+              <Typography variant="body2">場所: {gameState.venue}</Typography>
+            )}
             <Typography variant="body2">
               対戦: {awayTeam.name} vs {homeTeam.name}
             </Typography>
