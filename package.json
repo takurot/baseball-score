@@ -35,7 +35,8 @@
     "eject": "react-scripts eject",
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint \"src/**/*.{js,jsx,ts,tsx}\" --fix",
-    "ci:local": "npx prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" && npm run lint && npx tsc --noEmit && npm run test:ci && npm run build"
+    "ci:local": "npx prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" && npm run lint && npx tsc --noEmit && npm run test:ci && npm run build",
+    "postinstall": "patch-package"
   },
   "eslintConfig": {
     "extends": [
@@ -70,6 +71,7 @@
     "eslint-config-prettier": "^10.1.8",
     "jest-axe": "^11.0.0",
     "jest-junit": "^17.0.0",
+    "patch-package": "^8.0.1",
     "prettier": "^3.9.6"
   },
   "overrides": {
