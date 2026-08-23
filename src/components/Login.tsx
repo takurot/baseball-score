@@ -17,7 +17,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import PersonIcon from '@mui/icons-material/Person';
 import { useAuth } from '../contexts/AuthContext';
-import { getAuthErrorMessage } from '../firebase/authService';
+import { getAuthErrorMessage } from '../utils/authErrorMessage';
 
 // タブパネルのProps
 interface TabPanelProps {

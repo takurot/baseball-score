@@ -11,6 +11,9 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { app } from './config';
+// getAuthErrorMessage は firebase/auth に依存しない純粋な文言変換ロジックのため
+// 別モジュールに切り出してある。呼び出し元の互換性のためここで再エクスポートする。
+import { getAuthErrorMessage } from '../utils/authErrorMessage';
 
 // 認証インスタンスを取得
 const auth = getAuth(app);
@@ -22,24 +25,7 @@ const logAndRethrow = (context: string, error: unknown): never => {
   throw error;
 };
 
-// Firebase Auth のエラーコードを画面表示用の日本語メッセージへ変換する
-// 呼び出し側は文脈ごとに異なるメッセージ（コード→文言）とフォールバックを渡す
-export const getAuthErrorMessage = (
-  error: unknown,
-  messages: Partial<Record<string, string>>,
-  fallback: string
-): string => {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    typeof (error as { code: unknown }).code === 'string'
-  ) {
-    const code = (error as { code: string }).code;
-    return messages[code] ?? fallback;
-  }
-  return fallback;
-};
+export { getAuthErrorMessage };
 
 // Googleでサインイン
 export const signInWithGoogle = async (): Promise<User> => {
