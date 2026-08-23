@@ -1,7 +1,12 @@
-import { getDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { getDoc, updateDoc, addDoc, getDocs, limit } from 'firebase/firestore';
 import { Game } from '../../types';
 import { getCurrentUser } from '../authService';
-import { saveGame, getSharedGameById } from '../gameService';
+import {
+  saveGame,
+  getSharedGameById,
+  getGameById,
+  getAllGames,
+} from '../gameService';
 
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn(),
@@ -11,6 +16,7 @@ jest.mock('firebase/firestore', () => ({
   getDoc: jest.fn(),
   query: jest.fn(),
   orderBy: jest.fn(),
+  limit: jest.fn((n: number) => `LIMIT_${n}`),
   serverTimestamp: jest.fn(() => 'SERVER_TIMESTAMP'),
   deleteDoc: jest.fn(),
   where: jest.fn(),
@@ -24,6 +30,8 @@ jest.mock('../authService', () => ({ getCurrentUser: jest.fn() }));
 const mockedGetDoc = getDoc as jest.Mock;
 const mockedUpdateDoc = updateDoc as jest.Mock;
 const mockedAddDoc = addDoc as jest.Mock;
+const mockedGetDocs = getDocs as jest.Mock;
+const mockedLimit = limit as jest.Mock;
 const mockedGetCurrentUser = getCurrentUser as jest.Mock;
 
 const makeGame = (overrides: Partial<Game> = {}): Game =>
@@ -52,8 +60,10 @@ describe('saveGame (update path)', () => {
       data: () => ({ userId: 'someone-else' }),
     });
 
+    // getGameById は「存在しない」と「他人のデータ」を区別せず null を返すため、
+    // どちらの場合も同じ「データが見つかりません」で失敗する（統一された契約）
     await expect(saveGame(makeGame())).rejects.toThrow(
-      'このデータにアクセスする権限がありません'
+      'データが見つかりません'
     );
     expect(mockedUpdateDoc).not.toHaveBeenCalled();
   });
@@ -139,5 +149,62 @@ describe('getSharedGameById', () => {
     await expect(getSharedGameById('game-1')).rejects.toThrow(
       'この試合データは公開されていません'
     );
+  });
+});
+
+describe('getGameById', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedGetCurrentUser.mockReturnValue({
+      uid: 'user-1',
+      email: 'me@example.com',
+    });
+  });
+
+  it('returns null (not throw) when the document does not exist', async () => {
+    mockedGetDoc.mockResolvedValue({ exists: () => false });
+
+    await expect(getGameById('missing')).resolves.toBeNull();
+  });
+
+  it('returns null (not throw) when the document belongs to another user', async () => {
+    mockedGetDoc.mockResolvedValue({
+      exists: () => true,
+      id: 'game-1',
+      data: () => ({ userId: 'someone-else' }),
+    });
+
+    // 「存在しない」場合と同じ null を返し、他ユーザーへドキュメントの
+    // 存在有無を区別して伝えない
+    await expect(getGameById('game-1')).resolves.toBeNull();
+  });
+
+  it('returns the game when it belongs to the current user', async () => {
+    mockedGetDoc.mockResolvedValue({
+      exists: () => true,
+      id: 'game-1',
+      data: () => ({ userId: 'user-1', date: '2026-08-17' }),
+    });
+
+    const game = await getGameById('game-1');
+    expect(game?.id).toBe('game-1');
+    expect(game?.date).toBe('2026-08-17');
+  });
+});
+
+describe('getAllGames', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedGetCurrentUser.mockReturnValue({
+      uid: 'user-1',
+      email: 'me@example.com',
+    });
+    mockedGetDocs.mockResolvedValue({ docs: [] });
+  });
+
+  it('caps the query with limit() to avoid an unbounded fetch', async () => {
+    await getAllGames();
+
+    expect(mockedLimit).toHaveBeenCalledWith(expect.any(Number));
   });
 });

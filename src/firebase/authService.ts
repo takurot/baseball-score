@@ -16,14 +16,38 @@ import { app } from './config';
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
+// エラーをログに記録したうえで再送出する（各関数の catch を単純化するための共通処理）
+const logAndRethrow = (context: string, error: unknown): never => {
+  console.error(context, error);
+  throw error;
+};
+
+// Firebase Auth のエラーコードを画面表示用の日本語メッセージへ変換する
+// 呼び出し側は文脈ごとに異なるメッセージ（コード→文言）とフォールバックを渡す
+export const getAuthErrorMessage = (
+  error: unknown,
+  messages: Partial<Record<string, string>>,
+  fallback: string
+): string => {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof (error as { code: unknown }).code === 'string'
+  ) {
+    const code = (error as { code: string }).code;
+    return messages[code] ?? fallback;
+  }
+  return fallback;
+};
+
 // Googleでサインイン
-export const signInWithGoogle = async () => {
+export const signInWithGoogle = async (): Promise<User> => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error) {
-    console.error('Google sign in error:', error);
-    throw error;
+    return logAndRethrow('Google sign in error:', error);
   }
 };
 
@@ -32,7 +56,7 @@ export const registerWithEmailAndPassword = async (
   email: string,
   password: string,
   displayName: string
-) => {
+): Promise<User> => {
   try {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     // ユーザー表示名を設定
@@ -40,11 +64,14 @@ export const registerWithEmailAndPassword = async (
       await updateProfile(result.user, {
         displayName: displayName,
       });
+      // updateProfile 後は onAuthStateChanged が再fire されず、
+      // auth.currentUser / 呼び出し元が受け取る user が displayName: null の
+      // ままになるため、明示的に最新情報を再取得する
+      await result.user.reload();
     }
     return result.user;
   } catch (error) {
-    console.error('Email registration error:', error);
-    throw error;
+    return logAndRethrow('Email registration error:', error);
   }
 };
 
@@ -61,28 +88,25 @@ export const loginWithEmailAndPassword = async (
     );
     return result.user;
   } catch (error) {
-    console.error('Email login error:', error);
-    throw error;
+    return logAndRethrow('Email login error:', error);
   }
 };
 
 // パスワードリセットメールを送信
-export const sendPasswordReset = async (email: string) => {
+export const sendPasswordReset = async (email: string): Promise<void> => {
   try {
     await sendPasswordResetEmail(auth, email);
   } catch (error) {
-    console.error('Password reset error:', error);
-    throw error;
+    logAndRethrow('Password reset error:', error);
   }
 };
 
 // サインアウト
-export const signOut = async () => {
+export const signOut = async (): Promise<void> => {
   try {
     await firebaseSignOut(auth);
   } catch (error) {
-    console.error('Sign out error:', error);
-    throw error;
+    logAndRethrow('Sign out error:', error);
   }
 };
 

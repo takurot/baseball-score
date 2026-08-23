@@ -27,7 +27,11 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { getAllTeamStats, TeamStats } from '../firebase/statsService';
+import {
+  getAllTeamStats,
+  TeamStats,
+  MIN_QUALIFYING_AT_BATS,
+} from '../firebase/statsService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -51,55 +55,158 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
+// 打撃成績のキーと表示ラベルを一箇所にまとめ、各表示箇所（チーム/選手 ×
+// モバイル/デスクトップ）で使い回す。値は team.battingStats / player の
+// どちらも同じキーで参照できる（PlayerBattingStats は BattingStats を継承）
+type StatKey =
+  | 'gameCount'
+  | 'atBats'
+  | 'hits'
+  | 'doubles'
+  | 'triples'
+  | 'homeRuns'
+  | 'rbis'
+  | 'walks'
+  | 'strikeouts'
+  | 'battingAvg'
+  | 'obp'
+  | 'slg'
+  | 'ops';
+
+interface StatFieldConfig {
+  label: string;
+  shortLabel?: string;
+  isRate?: boolean;
+}
+
+const STAT_FIELDS: Record<StatKey, StatFieldConfig> = {
+  gameCount: { label: '試合数', shortLabel: '試合' },
+  atBats: { label: '打数' },
+  hits: { label: '安打' },
+  doubles: { label: '二塁打', shortLabel: '2B' },
+  triples: { label: '三塁打', shortLabel: '3B' },
+  homeRuns: { label: '本塁打', shortLabel: 'HR' },
+  rbis: { label: '打点' },
+  walks: { label: '四死球' },
+  strikeouts: { label: '三振' },
+  battingAvg: { label: '打率', isRate: true },
+  obp: { label: '出塁率', isRate: true },
+  slg: { label: '長打率', isRate: true },
+  ops: { label: 'OPS', isRate: true },
+};
+
+// テーブル・カードで並べる順序（各表示箇所は必要なキーだけを部分的に使う）
+// gameCount は BattingStats に含まれず team.battingStats / player どちらでも
+// 別枠で扱うため、ここでは除外した型にする
+type BattingStatKey = Exclude<StatKey, 'gameCount'>;
+
+const DESKTOP_TABLE_ORDER: BattingStatKey[] = [
+  'atBats',
+  'hits',
+  'doubles',
+  'triples',
+  'homeRuns',
+  'rbis',
+  'walks',
+  'strikeouts',
+  'battingAvg',
+  'obp',
+  'slg',
+  'ops',
+];
+
+const TEAM_MOBILE_ORDER: StatKey[] = [
+  'battingAvg',
+  'gameCount',
+  'atBats',
+  'hits',
+  'homeRuns',
+  'rbis',
+  'walks',
+  'strikeouts',
+  'obp',
+  'slg',
+  'ops',
+];
+
+const PLAYER_MOBILE_ORDER: StatKey[] = [
+  'gameCount',
+  'atBats',
+  'hits',
+  'doubles',
+  'triples',
+  'homeRuns',
+  'rbis',
+  'walks',
+  'strikeouts',
+  'obp',
+  'slg',
+  'ops',
+];
+
+// 打率などをフォーマット
+const formatBattingAvg = (value: number): string => {
+  return value.toFixed(3).replace(/^0+/, '');
+};
+
+const formatStatValue = (key: StatKey, value: number): string =>
+  STAT_FIELDS[key].isRate ? formatBattingAvg(value) : String(value);
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  return '不明なエラーが発生しました';
+};
+
 const TeamStatsList: React.FC = () => {
   const [teamStats, setTeamStats] = useState<TeamStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
-  const [selectedTeamIndex, setSelectedTeamIndex] = useState<number | null>(
-    null
-  );
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // 成績をフェッチ
   useEffect(() => {
+    let cancelled = false;
+
     const fetchTeamStats = async () => {
       try {
         setLoading(true);
         setError(null);
         const stats = await getAllTeamStats();
+        if (cancelled) return;
+
         setTeamStats(stats);
         // 最初のチームが選択された状態にする
         if (stats.length > 0) {
-          setSelectedTeamIndex(0);
+          setSelectedTeamId(stats[0].teamId);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        if (cancelled) return;
         console.error('Error fetching team stats:', err);
-        setError(`成績の取得に失敗しました: ${err.message}`);
+        setError(`成績の取得に失敗しました: ${getErrorMessage(err)}`);
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     fetchTeamStats();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
-  const handleTeamSelect = (index: number) => {
-    setSelectedTeamIndex(index);
-  };
-
-  // 打率などをフォーマット
-  const formatBattingAvg = (value: number): string => {
-    return value.toFixed(3).replace(/^0+/, '');
-  };
-
-  // 選手の最低打席数（表示フィルター用）
-  const MIN_PLAYER_AT_BATS = 10;
+  // 選択中のチーム（一覧が変化しても存在しないIDを指し続けない）
+  const selectedTeam =
+    teamStats.find((team) => team.teamId === selectedTeamId) ?? null;
 
   if (loading) {
     return (
@@ -205,39 +312,17 @@ const TeamStatsList: React.FC = () => {
                   <Typography variant="h6" gutterBottom>
                     {stats.teamName}
                   </Typography>
-                  <Typography variant="body2">
-                    打率: {formatBattingAvg(stats.battingStats.battingAvg)}
-                  </Typography>
-                  <Typography variant="body2">
-                    試合数: {stats.gameCount}
-                  </Typography>
-                  <Typography variant="body2">
-                    打数: {stats.battingStats.atBats}
-                  </Typography>
-                  <Typography variant="body2">
-                    安打: {stats.battingStats.hits}
-                  </Typography>
-                  <Typography variant="body2">
-                    本塁打: {stats.battingStats.homeRuns}
-                  </Typography>
-                  <Typography variant="body2">
-                    打点: {stats.battingStats.rbis}
-                  </Typography>
-                  <Typography variant="body2">
-                    四死球: {stats.battingStats.walks}
-                  </Typography>
-                  <Typography variant="body2">
-                    三振: {stats.battingStats.strikeouts}
-                  </Typography>
-                  <Typography variant="body2">
-                    出塁率: {formatBattingAvg(stats.battingStats.obp)}
-                  </Typography>
-                  <Typography variant="body2">
-                    長打率: {formatBattingAvg(stats.battingStats.slg)}
-                  </Typography>
-                  <Typography variant="body2">
-                    OPS: {formatBattingAvg(stats.battingStats.ops)}
-                  </Typography>
+                  {TEAM_MOBILE_ORDER.map((key) => (
+                    <Typography variant="body2" key={key}>
+                      {STAT_FIELDS[key].label}:{' '}
+                      {formatStatValue(
+                        key,
+                        key === 'gameCount'
+                          ? stats.gameCount
+                          : stats.battingStats[key]
+                      )}
+                    </Typography>
+                  ))}
                 </CardContent>
               </Card>
             ))}
@@ -250,18 +335,11 @@ const TeamStatsList: React.FC = () => {
                 <TableRow>
                   <TableCell>チーム名</TableCell>
                   <TableCell align="center">試合数</TableCell>
-                  <TableCell align="center">打数</TableCell>
-                  <TableCell align="center">安打</TableCell>
-                  <TableCell align="center">二塁打</TableCell>
-                  <TableCell align="center">三塁打</TableCell>
-                  <TableCell align="center">本塁打</TableCell>
-                  <TableCell align="center">打点</TableCell>
-                  <TableCell align="center">四死球</TableCell>
-                  <TableCell align="center">三振</TableCell>
-                  <TableCell align="center">打率</TableCell>
-                  <TableCell align="center">出塁率</TableCell>
-                  <TableCell align="center">長打率</TableCell>
-                  <TableCell align="center">OPS</TableCell>
+                  {DESKTOP_TABLE_ORDER.map((key) => (
+                    <TableCell align="center" key={key}>
+                      {STAT_FIELDS[key].label}
+                    </TableCell>
+                  ))}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -271,42 +349,11 @@ const TeamStatsList: React.FC = () => {
                       {stats.teamName}
                     </TableCell>
                     <TableCell align="center">{stats.gameCount}</TableCell>
-                    <TableCell align="center">
-                      {stats.battingStats.atBats}
-                    </TableCell>
-                    <TableCell align="center">
-                      {stats.battingStats.hits}
-                    </TableCell>
-                    <TableCell align="center">
-                      {stats.battingStats.doubles}
-                    </TableCell>
-                    <TableCell align="center">
-                      {stats.battingStats.triples}
-                    </TableCell>
-                    <TableCell align="center">
-                      {stats.battingStats.homeRuns}
-                    </TableCell>
-                    <TableCell align="center">
-                      {stats.battingStats.rbis}
-                    </TableCell>
-                    <TableCell align="center">
-                      {stats.battingStats.walks}
-                    </TableCell>
-                    <TableCell align="center">
-                      {stats.battingStats.strikeouts}
-                    </TableCell>
-                    <TableCell align="center">
-                      {formatBattingAvg(stats.battingStats.battingAvg)}
-                    </TableCell>
-                    <TableCell align="center">
-                      {formatBattingAvg(stats.battingStats.obp)}
-                    </TableCell>
-                    <TableCell align="center">
-                      {formatBattingAvg(stats.battingStats.slg)}
-                    </TableCell>
-                    <TableCell align="center">
-                      {formatBattingAvg(stats.battingStats.ops)}
-                    </TableCell>
+                    {DESKTOP_TABLE_ORDER.map((key) => (
+                      <TableCell align="center" key={key}>
+                        {formatStatValue(key, stats.battingStats[key])}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))}
               </TableBody>
@@ -322,11 +369,13 @@ const TeamStatsList: React.FC = () => {
             チームを選択
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {teamStats.map((team, index) => (
+            {teamStats.map((team) => (
               <Button
                 key={team.teamId}
-                variant={selectedTeamIndex === index ? 'contained' : 'outlined'}
-                onClick={() => handleTeamSelect(index)}
+                variant={
+                  selectedTeamId === team.teamId ? 'contained' : 'outlined'
+                }
+                onClick={() => setSelectedTeamId(team.teamId)}
                 sx={{ mb: 1 }}
               >
                 {team.teamName}
@@ -335,14 +384,16 @@ const TeamStatsList: React.FC = () => {
           </Box>
         </Box>
 
-        {selectedTeamIndex !== null && (
+        {selectedTeam && (
           <>
             <Typography
               variant="h6"
               sx={{ mt: 3, mb: 2, display: 'flex', alignItems: 'center' }}
             >
-              {teamStats[selectedTeamIndex].teamName}の選手成績
-              <Tooltip title="規定打席（10打席以上）に到達した選手を上位表示しています。">
+              {selectedTeam.teamName}の選手成績
+              <Tooltip
+                title={`規定打数（${MIN_QUALIFYING_AT_BATS}打数以上）に到達した選手を上位表示しています。`}
+              >
                 <IconButton size="small" sx={{ ml: 1 }}>
                   <InfoOutlinedIcon fontSize="small" />
                 </IconButton>
@@ -352,10 +403,10 @@ const TeamStatsList: React.FC = () => {
             {isMobile ? (
               // モバイル向け表示 - アコーディオン形式
               <Box>
-                {teamStats[selectedTeamIndex].playerStats.length === 0 ? (
+                {selectedTeam.playerStats.length === 0 ? (
                   <Alert severity="info">選手の打撃成績はまだありません</Alert>
                 ) : (
-                  teamStats[selectedTeamIndex].playerStats.map((player) => (
+                  selectedTeam.playerStats.map((player) => (
                     <Accordion key={player.playerId} sx={{ mb: 1 }}>
                       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Box
@@ -385,42 +436,12 @@ const TeamStatsList: React.FC = () => {
                             gap: 1,
                           }}
                         >
-                          <Typography variant="body2">
-                            試合数: {player.gameCount}
-                          </Typography>
-                          <Typography variant="body2">
-                            打数: {player.atBats}
-                          </Typography>
-                          <Typography variant="body2">
-                            安打: {player.hits}
-                          </Typography>
-                          <Typography variant="body2">
-                            二塁打: {player.doubles}
-                          </Typography>
-                          <Typography variant="body2">
-                            三塁打: {player.triples}
-                          </Typography>
-                          <Typography variant="body2">
-                            本塁打: {player.homeRuns}
-                          </Typography>
-                          <Typography variant="body2">
-                            打点: {player.rbis}
-                          </Typography>
-                          <Typography variant="body2">
-                            四死球: {player.walks}
-                          </Typography>
-                          <Typography variant="body2">
-                            三振: {player.strikeouts}
-                          </Typography>
-                          <Typography variant="body2">
-                            出塁率: {formatBattingAvg(player.obp)}
-                          </Typography>
-                          <Typography variant="body2">
-                            長打率: {formatBattingAvg(player.slg)}
-                          </Typography>
-                          <Typography variant="body2">
-                            OPS: {formatBattingAvg(player.ops)}
-                          </Typography>
+                          {PLAYER_MOBILE_ORDER.map((key) => (
+                            <Typography variant="body2" key={key}>
+                              {STAT_FIELDS[key].label}:{' '}
+                              {formatStatValue(key, player[key])}
+                            </Typography>
+                          ))}
                         </Box>
                       </AccordionDetails>
                     </Accordion>
@@ -438,34 +459,31 @@ const TeamStatsList: React.FC = () => {
                         名前
                       </TableCell>
                       <TableCell align="center">試合</TableCell>
-                      <TableCell align="center">打数</TableCell>
-                      <TableCell align="center">安打</TableCell>
-                      <TableCell align="center">2B</TableCell>
-                      <TableCell align="center">3B</TableCell>
-                      <TableCell align="center">HR</TableCell>
-                      <TableCell align="center">打点</TableCell>
-                      <TableCell align="center">四死球</TableCell>
-                      <TableCell align="center">三振</TableCell>
-                      <TableCell align="center">打率</TableCell>
-                      <TableCell align="center">出塁率</TableCell>
-                      <TableCell align="center">長打率</TableCell>
-                      <TableCell align="center">OPS</TableCell>
+                      {DESKTOP_TABLE_ORDER.map((key) => (
+                        <TableCell align="center" key={key}>
+                          {STAT_FIELDS[key].shortLabel ??
+                            STAT_FIELDS[key].label}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {teamStats[selectedTeamIndex].playerStats.length === 0 ? (
+                    {selectedTeam.playerStats.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={15} align="center">
+                        <TableCell
+                          colSpan={3 + DESKTOP_TABLE_ORDER.length}
+                          align="center"
+                        >
                           選手の打撃成績はまだありません
                         </TableCell>
                       </TableRow>
                     ) : (
-                      teamStats[selectedTeamIndex].playerStats.map((player) => (
+                      selectedTeam.playerStats.map((player) => (
                         <TableRow
                           key={player.playerId}
                           sx={{
                             backgroundColor:
-                              player.atBats >= MIN_PLAYER_AT_BATS
+                              player.atBats >= MIN_QUALIFYING_AT_BATS
                                 ? 'rgba(232, 244, 253, 0.3)'
                                 : 'inherit',
                           }}
@@ -477,30 +495,19 @@ const TeamStatsList: React.FC = () => {
                           <TableCell align="center">
                             {player.gameCount}
                           </TableCell>
-                          <TableCell align="center">{player.atBats}</TableCell>
-                          <TableCell align="center">{player.hits}</TableCell>
-                          <TableCell align="center">{player.doubles}</TableCell>
-                          <TableCell align="center">{player.triples}</TableCell>
-                          <TableCell align="center">
-                            {player.homeRuns}
-                          </TableCell>
-                          <TableCell align="center">{player.rbis}</TableCell>
-                          <TableCell align="center">{player.walks}</TableCell>
-                          <TableCell align="center">
-                            {player.strikeouts}
-                          </TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold' }}>
-                            {formatBattingAvg(player.battingAvg)}
-                          </TableCell>
-                          <TableCell align="center">
-                            {formatBattingAvg(player.obp)}
-                          </TableCell>
-                          <TableCell align="center">
-                            {formatBattingAvg(player.slg)}
-                          </TableCell>
-                          <TableCell align="center">
-                            {formatBattingAvg(player.ops)}
-                          </TableCell>
+                          {DESKTOP_TABLE_ORDER.map((key) => (
+                            <TableCell
+                              align="center"
+                              key={key}
+                              sx={
+                                key === 'battingAvg'
+                                  ? { fontWeight: 'bold' }
+                                  : undefined
+                              }
+                            >
+                              {formatStatValue(key, player[key])}
+                            </TableCell>
+                          ))}
                         </TableRow>
                       ))
                     )}

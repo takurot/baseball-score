@@ -30,6 +30,10 @@ export interface PlayerBattingStats extends BattingStats {
 // ゲームコレクションの定数
 const GAMES_COLLECTION = 'games';
 
+// 選手成績を上位表示する際の規定打数（この値未満は下位に回す）
+// TeamStatsList の表示（背景ハイライト・ツールチップ）と共有する
+export const MIN_QUALIFYING_AT_BATS = 10;
+
 // チームごとの通算成績を取得
 export const getAllTeamStats = async (): Promise<TeamStats[]> => {
   try {
@@ -231,10 +235,9 @@ const aggregatePlayerBattingStats = (teamStats: TeamStats, team: Team) => {
 
   // プレイヤー成績を打率の降順でソート
   teamStats.playerStats.sort((a, b) => {
-    // 打席数が一定数以上ある選手を優先
-    const minAtBats = 10;
-    const aHasMinAtBats = a.atBats >= minAtBats;
-    const bHasMinAtBats = b.atBats >= minAtBats;
+    // 打数が規定数以上ある選手を優先
+    const aHasMinAtBats = a.atBats >= MIN_QUALIFYING_AT_BATS;
+    const bHasMinAtBats = b.atBats >= MIN_QUALIFYING_AT_BATS;
 
     if (aHasMinAtBats && !bHasMinAtBats) return -1;
     if (!aHasMinAtBats && bHasMinAtBats) return 1;
