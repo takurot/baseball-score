@@ -1192,10 +1192,11 @@ const MainApp: React.FC<{
       {!isSharedMode && isGameInputMode && isMobile && (
         <Box
           sx={{
-            backgroundColor: '#f5f5f5',
+            backgroundColor: 'action.hover',
             p: 1,
             textAlign: 'center',
-            borderBottom: '1px solid #e0e0e0',
+            borderBottom: 1,
+            borderColor: 'divider',
           }}
         >
           <Button
