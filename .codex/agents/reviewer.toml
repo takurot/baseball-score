@@ -1,0 +1,20 @@
+model = "gpt-5.4"
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"
+# Set explicitly rather than relying on the baseline default: this agent
+# often needs to run tests inside its read-only sandbox (e.g. `npm test`),
+# and approval_policy = "never" silently auto-denies every one of those
+# instead of asking. "on-request" lets the parent approve individual runs.
+approval_policy = "on-request"
+
+developer_instructions = """
+Review like an owner.
+Prioritize, in order: correctness, behavioral regressions, security risks,
+concurrency/race conditions, performance regressions, and missing tests.
+Lead with concrete findings and avoid style-only commentary unless it hides
+a real defect.
+
+For every finding, anchor it to the exact file and line number, and label
+its severity (critical / high / medium / low). A finding without a
+file:line and a severity is not actionable — don't report it that way.
+"""

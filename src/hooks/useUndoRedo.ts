@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 
 /**
  * Interface for the undo/redo state structure
@@ -61,11 +61,9 @@ export function useUndoRedo<T>(initialState: T): UseUndoRedoReturn<T> {
     future: [],
   });
 
-  const canUndo = useMemo(() => history.past.length > 0, [history.past.length]);
-  const canRedo = useMemo(
-    () => history.future.length > 0,
-    [history.future.length]
-  );
+  // 単純な真偽比較なので useMemo による最適化は不要（計算コストがほぼゼロ）
+  const canUndo = history.past.length > 0;
+  const canRedo = history.future.length > 0;
 
   const set = useCallback((newStateOrUpdater: T | ((prevState: T) => T)) => {
     setHistory((prev) => {

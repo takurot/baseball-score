@@ -260,3 +260,25 @@ describe('MainApp - 打席結果編集ダイアログ', () => {
     expect(title).not.toHaveTextContent('不明な選手');
   }, 30000);
 });
+
+describe('MainApp - コメントアウト残骸の除去', () => {
+  // デスクトップ用の試合日ボタンは <Hidden smDown> 配下にあり、MUI の Hidden は
+  // window.matchMedia に依存するため jsdom では常に非表示（そもそも DOM に
+  // 現れない）になり、この環境では自動テストで検証できない。修正内容
+  // （モバイル版と同じ gameState.date を表示する）は目視・コードレビューで
+  // 確認する。保存ダイアログ側（Hidden に依存しない）は下記でテストする。
+
+  test('保存ダイアログに日付と対戦カードが表示される（空行ではない）', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+
+    await user.click(screen.getByRole('button', { name: '試合データを保存' }));
+
+    const dialog = await screen.findByRole('dialog');
+    const expectedDate = new Date().toLocaleDateString('ja-JP');
+    expect(
+      within(dialog).getByText(`日付: ${expectedDate}`)
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/対戦: .+ vs .+/)).toBeInTheDocument();
+  }, 15000);
+});

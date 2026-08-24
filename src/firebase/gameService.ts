@@ -6,6 +6,7 @@ import {
   getDoc,
   query,
   orderBy,
+  limit,
   serverTimestamp,
   deleteDoc,
   where,
@@ -17,6 +18,12 @@ import { getCurrentUser } from './authService';
 
 const GAMES_COLLECTION = 'games';
 
+// Firestoreのドキュメントサイズ制限（1MB）に対する安全マージンを見た保存許容サイズ
+const MAX_GAME_DOCUMENT_SIZE_BYTES = 1_000_000;
+
+// getAllGames で一度に取得する試合数の上限（無制限クエリを避ける）
+const MAX_GAMES_PER_PAGE = 200;
+
 // 所有権検証付きで既存の試合データを取得（不存在・他人のデータはエラー）
 const requireOwnedGame = async (gameId: string): Promise<Game> => {
   const game = await getGameById(gameId);
@@ -24,6 +31,41 @@ const requireOwnedGame = async (gameId: string): Promise<Game> => {
     throw new Error('データが見つかりません');
   }
   return game;
+};
+
+// saveGame / saveGameAsNew で共通の保存用ペイロード生成
+// （クローン・所有者情報付与・タイムスタンプ付与・サイズチェックをまとめる）
+const buildGameToSave = (
+  game: Game,
+  user: { uid: string; email: string | null },
+  { resetId }: { resetId: boolean }
+): Record<string, unknown> => {
+  // 保存前にデータを整形（循環参照を避けるため、JSONに変換してから再度パースする）
+  const gameClone = JSON.parse(JSON.stringify(game));
+
+  if (resetId) {
+    delete gameClone.id;
+  }
+
+  const gameToSave = {
+    ...gameClone,
+    userId: user.uid, // ユーザーIDを追加
+    userEmail: user.email, // ユーザーのメールアドレスを追加
+    isPublic: game.isPublic ?? false, // 公開状態を追加
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  const gameDataSize = new Blob([JSON.stringify(gameToSave)]).size;
+  console.log(`Game data size: ${gameDataSize} bytes`);
+
+  if (gameDataSize > MAX_GAME_DOCUMENT_SIZE_BYTES) {
+    throw new Error(
+      `データサイズが大きすぎます (${Math.round(gameDataSize / 1024)} KB)。1MB以下にしてください。`
+    );
+  }
+
+  return gameToSave;
 };
 
 // 試合データを保存
@@ -34,29 +76,7 @@ export const saveGame = async (game: Game): Promise<string> => {
       throw new Error('ログインが必要です');
     }
 
-    // 保存前にデータを整形（循環参照を避けるため、JSONに変換してから再度パースする）
-    const gameClone = JSON.parse(JSON.stringify(game));
-
-    // タイムスタンプを追加
-    const gameToSave = {
-      ...gameClone,
-      userId: user.uid, // ユーザーIDを追加
-      userEmail: user.email, // ユーザーのメールアドレスを追加
-      isPublic: game.isPublic ?? false, // 公開状態を追加
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-
-    // データサイズをチェック
-    const gameDataSize = new Blob([JSON.stringify(gameToSave)]).size;
-    console.log(`Game data size: ${gameDataSize} bytes`);
-
-    // Firestoreのドキュメントサイズ制限は1MB
-    if (gameDataSize > 1000000) {
-      throw new Error(
-        `データサイズが大きすぎます (${Math.round(gameDataSize / 1024)} KB)。1MB以下にしてください。`
-      );
-    }
+    const gameToSave = buildGameToSave(game, user, { resetId: false });
 
     let docRef;
 
@@ -93,32 +113,7 @@ export const saveGameAsNew = async (game: Game): Promise<string> => {
       throw new Error('ログインが必要です');
     }
 
-    // 保存前にデータを整形（循環参照を避けるため、JSONに変換してから再度パースする）
-    const gameClone = JSON.parse(JSON.stringify(game));
-
-    // IDをリセットして新しいゲームとして保存
-    delete gameClone.id;
-
-    // タイムスタンプを追加
-    const gameToSave = {
-      ...gameClone,
-      userId: user.uid, // ユーザーIDを追加
-      userEmail: user.email, // ユーザーのメールアドレスを追加
-      isPublic: game.isPublic ?? false, // 公開状態を追加
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-
-    // データサイズをチェック
-    const gameDataSize = new Blob([JSON.stringify(gameToSave)]).size;
-    console.log(`Game data size: ${gameDataSize} bytes`);
-
-    // Firestoreのドキュメントサイズ制限は1MB
-    if (gameDataSize > 1000000) {
-      throw new Error(
-        `データサイズが大きすぎます (${Math.round(gameDataSize / 1024)} KB)。1MB以下にしてください。`
-      );
-    }
+    const gameToSave = buildGameToSave(game, user, { resetId: true });
 
     // 常に新しいドキュメントを作成
     const docRef = await addDoc(collection(db, GAMES_COLLECTION), gameToSave);
@@ -139,10 +134,12 @@ export const getAllGames = async (): Promise<Game[]> => {
     }
 
     // ユーザーIDでフィルタリングしたクエリを作成
+    // 無制限クエリを避けるため、最新 MAX_GAMES_PER_PAGE 件までに制限する
     const q = query(
       collection(db, GAMES_COLLECTION),
       where('userId', '==', user.uid),
-      orderBy('date', 'desc')
+      orderBy('date', 'desc'),
+      limit(MAX_GAMES_PER_PAGE)
     );
 
     const querySnapshot = await getDocs(q);
@@ -158,24 +155,27 @@ export const getAllGames = async (): Promise<Game[]> => {
 };
 
 // 特定の試合データを取得
+// 契約: ドキュメントが存在しない場合と、存在するが自分のデータでない場合の
+// どちらも null を返す（他ユーザーへドキュメントの存在有無を漏らさないため
+// 区別しない）。それ以外のエラー（ネットワーク等）は throw する
 export const getGameById = async (gameId: string): Promise<Game | null> => {
   try {
     const docRef = doc(db, GAMES_COLLECTION, gameId);
     const docSnap = await getDoc(docRef);
 
-    if (docSnap.exists()) {
-      const data = docSnap.data() as Game;
-
-      // 自分のデータかチェック
-      const user = getCurrentUser();
-      if (!user || data.userId !== user.uid) {
-        throw new Error('このデータにアクセスする権限がありません');
-      }
-
-      return { ...data, id: docSnap.id };
-    } else {
+    if (!docSnap.exists()) {
       return null;
     }
+
+    const data = docSnap.data() as Game;
+
+    // 自分のデータかチェック
+    const user = getCurrentUser();
+    if (!user || data.userId !== user.uid) {
+      return null;
+    }
+
+    return { ...data, id: docSnap.id };
   } catch (error) {
     console.error('Error getting game:', error);
     throw error;

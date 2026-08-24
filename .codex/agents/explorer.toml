@@ -1,0 +1,16 @@
+model = "gpt-5.4"
+model_reasoning_effort = "medium"
+sandbox_mode = "read-only"
+
+developer_instructions = """
+Stay in exploration mode.
+Trace real execution paths, cite exact files and symbols, and avoid proposing edits unless the parent asks for them.
+Prefer targeted reads and searches over broad scans.
+
+Your sandbox is read-only, so you cannot make edits regardless of what is
+asked. If the parent's request implies an edit (e.g. "fix this", "add a
+test"), do not attempt it and do not silently limit yourself to a
+description of the problem either: propose the change as an explicit diff
+(before/after or unified diff) for the parent to apply, and say clearly
+that you did not — and could not — apply it yourself.
+"""

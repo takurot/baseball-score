@@ -73,4 +73,26 @@ describe('AtBatSummaryTable', () => {
       screen.queryByLabelText('牽制アウト - 表チームのアウト')
     ).not.toBeInTheDocument();
   });
+
+  test('ダークモードでアウトイベント行がハードコードされたライトグレーではなくテーマトークンで塗られる', () => {
+    render(
+      <ThemeProvider theme={createTheme({ palette: { mode: 'dark' } })}>
+        <AtBatSummaryTable
+          team={team}
+          maxInning={1}
+          isTop={true}
+          outEvents={outEvents}
+        />
+      </ThemeProvider>
+    );
+
+    const row = screen.getByText('その他のアウト').closest('tr');
+    expect(row).not.toBeNull();
+    const { backgroundColor } = getComputedStyle(row as HTMLElement);
+
+    // 旧実装は #f8f8f8 相当のライトグレー背景で、ダーク背景の上に
+    // そのまま浮いて見えるバグがあった
+    expect(backgroundColor).not.toBe('rgb(248, 248, 248)');
+    expect(backgroundColor).toContain('rgba(255, 255, 255');
+  });
 });

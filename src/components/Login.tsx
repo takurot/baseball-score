@@ -17,6 +17,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import PersonIcon from '@mui/icons-material/Person';
 import { useAuth } from '../contexts/AuthContext';
+import { getAuthErrorMessage } from '../utils/authErrorMessage';
 
 // タブパネルのProps
 interface TabPanelProps {
@@ -92,22 +93,22 @@ const Login: React.FC = () => {
       setLoading(true);
       setError(null);
       await loginWithEmailAndPassword(email, password);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Email login failed:', err);
-      let errorMsg = 'ログインに失敗しました。';
-
-      // Firebase Auth のエラーメッセージをより分かりやすく翻訳
-      if (
-        err.code === 'auth/user-not-found' ||
-        err.code === 'auth/wrong-password'
-      ) {
-        errorMsg = 'メールアドレスまたはパスワードが正しくありません';
-      } else if (err.code === 'auth/too-many-requests') {
-        errorMsg =
-          'ログイン試行回数が多すぎます。しばらく時間をおいてから再度お試しください';
-      }
-
-      setError(errorMsg);
+      setError(
+        getAuthErrorMessage(
+          err,
+          {
+            'auth/user-not-found':
+              'メールアドレスまたはパスワードが正しくありません',
+            'auth/wrong-password':
+              'メールアドレスまたはパスワードが正しくありません',
+            'auth/too-many-requests':
+              'ログイン試行回数が多すぎます。しばらく時間をおいてから再度お試しください',
+          },
+          'ログインに失敗しました。'
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -132,20 +133,21 @@ const Login: React.FC = () => {
       await registerWithEmailAndPassword(email, password, displayName);
       // 登録成功後、自動的にログインタブに切り替え
       setTabValue(0);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Registration failed:', err);
-      let errorMsg = '登録に失敗しました。';
-
-      if (err.code === 'auth/email-already-in-use') {
-        errorMsg = 'このメールアドレスは既に使用されています';
-      } else if (err.code === 'auth/invalid-email') {
-        errorMsg = '有効なメールアドレスを入力してください';
-      } else if (err.code === 'auth/weak-password') {
-        errorMsg =
-          'パスワードが弱すぎます。より強力なパスワードを設定してください';
-      }
-
-      setError(errorMsg);
+      setError(
+        getAuthErrorMessage(
+          err,
+          {
+            'auth/email-already-in-use':
+              'このメールアドレスは既に使用されています',
+            'auth/invalid-email': '有効なメールアドレスを入力してください',
+            'auth/weak-password':
+              'パスワードが弱すぎます。より強力なパスワードを設定してください',
+          },
+          '登録に失敗しました。'
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -166,17 +168,19 @@ const Login: React.FC = () => {
       setError(
         'パスワードリセットのリンクを送信しました。メールを確認してください'
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Password reset failed:', err);
-      let errorMsg = 'パスワードリセットに失敗しました。';
-
-      if (err.code === 'auth/user-not-found') {
-        errorMsg = 'このメールアドレスに関連するアカウントが見つかりません';
-      } else if (err.code === 'auth/invalid-email') {
-        errorMsg = '有効なメールアドレスを入力してください';
-      }
-
-      setError(errorMsg);
+      setError(
+        getAuthErrorMessage(
+          err,
+          {
+            'auth/user-not-found':
+              'このメールアドレスに関連するアカウントが見つかりません',
+            'auth/invalid-email': '有効なメールアドレスを入力してください',
+          },
+          'パスワードリセットに失敗しました。'
+        )
+      );
     } finally {
       setLoading(false);
     }
