@@ -212,14 +212,14 @@ jobs:
 
       - name: Download coverage artifacts
         if: ${{ needs.coverage.result == 'success' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: coverage-report
           path: coverage
 
       - name: Download build artifacts
         if: ${{ needs.build.result == 'success' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: build-files
           path: build
