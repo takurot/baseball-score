@@ -4,9 +4,11 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useCallback,
   lazy,
   Suspense,
 } from 'react';
+
 import {
   Container,
   AppBar,
@@ -121,12 +123,28 @@ const sendAnalyticsEvent = (
 };
 
 // アプリのメインコンテンツコンポーネント
+export type AppView = 'game' | 'gameList' | 'teamManagement' | 'teamStats';
+
+const getViewFromUrl = (): AppView => {
+  if (typeof window === 'undefined') return 'game';
+  const params = new URLSearchParams(window.location.search);
+  const view = params.get('view');
+  if (
+    view === 'gameList' ||
+    view === 'teamManagement' ||
+    view === 'teamStats'
+  ) {
+    return view;
+  }
+  return 'game';
+};
+
 const MainApp: React.FC<{
   toggleColorMode: () => void;
   mode: PaletteMode;
 }> = ({ toggleColorMode, mode }) => {
-  const { currentUser, isLoading } = useAuth();
   const theme = useTheme();
+  const { currentUser, isLoading } = useAuth();
   const initialGame = useMemo(() => createInitialGame(), []);
   const {
     state: gameState,
@@ -140,8 +158,31 @@ const MainApp: React.FC<{
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [activeStep, setActiveStep] = useState(0);
 
+  // 画面遷移状態（URLクエリパラメータ ?view=... と同期）
+  const [currentView, setCurrentView] = useState<AppView>(getViewFromUrl);
+
+  const navigateToView = useCallback((nextView: AppView) => {
+    setCurrentView(nextView);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (nextView === 'game') {
+        url.searchParams.delete('view');
+      } else {
+        url.searchParams.set('view', nextView);
+      }
+      window.history.pushState({ view: nextView }, '', url.toString());
+    }
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentView(getViewFromUrl());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // 試合保存・読み込み関連の状態
-  const [showGameList, setShowGameList] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -149,12 +190,6 @@ const MainApp: React.FC<{
   const [snackbarSeverity, setSnackbarSeverity] = useState<
     'success' | 'error' | 'info' | 'warning'
   >('success');
-
-  // チーム管理関連の状態
-  const [showTeamManagement, setShowTeamManagement] = useState(false);
-
-  // 通算成績関連の状態
-  const [showTeamStats, setShowTeamStats] = useState(false);
 
   // メニュー関連の状態
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
@@ -216,15 +251,14 @@ const MainApp: React.FC<{
   const isSmallMobile = useMediaQuery('(max-width:380px)');
 
   // 画面モードの判定
-  const isGameInputMode =
-    !showGameList && !showTeamManagement && !showTeamStats;
+  const isGameInputMode = currentView === 'game';
 
   // 動的タイトルの取得
   const getPageTitle = (): string => {
     if (isSharedMode) return '野球スコア（閲覧専用）';
-    if (showGameList) return '試合一覧';
-    if (showTeamManagement) return '選手管理';
-    if (showTeamStats) return '通算成績';
+    if (currentView === 'gameList') return '試合一覧';
+    if (currentView === 'teamManagement') return '選手管理';
+    if (currentView === 'teamStats') return '通算成績';
     return '野球スコア';
   };
 
@@ -520,39 +554,21 @@ const MainApp: React.FC<{
 
   // 試合一覧の表示/非表示切り替え
   const toggleGameList = () => {
-    setShowGameList(!showGameList);
-
-    // 他の画面を非表示にする
-    if (showTeamManagement) {
-      setShowTeamManagement(false);
-    }
-
-    // 通算成績画面が表示されている場合は閉じる
-    if (showTeamStats) {
-      setShowTeamStats(false);
-    }
-
+    navigateToView(currentView === 'gameList' ? 'game' : 'gameList');
     handleMenuClose();
   };
 
   // チーム管理画面の表示/非表示切り替え
   const toggleTeamManagement = () => {
-    // 他の画面を閉じる
-    setShowGameList(false);
-    setShowTeamStats(false);
-    // 遅延を追加してレンダリングの問題を回避
-    setTimeout(() => {
-      setShowTeamManagement(!showTeamManagement);
-    }, 10);
+    navigateToView(
+      currentView === 'teamManagement' ? 'game' : 'teamManagement'
+    );
     handleMenuClose();
   };
 
   // 通算成績画面の表示/非表示切り替え
   const toggleTeamStats = () => {
-    setShowTeamStats(!showTeamStats);
-    // 他の画面を非表示にする
-    setShowGameList(false);
-    setShowTeamManagement(false);
+    navigateToView(currentView === 'teamStats' ? 'game' : 'teamStats');
     handleMenuClose();
   };
 
@@ -568,9 +584,7 @@ const MainApp: React.FC<{
 
   // 試合画面に戻る
   const handleBackToGame = () => {
-    if (showGameList) setShowGameList(false);
-    if (showTeamManagement) setShowTeamManagement(false);
-    if (showTeamStats) setShowTeamStats(false);
+    navigateToView('game');
     handleMenuClose();
   };
 
@@ -579,17 +593,8 @@ const MainApp: React.FC<{
     pendingBaselineResetRef.current = true;
     gameActions.resetGame();
     handleMenuClose();
-    // 試合一覧画面が表示されている場合は閉じる
-    if (showGameList) {
-      setShowGameList(false);
-    }
-    // チーム管理画面が表示されている場合は閉じる
-    if (showTeamManagement) {
-      setShowTeamManagement(false);
-    }
-    // 通算成績画面が表示されている場合は閉じる
-    if (showTeamStats) {
-      setShowTeamStats(false);
+    if (currentView !== 'game') {
+      navigateToView('game');
     }
   };
 
@@ -747,9 +752,10 @@ const MainApp: React.FC<{
         setSnackbarMessage('試合データを読み込みました');
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
-        setShowGameList(false);
+        navigateToView('game');
 
         // アナリティクスイベント：試合データ読み込み
+
         sendAnalyticsEvent('game_load', {
           gameId,
           teams: `${loadedGame.awayTeam.name} vs ${loadedGame.homeTeam.name}`,
@@ -1125,8 +1131,7 @@ const MainApp: React.FC<{
       )}
 
       <Container sx={{ pt: 2 }}>
-        {/* 画面の優先順位: チーム管理画面 > 通算成績 > ゲーム一覧 > 通常の試合画面 */}
-        {showTeamManagement && !isSharedMode ? (
+        {currentView === 'teamManagement' && !isSharedMode ? (
           <Suspense
             fallback={
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -1136,7 +1141,7 @@ const MainApp: React.FC<{
           >
             <TeamList />
           </Suspense>
-        ) : showTeamStats && !isSharedMode ? (
+        ) : currentView === 'teamStats' && !isSharedMode ? (
           <Suspense
             fallback={
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -1146,7 +1151,7 @@ const MainApp: React.FC<{
           >
             <TeamStatsList />
           </Suspense>
-        ) : showGameList && !isSharedMode ? (
+        ) : currentView === 'gameList' && !isSharedMode ? (
           <Suspense
             fallback={
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
