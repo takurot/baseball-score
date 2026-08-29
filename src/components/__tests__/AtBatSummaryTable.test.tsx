@@ -95,4 +95,18 @@ describe('AtBatSummaryTable', () => {
     expect(backgroundColor).not.toBe('rgb(248, 248, 248)');
     expect(backgroundColor).toContain('rgba(255, 255, 255');
   });
+
+  test('各イニングの TableCell に unique な key が付与されており React warning が出ない', () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    renderTable(true);
+    const keyWarnings = errorSpy.mock.calls.filter((args) =>
+      args.some(
+        (arg) =>
+          typeof arg === 'string' &&
+          arg.includes('Each child in a list should have a unique "key" prop')
+      )
+    );
+    expect(keyWarnings).toHaveLength(0);
+    errorSpy.mockRestore();
+  });
 });

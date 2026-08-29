@@ -210,13 +210,17 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
   };
 
   // 打席結果を表示するセル（複数の結果に対応）
-  const renderAtBatCell = (atBats: AtBat[]) => {
+  const renderAtBatCell = (atBats: AtBat[], key?: string | number) => {
     if (!atBats.length) {
-      return <TableCell align="center">-</TableCell>;
+      return (
+        <TableCell key={key} align="center">
+          -
+        </TableCell>
+      );
     }
 
     return (
-      <TableCell align="center">
+      <TableCell key={key} align="center">
         <Stack
           direction="row"
           spacing={0.5}
@@ -629,8 +633,12 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
                     </Typography>
                   </TableCell>
                   {innings.map((inning) =>
-                    renderAtBatCell(getPlayerAtBatsForInning(player.id, inning))
+                    renderAtBatCell(
+                      getPlayerAtBatsForInning(player.id, inning),
+                      inning
+                    )
                   )}
+
                   <TableCell align="center">{stats.atBats}</TableCell>
                   <TableCell align="center">{stats.hits}</TableCell>
                   <TableCell align="center">{stats.rbis}</TableCell>
