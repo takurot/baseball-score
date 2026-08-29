@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { axe } from '../../setupTests';
+import { axe } from '../../test/axe';
+
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import ScoreBoard from '../ScoreBoard';
 import { RunEvent, Team } from '../../types';

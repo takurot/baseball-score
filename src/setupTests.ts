@@ -4,7 +4,7 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 import { configure } from '@testing-library/react';
-import { configureAxe, toHaveNoViolations } from 'jest-axe';
+import { toHaveNoViolations } from 'jest-axe';
 
 // jest-axe のマッチャを登録
 expect.extend(toHaveNoViolations);
@@ -14,6 +14,3 @@ expect.extend(toHaveNoViolations);
 // 間に合わずフレーキーに失敗することがあるため、findBy* / waitFor の
 // 既定タイムアウトを緩和する
 configure({ asyncUtilTimeout: 8000 });
-
-// axeの設定（必要に応じてルール緩和をここで定義可能）
-export const axe = configureAxe({});

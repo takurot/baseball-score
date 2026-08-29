@@ -1,9 +1,10 @@
 # Blog articles and documentation that don't need formatting
 qiita.md
 
-# Build output
+# Build and test output
 build/
 dist/
+coverage/
 
 # Dependencies
 node_modules/
@@ -15,4 +16,4 @@ node_modules/
 ._*
 
 # Git files
-.git/ 
+.git/
