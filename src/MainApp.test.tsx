@@ -282,3 +282,43 @@ describe('MainApp - コメントアウト残骸の除去', () => {
     expect(within(dialog).getByText(/対戦: .+ vs .+/)).toBeInTheDocument();
   }, 15000);
 });
+
+describe('MainApp - 表示モード切替', () => {
+  test('Stepper や次へ/戻るボタンが存在せず、AppBar の切り替えボタンで一覧表示と入力画面を切り替えられる', async () => {
+    const { logAnalyticsEvent } = require('./firebase/analyticsClient');
+    const user = userEvent.setup();
+    renderMainApp();
+
+    // Stepper や手順用の戻る/次へボタンが存在しないこと
+    expect(screen.queryByText('プレー入力')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '次へ' })
+    ).not.toBeInTheDocument();
+
+    // 初期状態はプレー入力画面（1回の操作 セクションが表示）
+    expect(screen.getByText('1回の操作')).toBeInTheDocument();
+
+    // 一覧表示ボタンをクリック
+    const toggleButton = screen.getByRole('button', {
+      name: '一覧表示に切り替え',
+    });
+    await user.click(toggleButton);
+
+    // アナリティクスイベントが送出されること
+    expect(logAnalyticsEvent).toHaveBeenCalledWith('view_mode_change', {
+      mode: 'summary',
+    });
+
+    // 編集モードに戻るボタンに変わること
+    expect(
+      screen.getByRole('button', { name: '編集モードに戻る' })
+    ).toBeInTheDocument();
+
+    // 編集モードに戻る
+    await user.click(screen.getByRole('button', { name: '編集モードに戻る' }));
+    expect(logAnalyticsEvent).toHaveBeenCalledWith('view_mode_change', {
+      mode: 'edit',
+    });
+    expect(screen.getByText('1回の操作')).toBeInTheDocument();
+  }, 15000);
+});
