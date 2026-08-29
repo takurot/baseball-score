@@ -89,6 +89,7 @@ describe('MainApp - 打席登録フロー', () => {
     renderMainApp();
 
     await registerAtBatFor(user, '選手1');
+    await screen.findByRole('heading', { name: /打席結果登録/ });
 
     expect(await screen.findByRole('button', { name: '登録' })).toBeDisabled();
   }, 30000);

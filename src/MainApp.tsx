@@ -1609,7 +1609,11 @@ const MainApp: React.FC<{
         open={snackbarOpen}
         autoHideDuration={snackbarSeverity === 'info' ? null : 6000}
         onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={
+          isMobile
+            ? { vertical: 'bottom', horizontal: 'center' }
+            : { vertical: 'top', horizontal: 'center' }
+        }
       >
         <Alert
           onClose={() => setSnackbarOpen(false)}
