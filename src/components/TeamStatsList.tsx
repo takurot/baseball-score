@@ -177,10 +177,11 @@ const TeamStatsList: React.FC = () => {
         const stats = await getAllTeamStats();
         if (cancelled) return;
 
-        setTeamStats(stats);
+        const safeStats = Array.isArray(stats) ? stats : [];
+        setTeamStats(safeStats);
         // 最初のチームが選択された状態にする
-        if (stats.length > 0) {
-          setSelectedTeamId(stats[0].teamId);
+        if (safeStats.length > 0) {
+          setSelectedTeamId(safeStats[0].teamId);
         }
       } catch (err: unknown) {
         if (cancelled) return;
@@ -206,7 +207,7 @@ const TeamStatsList: React.FC = () => {
 
   // 選択中のチーム（一覧が変化しても存在しないIDを指し続けない）
   const selectedTeam =
-    teamStats.find((team) => team.teamId === selectedTeamId) ?? null;
+    teamStats?.find((team) => team.teamId === selectedTeamId) ?? null;
 
   if (loading) {
     return (

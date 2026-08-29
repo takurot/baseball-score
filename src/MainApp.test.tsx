@@ -1,6 +1,7 @@
 import React from 'react';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen, within, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import MainApp from './MainApp';
 
@@ -24,6 +25,22 @@ jest.mock('./firebase/gameService', () => ({
 jest.mock('./firebase/teamService', () => ({
   getTeamById: jest.fn(),
   getUserTeams: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('./firebase/statsService', () => ({
+  getAllTeamStats: jest.fn().mockResolvedValue([]),
+  getPlayerStats: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('./firebase/authService', () => ({
+  auth: { currentUser: { uid: 'test-user', email: 'test@example.com' } },
+  googleProvider: {},
+  signInWithGoogle: jest.fn(),
+  logout: jest.fn(),
+  onAuthStateChangedListener: jest.fn((callback) => {
+    callback({ uid: 'test-user', email: 'test@example.com' });
+    return jest.fn();
+  }),
 }));
 
 jest.mock('./firebase/analyticsClient', () => ({
@@ -321,5 +338,104 @@ describe('MainApp - 表示モード切替', () => {
       mode: 'edit',
     });
     expect(screen.getByText('1回の操作')).toBeInTheDocument();
+  });
+});
+
+describe('MainApp - URL駆動の画面遷移', () => {
+  afterEach(() => {
+    window.history.replaceState({}, '', '/');
+  });
+
+  test('メニューから「試合一覧を表示」に遷移するとURLが更新され、戻るボタンで試合画面に復帰できる', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+
+    // メニューを開く
+    await openMenu(user);
+
+    // 「試合一覧を表示」をクリック
+    const gameListMenuItem = await screen.findByText('試合一覧を表示');
+    await user.click(gameListMenuItem);
+
+    // URLのクエリパラメータが ?view=gameList になっていること
+    expect(window.location.search).toContain('view=gameList');
+
+    // ヘッダーに「試合画面に戻る」ボタンが表示されること
+    const backButton = await screen.findByRole('button', {
+      name: '試合画面に戻る',
+    });
+    expect(backButton).toBeInTheDocument();
+
+    // 戻るボタンをクリック
+    await user.click(backButton);
+
+    // URLが試合画面（クエリなし）に戻り、1回の操作が表示されること
+    expect(window.location.search).not.toContain('view=gameList');
+    expect(await screen.findByText('1回の操作')).toBeInTheDocument();
+  }, 15000);
+
+  test('ブラウザの戻る進む操作（popstate）で画面状態が同期する', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+
+    await openMenu(user);
+    const gameListMenuItem = await screen.findByText('試合一覧を表示');
+    await user.click(gameListMenuItem);
+
+    expect(window.location.search).toContain('view=gameList');
+
+    // popstate イベントを発火（試合画面に戻る）
+    window.history.pushState({}, '', '/');
+    await act(async () => {
+      window.dispatchEvent(
+        new PopStateEvent('popstate', { state: { view: 'game' } })
+      );
+    });
+
+    expect(await screen.findByText('1回の操作')).toBeInTheDocument();
+  }, 15000);
+
+  test('メニューから「チーム・選手管理」および「通算成績」への遷移でURLが正しく更新される', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+
+    // チーム・選手管理へ遷移
+    await openMenu(user);
+    const teamMenuItem = await screen.findByText('チーム・選手管理');
+    await user.click(teamMenuItem);
+
+    expect(window.location.search).toContain('view=teamManagement');
+
+    // 戻るボタンで復帰
+    const backButton1 = await screen.findByRole('button', {
+      name: '試合画面に戻る',
+    });
+    await user.click(backButton1);
+    expect(window.location.search).not.toContain('view=teamManagement');
+
+    // 通算成績へ遷移
+    await openMenu(user);
+    const statsMenuItem = await screen.findByText('通算成績');
+    await user.click(statsMenuItem);
+
+    expect(window.location.search).toContain('view=teamStats');
+
+    // 戻るボタンで復帰
+    const backButton2 = await screen.findByRole('button', {
+      name: '試合画面に戻る',
+    });
+    await user.click(backButton2);
+    expect(window.location.search).not.toContain('view=teamStats');
+  }, 15000);
+
+  test('URLパラメータ ?view=teamStats で初期表示した場合は通算成績画面がレンダリングされる', async () => {
+    window.history.replaceState({}, '', '/?view=teamStats');
+    renderMainApp();
+
+    const backButton = await screen.findByRole('button', {
+      name: '試合画面に戻る',
+    });
+    expect(backButton).toBeInTheDocument();
+    expect(screen.queryByText('1回の操作')).not.toBeInTheDocument();
   }, 15000);
 });
