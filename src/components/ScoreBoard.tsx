@@ -124,10 +124,11 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
           id={headingId}
           component="h2"
           variant="subtitle1"
-          fontWeight={600}
+          sx={{ fontWeight: 600 }}
         >
           スコアボード
         </Typography>
+
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={2}
@@ -154,7 +155,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                 <Typography variant="body2" color="text.secondary">
                   {team.name}
                 </Typography>
-                <Typography variant="body2" fontWeight={600}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
                   R {summary.runs} / H {summary.hits} / E {summary.errors}
                 </Typography>
               </Box>
@@ -282,8 +283,10 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
               >
                 <Typography
                   variant="body2"
-                  fontWeight="bold"
-                  sx={{ fontSize: isMobile ? '0.8rem' : '0.875rem' }}
+                  sx={{
+                    fontWeight: 'bold',
+                    fontSize: isMobile ? '0.8rem' : '0.875rem',
+                  }}
                 >
                   {awayTeam.name}
                 </Typography>
@@ -339,8 +342,10 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
               >
                 <Typography
                   variant="body2"
-                  fontWeight="bold"
-                  sx={{ fontSize: isMobile ? '0.8rem' : '0.875rem' }}
+                  sx={{
+                    fontWeight: 'bold',
+                    fontSize: isMobile ? '0.8rem' : '0.875rem',
+                  }}
                 >
                   {homeTeam.name}
                 </Typography>
