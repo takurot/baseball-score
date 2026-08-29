@@ -35,11 +35,9 @@ import {
   useMediaQuery,
   Hidden,
   PaletteMode,
-  Stepper,
-  Step,
-  StepLabel,
   Stack,
 } from '@mui/material';
+
 import SaveIcon from '@mui/icons-material/Save';
 import MenuIcon from '@mui/icons-material/Menu';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -140,7 +138,6 @@ const MainApp: React.FC<{
 
   const [tabIndex, setTabIndex] = useState(0);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  const steps = ['プレー入力', '試合結果'];
   const [activeStep, setActiveStep] = useState(0);
 
   // 試合保存・読み込み関連の状態
@@ -1175,34 +1172,6 @@ const MainApp: React.FC<{
               isSharedMode={isSharedMode}
               onClick={handleOpenVenueDialog}
             />
-            <Stepper
-              activeStep={activeStep}
-              alternativeLabel
-              sx={{ mt: 2, mb: 2 }}
-            >
-              {steps.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Button
-                onClick={() => setActiveStep((s) => Math.max(0, s - 1))}
-                disabled={activeStep === 0}
-                sx={{ mr: 1 }}
-              >
-                戻る
-              </Button>
-              <Button
-                onClick={() =>
-                  setActiveStep((s) => Math.min(steps.length - 1, s + 1))
-                }
-                disabled={activeStep === steps.length - 1}
-              >
-                次へ
-              </Button>
-            </Box>
 
             <ScoreBoard
               homeTeam={homeTeam}
