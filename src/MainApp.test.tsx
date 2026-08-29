@@ -47,7 +47,6 @@ jest.mock('./firebase/analyticsClient', () => ({
   logAnalyticsEvent: jest.fn(),
 }));
 
-
 const renderMainApp = () =>
   render(
     <ThemeProvider theme={createTheme()}>
@@ -439,4 +438,3 @@ describe('MainApp - URL駆動の画面遷移', () => {
     expect(screen.queryByText('1回の操作')).not.toBeInTheDocument();
   }, 15000);
 });
-
