@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useId } from 'react';
 import {
-  Box,
   Paper,
   Table,
   TableBody,
@@ -10,8 +9,8 @@ import {
   TableRow,
   Typography,
   useMediaQuery,
-  Stack,
 } from '@mui/material';
+
 import { alpha, useTheme } from '@mui/material/styles';
 import { Team, RunEvent } from '../types';
 import { ScoreCalculator } from '../services/ScoreCalculator';
@@ -91,11 +90,6 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
     [awayTeam, homeTeam, totalScores]
   );
 
-  const teamSummaries: Array<{ team: Team; key: 'home' | 'away' }> = [
-    { team: awayTeam, key: 'away' },
-    { team: homeTeam, key: 'home' },
-  ];
-
   const highlightStyles = {
     backgroundColor: alpha(theme.palette.primary.main, 0.12),
     borderLeft: `2px solid ${theme.palette.primary.main}`,
@@ -114,55 +108,15 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
       aria-labelledby={headingId}
       sx={{ mb: 3, mt: 3, p: { xs: 2, sm: 3 } }}
     >
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', md: 'center' }}
-        spacing={2}
+      <Typography
+        id={headingId}
+        component="h2"
+        variant="subtitle1"
+        sx={{ fontWeight: 600, mb: 1 }}
       >
-        <Typography
-          id={headingId}
-          component="h2"
-          variant="subtitle1"
-          sx={{ fontWeight: 600 }}
-        >
-          スコアボード
-        </Typography>
+        スコアボード
+      </Typography>
 
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
-          sx={{
-            width: '100%',
-            justifyContent: { xs: 'flex-start', md: 'flex-end' },
-          }}
-        >
-          {teamSummaries.map(({ team, key }) => {
-            const summary = summaryData[key];
-            return (
-              <Box
-                key={key}
-                data-testid={`scoreboard-summary-${key}`}
-                sx={{
-                  flex: 1,
-                  minWidth: 160,
-                  border: `1px solid ${theme.palette.divider}`,
-                  borderRadius: 1,
-                  p: 1.5,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                <Typography variant="body2" color="text.secondary">
-                  {team.name}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  R {summary.runs} / H {summary.hits} / E {summary.errors}
-                </Typography>
-              </Box>
-            );
-          })}
-        </Stack>
-      </Stack>
 
       <TableContainer
         ref={containerRef}
@@ -201,7 +155,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
           size={isMobile ? 'small' : 'medium'}
           sx={{
             minWidth: isMobile ? 300 : 'auto',
-            mt: 2,
+            mt: 1,
             '& .MuiTableCell-root': {
               fontSize: isMobile ? '0.8rem' : '0.875rem',
               padding: isMobile ? '6px 8px' : '8px 16px',
@@ -251,14 +205,36 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                 title="合計得点"
                 sx={{
                   fontWeight: 'bold',
-                  minWidth: isMobile ? '40px' : '50px',
-                  position: 'sticky',
-                  right: 0,
-                  backgroundColor: theme.palette.background.paper,
-                  zIndex: 2,
+                  minWidth: isMobile ? '32px' : '40px',
                 }}
               >
                 R
+              </TableCell>
+              <TableCell
+                component="th"
+                scope="col"
+                align="right"
+                aria-label="安打数"
+                title="安打数"
+                sx={{
+                  fontWeight: 'bold',
+                  minWidth: isMobile ? '32px' : '40px',
+                }}
+              >
+                H
+              </TableCell>
+              <TableCell
+                component="th"
+                scope="col"
+                align="right"
+                aria-label="失策数"
+                title="失策数"
+                sx={{
+                  fontWeight: 'bold',
+                  minWidth: isMobile ? '32px' : '40px',
+                }}
+              >
+                E
               </TableCell>
             </TableRow>
           </TableHead>
@@ -310,15 +286,24 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
               ))}
               <TableCell
                 align="right"
-                sx={{
-                  fontWeight: 'bold',
-                  position: 'sticky',
-                  right: 0,
-                  backgroundColor: theme.palette.background.paper,
-                  zIndex: 1,
-                }}
+                sx={{ fontWeight: 'bold' }}
+                data-testid="scoreboard-r-away"
               >
-                {totalScores.away}
+                {summaryData.away.runs}
+              </TableCell>
+              <TableCell
+                align="right"
+                sx={{ fontWeight: 'bold' }}
+                data-testid="scoreboard-h-away"
+              >
+                {summaryData.away.hits}
+              </TableCell>
+              <TableCell
+                align="right"
+                sx={{ fontWeight: 'bold' }}
+                data-testid="scoreboard-e-away"
+              >
+                {summaryData.away.errors}
               </TableCell>
             </TableRow>
 
@@ -369,15 +354,24 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
               ))}
               <TableCell
                 align="right"
-                sx={{
-                  fontWeight: 'bold',
-                  position: 'sticky',
-                  right: 0,
-                  backgroundColor: theme.palette.background.paper,
-                  zIndex: 1,
-                }}
+                sx={{ fontWeight: 'bold' }}
+                data-testid="scoreboard-r-home"
               >
-                {totalScores.home}
+                {summaryData.home.runs}
+              </TableCell>
+              <TableCell
+                align="right"
+                sx={{ fontWeight: 'bold' }}
+                data-testid="scoreboard-h-home"
+              >
+                {summaryData.home.hits}
+              </TableCell>
+              <TableCell
+                align="right"
+                sx={{ fontWeight: 'bold' }}
+                data-testid="scoreboard-e-home"
+              >
+                {summaryData.home.errors}
               </TableCell>
             </TableRow>
           </TableBody>
