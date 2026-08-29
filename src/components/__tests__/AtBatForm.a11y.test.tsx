@@ -1,7 +1,8 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { axe } from '../../setupTests';
+import { axe } from '../../test/axe';
+
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import AtBatForm from '../AtBatForm';
 import { Player } from '../../types';
