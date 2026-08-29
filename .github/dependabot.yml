@@ -23,17 +23,10 @@ updates:
       mui:
         patterns:
           - '@mui/*'
+          - '@emotion/*'
     ignore:
-      # eslint-plugin-jest v28+ は @typescript-eslint v6+ を要求
-      # 現在は v5.62.0 を使用しているため互換性がない
-      - dependency-name: 'eslint-plugin-jest'
-        update-types: ['version-update:semver-major']
-      # TypeScript ESLint v8+ は破壊的変更が多く、
-      # react-scripts のアップデートが必要
-      - dependency-name: '@typescript-eslint/*'
-        update-types: ['version-update:semver-major']
-      # TypeScript v5+ は react-scripts 5.0.1 と互換性がない
-      # react-scripts は "^3.2.1 || ^4" のみサポート
+      # react-scripts は peer として TypeScript ^4 までしか宣言していないため
+      # メジャーアップデートは react-scripts 移行後に検討（現行は ^5.9.3 を使用中）
       - dependency-name: 'typescript'
         update-types: ['version-update:semver-major']
       # React v19+ は破壊的変更が多く、慎重な検証が必要
