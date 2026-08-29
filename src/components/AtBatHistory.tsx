@@ -71,6 +71,9 @@ const hitResultLabels: Record<HitResult, string> = {
   OTH: 'その他',
 };
 
+const EDIT_LABEL = '編集';
+const DELETE_LABEL = '削除';
+
 const AtBatHistory: React.FC<AtBatHistoryProps> = ({
   atBats,
   players,
@@ -194,24 +197,24 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                       <TableCell>
                         <Box sx={{ display: 'flex' }}>
                           {onEditAtBat && (
-                            <Tooltip title="編集">
+                            <Tooltip title={EDIT_LABEL}>
                               <IconButton
                                 size="small"
                                 onClick={() => onEditAtBat(atBat)}
                                 color="primary"
-                                aria-label="編集"
+                                aria-label={EDIT_LABEL}
                               >
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                           )}
                           {onDeleteAtBat && (
-                            <Tooltip title="削除">
+                            <Tooltip title={DELETE_LABEL}>
                               <IconButton
                                 size="small"
                                 onClick={() => onDeleteAtBat(atBat.id)}
                                 color="error"
-                                aria-label="削除"
+                                aria-label={DELETE_LABEL}
                               >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
@@ -262,12 +265,12 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                     <TableCell>{event.note || '-'}</TableCell>
                     {onDeleteRunEvent && (
                       <TableCell>
-                        <Tooltip title="削除">
+                        <Tooltip title={DELETE_LABEL}>
                           <IconButton
                             size="small"
                             onClick={() => onDeleteRunEvent(event.id)}
                             color="error"
-                            aria-label="削除"
+                            aria-label={DELETE_LABEL}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
@@ -314,12 +317,12 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                     <TableCell>{event.note || '-'}</TableCell>
                     {onDeleteOutEvent && (
                       <TableCell>
-                        <Tooltip title="削除">
+                        <Tooltip title={DELETE_LABEL}>
                           <IconButton
                             size="small"
                             onClick={() => onDeleteOutEvent(event.id)}
                             color="secondary"
-                            aria-label="削除"
+                            aria-label={DELETE_LABEL}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
