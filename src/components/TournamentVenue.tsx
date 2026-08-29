@@ -13,22 +13,47 @@ const TournamentVenue: React.FC<Props> = ({
   venue,
   isSharedMode,
   onClick,
-}) => (
-  <Box
-    sx={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      mb: 2,
-      cursor: isSharedMode ? 'default' : 'pointer',
-    }}
-    onClick={!isSharedMode ? onClick : undefined}
-  >
-    <Typography variant="subtitle1" align="center">
-      {tournament ? tournament : isSharedMode ? '' : '大会名をクリックして設定'}
-      {venue && ` @ ${venue}`}
-    </Typography>
-  </Box>
-);
+}) => {
+  const isClickable = !isSharedMode && Boolean(onClick);
+
+  const displayText = (() => {
+    if (tournament) {
+      return venue ? `${tournament} @ ${venue}` : tournament;
+    }
+    if (venue) {
+      return venue;
+    }
+    return isClickable ? '大会名をクリックして設定' : '';
+  })();
+
+  return (
+    <Box
+      component={isClickable ? 'button' : 'div'}
+      type={isClickable ? 'button' : undefined}
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        mb: 2,
+        cursor: isClickable ? 'pointer' : 'default',
+        background: 'none',
+        border: 0,
+        p: 0,
+        font: 'inherit',
+        color: 'inherit',
+        width: '100%',
+      }}
+      onClick={isClickable ? onClick : undefined}
+    >
+      <Typography
+        variant="subtitle1"
+        align="center"
+        component={isClickable ? 'span' : 'p'}
+      >
+        {displayText}
+      </Typography>
+    </Box>
+  );
+};
 
 export default TournamentVenue;

@@ -8,11 +8,15 @@ import {
   TypographyProps,
 } from '@mui/material';
 
-interface SectionCardProps extends PaperProps {
+interface SectionCardProps extends Omit<
+  PaperProps,
+  'component' | 'aria-labelledby'
+> {
   title: string;
   actions?: React.ReactNode;
   children: React.ReactNode;
   titleVariant?: TypographyProps['variant'];
+  titleComponent?: React.ElementType;
 }
 
 const SectionCard: React.FC<SectionCardProps> = ({
@@ -20,6 +24,7 @@ const SectionCard: React.FC<SectionCardProps> = ({
   actions,
   children,
   titleVariant = 'subtitle1',
+  titleComponent = 'h2',
   sx,
   ...paperProps
 }) => {
@@ -27,15 +32,17 @@ const SectionCard: React.FC<SectionCardProps> = ({
 
   return (
     <Paper
-      component="section"
-      aria-labelledby={headingId}
       elevation={1}
       {...paperProps}
-      sx={{
-        p: { xs: 2, sm: 3 },
-        mb: 3,
-        ...sx,
-      }}
+      component="section"
+      aria-labelledby={headingId}
+      sx={[
+        {
+          p: { xs: 2, sm: 3 },
+          mb: 3,
+        },
+        ...(sx ? (Array.isArray(sx) ? sx : [sx]) : []),
+      ]}
     >
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
@@ -45,7 +52,7 @@ const SectionCard: React.FC<SectionCardProps> = ({
       >
         <Typography
           id={headingId}
-          component="h2"
+          component={titleComponent}
           variant={titleVariant}
           fontWeight={600}
         >
