@@ -41,6 +41,11 @@ export const accessibilityTokens: ThemeOptions['accessibility'] = {
   },
 };
 
+export const fontFamilies = {
+  base: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  heading: "'Outfit', 'Inter', sans-serif",
+};
+
 // Phase 1: New color palette
 const primaryColor = '#2563EB'; // Blue 600
 const secondaryColor = '#7C3AED'; // Violet 600
@@ -67,30 +72,29 @@ export const getNewTheme = (mode: 'light' | 'dark') =>
       }),
     },
     typography: {
-      fontFamily:
-        "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      fontFamily: fontFamilies.base,
       h1: {
-        fontFamily: "'Outfit', 'Inter', sans-serif",
+        fontFamily: fontFamilies.heading,
         fontWeight: 700,
       },
       h2: {
-        fontFamily: "'Outfit', 'Inter', sans-serif",
+        fontFamily: fontFamilies.heading,
         fontWeight: 700,
       },
       h3: {
-        fontFamily: "'Outfit', 'Inter', sans-serif",
+        fontFamily: fontFamilies.heading,
         fontWeight: 600,
       },
       h4: {
-        fontFamily: "'Outfit', 'Inter', sans-serif",
+        fontFamily: fontFamilies.heading,
         fontWeight: 600,
       },
       h5: {
-        fontFamily: "'Outfit', 'Inter', sans-serif",
+        fontFamily: fontFamilies.heading,
         fontWeight: 600,
       },
       h6: {
-        fontFamily: "'Outfit', 'Inter', sans-serif",
+        fontFamily: fontFamilies.heading,
         fontWeight: 600,
       },
       button: {
@@ -98,6 +102,7 @@ export const getNewTheme = (mode: 'light' | 'dark') =>
         textTransform: 'none', // Keep button text as-is (no uppercase)
       },
     },
+
     accessibility: accessibilityTokens,
     components: {
       MuiButton: {
