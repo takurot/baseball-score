@@ -74,6 +74,67 @@ const PlayerList: React.FC<PlayerListProps> = ({
   // 打順選択用の選択肢を生成（1～9）
   const orderOptions = Array.from({ length: 9 }, (_, i) => i + 1);
 
+  // 打順セレクトまたは読み取り専用表示のレンダラー
+  const renderOrderControl = (
+    player: Player,
+    minHeight?: number,
+    minWidth?: number
+  ) => {
+    if (onUpdatePlayerOrder) {
+      return (
+        <FormControl
+          size="small"
+          sx={{ minWidth: minWidth ?? (isMobile ? 80 : 65) }}
+        >
+          <Select
+            value={player.order === 0 ? '' : player.order}
+            onChange={(e: SelectChangeEvent<number>) =>
+              handleOrderChange(player.id, e)
+            }
+            displayEmpty
+            aria-label={`${player.name}の打順`}
+            sx={minHeight ? { minHeight } : undefined}
+          >
+            <MenuItem value="">
+              <em>未設定</em>
+            </MenuItem>
+            {orderOptions.map((order) => (
+              <MenuItem key={order} value={order}>
+                {order}番
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      );
+    }
+    if (isMobile) {
+      return (
+        <Chip
+          size="small"
+          label={player.order === 0 ? '未設定' : `${player.order}番`}
+        />
+      );
+    }
+    return player.order || '未設定';
+  };
+
+  // 選手情報編集ボタンのレンダラー
+  const renderEditButton = (playerId: string, isLarge?: boolean) => {
+    if (!onEditPlayer) return null;
+    return (
+      <Tooltip title="選手情報を編集">
+        <IconButton
+          size={isLarge ? 'medium' : 'small'}
+          onClick={() => onEditPlayer(playerId)}
+          aria-label="選手情報を編集"
+          sx={isLarge ? { minHeight: 48, minWidth: 48 } : undefined}
+        >
+          <EditIcon fontSize={isLarge ? 'medium' : 'small'} />
+        </IconButton>
+      </Tooltip>
+    );
+  };
+
   if (isMobile) {
     return (
       <Box sx={{ mb: 3 }}>
@@ -125,7 +186,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                       flexWrap: 'wrap',
                     }}
                   >
-                    <Typography variant="subtitle1" fontWeight="bold">
+                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                       #{player.number} {player.name}
                     </Typography>
                     {isNextBatter && (
@@ -143,28 +204,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                     />
                   </Box>
 
-                  {onUpdatePlayerOrder && (
-                    <FormControl size="small" sx={{ minWidth: 80 }}>
-                      <Select
-                        value={player.order === 0 ? '' : player.order}
-                        onChange={(e: SelectChangeEvent<number>) =>
-                          handleOrderChange(player.id, e)
-                        }
-                        displayEmpty
-                        aria-label={`${player.name}の打順`}
-                        sx={{ minHeight: 48 }}
-                      >
-                        <MenuItem value="">
-                          <em>未設定</em>
-                        </MenuItem>
-                        {orderOptions.map((order) => (
-                          <MenuItem key={order} value={order}>
-                            {order}番
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
+                  {renderOrderControl(player, 48, 80)}
                 </Box>
 
                 <Box
@@ -198,17 +238,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                       控えに
                     </Button>
                   )}
-                  {onEditPlayer && (
-                    <Tooltip title="選手情報を編集">
-                      <IconButton
-                        onClick={() => onEditPlayer(player.id)}
-                        aria-label="選手情報を編集"
-                        sx={{ minHeight: 48, minWidth: 48 }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
+                  {renderEditButton(player.id, true)}
                 </Box>
               </Paper>
             );
@@ -265,7 +295,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                       flexWrap: 'wrap',
                     }}
                   >
-                    <Typography variant="subtitle1" fontWeight="bold">
+                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                       #{player.number} {player.name}
                     </Typography>
                     <Chip
@@ -275,28 +305,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                     />
                   </Box>
 
-                  {onUpdatePlayerOrder && (
-                    <FormControl size="small" sx={{ minWidth: 80 }}>
-                      <Select
-                        value={player.order === 0 ? '' : player.order}
-                        onChange={(e: SelectChangeEvent<number>) =>
-                          handleOrderChange(player.id, e)
-                        }
-                        displayEmpty
-                        aria-label={`${player.name}の打順`}
-                        sx={{ minHeight: 48 }}
-                      >
-                        <MenuItem value="">
-                          <em>未設定</em>
-                        </MenuItem>
-                        {orderOptions.map((order) => (
-                          <MenuItem key={order} value={order}>
-                            {order}番
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
+                  {renderOrderControl(player, 48, 80)}
                 </Box>
 
                 <Box
@@ -318,17 +327,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                       出場させる
                     </Button>
                   )}
-                  {onEditPlayer && (
-                    <Tooltip title="選手情報を編集">
-                      <IconButton
-                        onClick={() => onEditPlayer(player.id)}
-                        aria-label="選手情報を編集"
-                        sx={{ minHeight: 48, minWidth: 48 }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
+                  {renderEditButton(player.id, true)}
                 </Box>
               </Paper>
             ))}
@@ -373,28 +372,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                   }}
                 >
                   <TableCell>
-                    {onUpdatePlayerOrder ? (
-                      <FormControl size="small" sx={{ minWidth: 65 }}>
-                        <Select
-                          value={player.order === 0 ? '' : player.order}
-                          onChange={(e: SelectChangeEvent<number>) =>
-                            handleOrderChange(player.id, e)
-                          }
-                          displayEmpty
-                        >
-                          <MenuItem value="">
-                            <em>未設定</em>
-                          </MenuItem>
-                          {orderOptions.map((order) => (
-                            <MenuItem key={order} value={order}>
-                              {order}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    ) : (
-                      player.order || '未設定'
-                    )}
+                    {renderOrderControl(player, undefined, 65)}
                   </TableCell>
                   <TableCell>{player.number}</TableCell>
                   <TableCell>
@@ -447,17 +425,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                           控えに
                         </Button>
                       )}
-                      {onEditPlayer && (
-                        <Tooltip title="選手情報を編集">
-                          <IconButton
-                            size="small"
-                            onClick={() => onEditPlayer(player.id)}
-                            aria-label="選手情報を編集"
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
+                      {renderEditButton(player.id)}
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -508,28 +476,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                   }}
                 >
                   <TableCell>
-                    {onUpdatePlayerOrder ? (
-                      <FormControl size="small" sx={{ minWidth: 65 }}>
-                        <Select
-                          value={player.order === 0 ? '' : player.order}
-                          onChange={(e: SelectChangeEvent<number>) =>
-                            handleOrderChange(player.id, e)
-                          }
-                          displayEmpty
-                        >
-                          <MenuItem value="">
-                            <em>未設定</em>
-                          </MenuItem>
-                          {orderOptions.map((order) => (
-                            <MenuItem key={order} value={order}>
-                              {order}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    ) : (
-                      player.order || '未設定'
-                    )}
+                    {renderOrderControl(player, undefined, 65)}
                   </TableCell>
                   <TableCell>{player.number}</TableCell>
                   <TableCell>{player.name}</TableCell>
@@ -555,17 +502,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                           出場させる
                         </Button>
                       )}
-                      {onEditPlayer && (
-                        <Tooltip title="選手情報を編集">
-                          <IconButton
-                            size="small"
-                            onClick={() => onEditPlayer(player.id)}
-                            aria-label="選手情報を編集"
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
+                      {renderEditButton(player.id)}
                     </Box>
                   </TableCell>
                 </TableRow>
