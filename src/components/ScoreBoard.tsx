@@ -21,6 +21,18 @@ const countHits = (team: Team): number =>
 const countErrors = (team: Team): number =>
   ScoreCalculator.calculateErrors(team.atBats);
 
+const SUMMARY_COLUMNS = [
+  { key: 'runs', label: 'R', ariaLabel: '合計得点' },
+  { key: 'hits', label: 'H', ariaLabel: '安打数' },
+  { key: 'errors', label: 'E', ariaLabel: '失策数' },
+] as const;
+
+const getSummaryColumnRightOffset = (index: number, isMobile: boolean) => {
+  const colWidth = isMobile ? 32 : 40;
+  const fromRight = SUMMARY_COLUMNS.length - 1 - index;
+  return fromRight * colWidth;
+};
+
 interface ScoreBoardProps {
   homeTeam: Team;
   awayTeam: Team;
@@ -197,45 +209,26 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                   {inning}
                 </TableCell>
               ))}
-              <TableCell
-                component="th"
-                scope="col"
-                align="right"
-                aria-label="合計得点"
-                title="合計得点"
-                sx={{
-                  fontWeight: 'bold',
-                  minWidth: isMobile ? '32px' : '40px',
-                }}
-              >
-                R
-              </TableCell>
-              <TableCell
-                component="th"
-                scope="col"
-                align="right"
-                aria-label="安打数"
-                title="安打数"
-                sx={{
-                  fontWeight: 'bold',
-                  minWidth: isMobile ? '32px' : '40px',
-                }}
-              >
-                H
-              </TableCell>
-              <TableCell
-                component="th"
-                scope="col"
-                align="right"
-                aria-label="失策数"
-                title="失策数"
-                sx={{
-                  fontWeight: 'bold',
-                  minWidth: isMobile ? '32px' : '40px',
-                }}
-              >
-                E
-              </TableCell>
+              {SUMMARY_COLUMNS.map((col, idx) => (
+                <TableCell
+                  key={col.key}
+                  component="th"
+                  scope="col"
+                  align="right"
+                  aria-label={col.ariaLabel}
+                  title={col.ariaLabel}
+                  sx={{
+                    fontWeight: 'bold',
+                    minWidth: isMobile ? '32px' : '40px',
+                    position: 'sticky',
+                    right: getSummaryColumnRightOffset(idx, isMobile),
+                    backgroundColor: theme.palette.background.paper,
+                    zIndex: 2,
+                  }}
+                >
+                  {col.label}
+                </TableCell>
+              ))}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -284,27 +277,22 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                   )}
                 </TableCell>
               ))}
-              <TableCell
-                align="right"
-                sx={{ fontWeight: 'bold' }}
-                data-testid="scoreboard-r-away"
-              >
-                {summaryData.away.runs}
-              </TableCell>
-              <TableCell
-                align="right"
-                sx={{ fontWeight: 'bold' }}
-                data-testid="scoreboard-h-away"
-              >
-                {summaryData.away.hits}
-              </TableCell>
-              <TableCell
-                align="right"
-                sx={{ fontWeight: 'bold' }}
-                data-testid="scoreboard-e-away"
-              >
-                {summaryData.away.errors}
-              </TableCell>
+              {SUMMARY_COLUMNS.map((col, idx) => (
+                <TableCell
+                  key={col.key}
+                  align="right"
+                  sx={{
+                    fontWeight: 'bold',
+                    position: 'sticky',
+                    right: getSummaryColumnRightOffset(idx, isMobile),
+                    backgroundColor: theme.palette.background.paper,
+                    zIndex: 1,
+                  }}
+                  data-testid={`scoreboard-${col.label.toLowerCase()}-away`}
+                >
+                  {summaryData.away[col.key]}
+                </TableCell>
+              ))}
             </TableRow>
 
             {/* 後攻チーム */}
@@ -352,27 +340,22 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                   )}
                 </TableCell>
               ))}
-              <TableCell
-                align="right"
-                sx={{ fontWeight: 'bold' }}
-                data-testid="scoreboard-r-home"
-              >
-                {summaryData.home.runs}
-              </TableCell>
-              <TableCell
-                align="right"
-                sx={{ fontWeight: 'bold' }}
-                data-testid="scoreboard-h-home"
-              >
-                {summaryData.home.hits}
-              </TableCell>
-              <TableCell
-                align="right"
-                sx={{ fontWeight: 'bold' }}
-                data-testid="scoreboard-e-home"
-              >
-                {summaryData.home.errors}
-              </TableCell>
+              {SUMMARY_COLUMNS.map((col, idx) => (
+                <TableCell
+                  key={col.key}
+                  align="right"
+                  sx={{
+                    fontWeight: 'bold',
+                    position: 'sticky',
+                    right: getSummaryColumnRightOffset(idx, isMobile),
+                    backgroundColor: theme.palette.background.paper,
+                    zIndex: 1,
+                  }}
+                  data-testid={`scoreboard-${col.label.toLowerCase()}-home`}
+                >
+                  {summaryData.home[col.key]}
+                </TableCell>
+              ))}
             </TableRow>
           </TableBody>
         </Table>
