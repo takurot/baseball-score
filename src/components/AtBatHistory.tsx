@@ -199,6 +199,7 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                                 size="small"
                                 onClick={() => onEditAtBat(atBat)}
                                 color="primary"
+                                aria-label="編集"
                               >
                                 <EditIcon fontSize="small" />
                               </IconButton>
@@ -210,6 +211,7 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                                 size="small"
                                 onClick={() => onDeleteAtBat(atBat.id)}
                                 color="error"
+                                aria-label="削除"
                               >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
@@ -265,6 +267,7 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                             size="small"
                             onClick={() => onDeleteRunEvent(event.id)}
                             color="error"
+                            aria-label="削除"
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
@@ -316,6 +319,7 @@ const AtBatHistory: React.FC<AtBatHistoryProps> = ({
                             size="small"
                             onClick={() => onDeleteOutEvent(event.id)}
                             color="secondary"
+                            aria-label="削除"
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
