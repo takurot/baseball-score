@@ -129,7 +129,6 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
         スコアボード
       </Typography>
 
-
       <TableContainer
         ref={containerRef}
         sx={{
