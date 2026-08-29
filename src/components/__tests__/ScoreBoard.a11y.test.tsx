@@ -153,4 +153,25 @@ describe('ScoreBoard accessibility', () => {
 
     expect(homeSummary).toHaveTextContent(/R 3 \/ H 1 \/ E 1/);
   });
+
+  test('TypographyコンポーネントにfontWeightがsx経由で正しく適用されReactのDOM警告が出ない', () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    renderScoreBoard();
+
+    const heading = screen.getByText('スコアボード');
+    expect(heading).toBeInTheDocument();
+    expect(getComputedStyle(heading).fontWeight).toBe('600');
+
+    const domWarnings = errorSpy.mock.calls.filter((args) =>
+      args.some(
+        (arg) =>
+          typeof arg === 'string' &&
+          arg.includes(
+            'React does not recognize the `fontWeight` prop on a DOM element'
+          )
+      )
+    );
+    expect(domWarnings).toHaveLength(0);
+    errorSpy.mockRestore();
+  });
 });
