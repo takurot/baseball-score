@@ -123,12 +123,13 @@ const sendAnalyticsEvent = (
 };
 
 // アプリのメインコンテンツコンポーネント
-export type AppView = 'game' | 'gameList' | 'teamManagement' | 'teamStats';
+const VIEW_PARAM = 'view';
+type AppView = 'game' | 'gameList' | 'teamManagement' | 'teamStats';
 
 const getViewFromUrl = (): AppView => {
   if (typeof window === 'undefined') return 'game';
   const params = new URLSearchParams(window.location.search);
-  const view = params.get('view');
+  const view = params.get(VIEW_PARAM);
   if (
     view === 'gameList' ||
     view === 'teamManagement' ||
@@ -161,28 +162,46 @@ const MainApp: React.FC<{
   // 画面遷移状態（URLクエリパラメータ ?view=... と同期）
   const [currentView, setCurrentView] = useState<AppView>(getViewFromUrl);
 
-  const navigateToView = useCallback((nextView: AppView) => {
-    setCurrentView(nextView);
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (nextView === 'game') {
-        url.searchParams.delete('view');
-      } else {
-        url.searchParams.set('view', nextView);
+  const navigateToView = useCallback(
+    (nextView: AppView, replace = false) => {
+      setCurrentView(nextView);
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        if (nextView === 'game') {
+          url.searchParams.delete(VIEW_PARAM);
+        } else {
+          url.searchParams.set(VIEW_PARAM, nextView);
+        }
+        const method =
+          replace || (nextView === 'game' && currentView !== 'game')
+            ? 'replaceState'
+            : 'pushState';
+        window.history[method]({ view: nextView }, '', url.toString());
       }
-      window.history.pushState({ view: nextView }, '', url.toString());
-    }
-  }, []);
+    },
+    [currentView]
+  );
 
   useEffect(() => {
-    const handlePopState = () => {
-      setCurrentView(getViewFromUrl());
+    const handlePopState = (event: PopStateEvent) => {
+      const stateView = (event.state as { view?: AppView } | null)?.view;
+      if (
+        stateView === 'game' ||
+        stateView === 'gameList' ||
+        stateView === 'teamManagement' ||
+        stateView === 'teamStats'
+      ) {
+        setCurrentView(stateView);
+      } else {
+        setCurrentView(getViewFromUrl());
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   // 試合保存・読み込み関連の状態
+
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -249,6 +268,13 @@ const MainApp: React.FC<{
   // レスポンシブデザイン用のメディアクエリ
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isSmallMobile = useMediaQuery('(max-width:380px)');
+
+  // 非同期コンポーネント用フォールバック
+  const viewFallback = (
+    <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+      <CircularProgress />
+    </Box>
+  );
 
   // 画面モードの判定
   const isGameInputMode = currentView === 'game';
@@ -552,25 +578,15 @@ const MainApp: React.FC<{
     setSelectedPlayer(null);
   };
 
-  // 試合一覧の表示/非表示切り替え
-  const toggleGameList = () => {
-    navigateToView(currentView === 'gameList' ? 'game' : 'gameList');
+  // 画面の表示/非表示切り替えヘルパー
+  const toggleView = (view: Exclude<AppView, 'game'>) => {
+    navigateToView(currentView === view ? 'game' : view);
     handleMenuClose();
   };
 
-  // チーム管理画面の表示/非表示切り替え
-  const toggleTeamManagement = () => {
-    navigateToView(
-      currentView === 'teamManagement' ? 'game' : 'teamManagement'
-    );
-    handleMenuClose();
-  };
-
-  // 通算成績画面の表示/非表示切り替え
-  const toggleTeamStats = () => {
-    navigateToView(currentView === 'teamStats' ? 'game' : 'teamStats');
-    handleMenuClose();
-  };
+  const toggleGameList = () => toggleView('gameList');
+  const toggleTeamManagement = () => toggleView('teamManagement');
+  const toggleTeamStats = () => toggleView('teamStats');
 
   // メニューを開く
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -755,7 +771,6 @@ const MainApp: React.FC<{
         navigateToView('game');
 
         // アナリティクスイベント：試合データ読み込み
-
         sendAnalyticsEvent('game_load', {
           gameId,
           teams: `${loadedGame.awayTeam.name} vs ${loadedGame.homeTeam.name}`,
@@ -1132,33 +1147,15 @@ const MainApp: React.FC<{
 
       <Container sx={{ pt: 2 }}>
         {currentView === 'teamManagement' && !isSharedMode ? (
-          <Suspense
-            fallback={
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <CircularProgress />
-              </Box>
-            }
-          >
+          <Suspense fallback={viewFallback}>
             <TeamList />
           </Suspense>
         ) : currentView === 'teamStats' && !isSharedMode ? (
-          <Suspense
-            fallback={
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <CircularProgress />
-              </Box>
-            }
-          >
+          <Suspense fallback={viewFallback}>
             <TeamStatsList />
           </Suspense>
         ) : currentView === 'gameList' && !isSharedMode ? (
-          <Suspense
-            fallback={
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <CircularProgress />
-              </Box>
-            }
-          >
+          <Suspense fallback={viewFallback}>
             <GameList
               onSelectGame={handleSelectGame}
               onGameDeleted={() => {
