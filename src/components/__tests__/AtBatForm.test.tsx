@@ -143,4 +143,112 @@ describe('AtBatForm', () => {
       expect.objectContaining({ result: 'HR', isOut: false })
     );
   });
+
+  test('選手未選択時は選択を促すメッセージを表示する', () => {
+    renderForm({
+      player: null,
+      inning: 1,
+      isTop: true,
+      onAddAtBat: jest.fn(),
+      editingAtBat: null,
+    });
+
+    expect(
+      screen.getByText('選手リストから選手をクリックして選択してください')
+    ).toBeInTheDocument();
+  });
+
+  test('編集モードで選手がnullの場合は不明な選手と表示する', () => {
+    renderForm({
+      player: null,
+      inning: 1,
+      isTop: true,
+      onAddAtBat: jest.fn(),
+      editingAtBat,
+      onUpdateAtBat: jest.fn(),
+    });
+
+    expect(
+      screen.getByRole('heading', { name: /打席結果編集: 不明な選手/ })
+    ).toBeInTheDocument();
+  });
+
+  test('キャンセルボタンで onCancelEdit が呼ばれる', async () => {
+    const onCancelEdit = jest.fn();
+    const user = userEvent.setup();
+
+    renderForm({
+      player,
+      inning: 1,
+      isTop: true,
+      onAddAtBat: jest.fn(),
+      editingAtBat,
+      onUpdateAtBat: jest.fn(),
+      onCancelEdit,
+    });
+
+    const cancelButton = screen.getByRole('button', { name: 'キャンセル' });
+    await user.click(cancelButton);
+
+    expect(onCancelEdit).toHaveBeenCalledTimes(1);
+  });
+
+  test('メモと打点を入力して送信できる', async () => {
+    const onAddAtBat = jest.fn();
+    const user = userEvent.setup();
+
+    renderForm({
+      player,
+      inning: 1,
+      isTop: true,
+      onAddAtBat,
+    });
+
+    // ヒットを選択
+    await user.click(screen.getByRole('button', { name: 'レフトヒット' }));
+
+    // 打点を設定（MUI Select）
+    const rbiSelect = screen.getByLabelText('打点');
+    await user.click(rbiSelect);
+    const rbiOption = await screen.findByRole('option', { name: '2' });
+    await user.click(rbiOption);
+
+    // メモを入力
+    const memoInput = screen.getByLabelText(/メモ/);
+    await user.type(memoInput, 'レフト線へのライナー');
+
+    // 登録
+    await user.click(screen.getByRole('button', { name: '登録' }));
+
+    expect(onAddAtBat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: 'LH',
+        rbi: 2,
+        description: 'レフト線へのライナー',
+        isOut: false,
+      })
+    );
+  });
+
+  test('アウト結果が正しく isOut: true として送信される', async () => {
+    const onAddAtBat = jest.fn();
+    const user = userEvent.setup();
+
+    renderForm({
+      player,
+      inning: 1,
+      isTop: true,
+      onAddAtBat,
+    });
+
+    await user.click(screen.getByRole('button', { name: '三振' }));
+    await user.click(screen.getByRole('button', { name: '登録' }));
+
+    expect(onAddAtBat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: 'SO',
+        isOut: true,
+      })
+    );
+  });
 });
