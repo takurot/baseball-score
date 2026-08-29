@@ -74,16 +74,276 @@ const PlayerList: React.FC<PlayerListProps> = ({
   // 打順選択用の選択肢を生成（1～9）
   const orderOptions = Array.from({ length: 9 }, (_, i) => i + 1);
 
+  if (isMobile) {
+    return (
+      <Box sx={{ mb: 3 }}>
+        {/* 出場中の選手セクション */}
+        <Typography
+          variant="subtitle1"
+          sx={{
+            px: 2,
+            py: 1,
+            fontWeight: 'bold',
+            bgcolor: 'action.hover',
+            borderRadius: 1,
+            mb: 1.5,
+          }}
+        >
+          出場中の選手
+        </Typography>
+
+        {activePlayers.length > 0 ? (
+          activePlayers.map((player) => {
+            const isNextBatter = player.id === nextBatterPlayerId;
+            return (
+              <Paper
+                key={player.id}
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  mb: 1.5,
+                  ...(isNextBatter && {
+                    borderColor: 'primary.main',
+                    bgcolor: 'action.selected',
+                  }),
+                }}
+              >
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 1,
+                    mb: 1.5,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      #{player.number} {player.name}
+                    </Typography>
+                    {isNextBatter && (
+                      <Chip
+                        label="次打者"
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    )}
+                    <Chip
+                      label={player.position}
+                      size="small"
+                      variant="filled"
+                    />
+                  </Box>
+
+                  {onUpdatePlayerOrder && (
+                    <FormControl size="small" sx={{ minWidth: 80 }}>
+                      <Select
+                        value={player.order === 0 ? '' : player.order}
+                        onChange={(e: SelectChangeEvent<number>) =>
+                          handleOrderChange(player.id, e)
+                        }
+                        displayEmpty
+                        aria-label={`${player.name}の打順`}
+                        sx={{ minHeight: 48 }}
+                      >
+                        <MenuItem value="">
+                          <em>未設定</em>
+                        </MenuItem>
+                        {orderOptions.map((order) => (
+                          <MenuItem key={order} value={order}>
+                            {order}番
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                </Box>
+
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 1,
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {onRegisterAtBat && (
+                    <Button
+                      id={registerAtBatButtonId(player.id)}
+                      variant="contained"
+                      onClick={() => onRegisterAtBat(player)}
+                      color="primary"
+                      startIcon={<AssignmentIcon />}
+                      sx={{ minHeight: 48, minWidth: 48, flex: 1 }}
+                    >
+                      打席登録
+                    </Button>
+                  )}
+                  {onToggleStatus && (
+                    <Button
+                      variant="outlined"
+                      onClick={() => onToggleStatus(player.id)}
+                      color="secondary"
+                      startIcon={<PersonOffIcon />}
+                      sx={{ minHeight: 48, minWidth: 48 }}
+                    >
+                      控えに
+                    </Button>
+                  )}
+                  {onEditPlayer && (
+                    <Tooltip title="選手情報を編集">
+                      <IconButton
+                        onClick={() => onEditPlayer(player.id)}
+                        aria-label="選手情報を編集"
+                        sx={{ minHeight: 48, minWidth: 48 }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Box>
+              </Paper>
+            );
+          })
+        ) : (
+          <Paper variant="outlined" sx={{ p: 2, mb: 1.5, textAlign: 'center' }}>
+            <Typography color="text.secondary">
+              出場中の選手がいません
+            </Typography>
+          </Paper>
+        )}
+
+        {/* 控えの選手セクション */}
+        {benchPlayers.length > 0 && (
+          <>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                px: 2,
+                py: 1,
+                mt: 2,
+                mb: 1.5,
+                fontWeight: 'bold',
+                bgcolor: 'action.hover',
+                borderRadius: 1,
+              }}
+            >
+              控えの選手
+            </Typography>
+            {benchPlayers.map((player) => (
+              <Paper
+                key={player.id}
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  mb: 1.5,
+                  bgcolor: 'action.hover',
+                }}
+              >
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 1,
+                    mb: 1.5,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      #{player.number} {player.name}
+                    </Typography>
+                    <Chip
+                      label={player.position}
+                      size="small"
+                      variant="filled"
+                    />
+                  </Box>
+
+                  {onUpdatePlayerOrder && (
+                    <FormControl size="small" sx={{ minWidth: 80 }}>
+                      <Select
+                        value={player.order === 0 ? '' : player.order}
+                        onChange={(e: SelectChangeEvent<number>) =>
+                          handleOrderChange(player.id, e)
+                        }
+                        displayEmpty
+                        aria-label={`${player.name}の打順`}
+                        sx={{ minHeight: 48 }}
+                      >
+                        <MenuItem value="">
+                          <em>未設定</em>
+                        </MenuItem>
+                        {orderOptions.map((order) => (
+                          <MenuItem key={order} value={order}>
+                            {order}番
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                </Box>
+
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 1,
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {onToggleStatus && (
+                    <Button
+                      variant="outlined"
+                      onClick={() => onToggleStatus(player.id)}
+                      color="success"
+                      startIcon={<PersonIcon />}
+                      sx={{ minHeight: 48, minWidth: 48, flex: 1 }}
+                    >
+                      出場させる
+                    </Button>
+                  )}
+                  {onEditPlayer && (
+                    <Tooltip title="選手情報を編集">
+                      <IconButton
+                        onClick={() => onEditPlayer(player.id)}
+                        aria-label="選手情報を編集"
+                        sx={{ minHeight: 48, minWidth: 48 }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Box>
+              </Paper>
+            ))}
+          </>
+        )}
+      </Box>
+    );
+  }
+
   return (
     <TableContainer component={Paper} sx={{ mb: 3 }}>
-      <Typography variant="h6" sx={{ p: 2 }}>
-        選手一覧
-      </Typography>
-
       {/* 出場中の選手 */}
       <Typography
         variant="subtitle1"
-        sx={{ px: 2, fontWeight: 'bold', bgcolor: 'action.hover' }}
+        sx={{ px: 2, py: 1, fontWeight: 'bold', bgcolor: 'action.hover' }}
       >
         出場中の選手
       </Typography>
@@ -91,9 +351,9 @@ const PlayerList: React.FC<PlayerListProps> = ({
         <TableHead>
           <TableRow>
             <TableCell>打順</TableCell>
-            <TableCell>{isMobile ? '番号' : '背番号'}</TableCell>
+            <TableCell>背番号</TableCell>
             <TableCell>名前</TableCell>
-            <TableCell>{isMobile ? 'ポジ' : 'ポジション'}</TableCell>
+            <TableCell>ポジション</TableCell>
             <TableCell>アクション</TableCell>
           </TableRow>
         </TableHead>
@@ -159,10 +419,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                         display: 'flex',
                         flexWrap: 'wrap',
                         gap: 0.5,
-                        '& .MuiButton-root': {
-                          minWidth: isMobile ? '36px' : '64px',
-                          padding: isMobile ? '4px 8px' : undefined,
-                        },
+                        alignItems: 'center',
                       }}
                     >
                       {onRegisterAtBat && (
@@ -172,13 +429,10 @@ const PlayerList: React.FC<PlayerListProps> = ({
                           size="small"
                           onClick={() => onRegisterAtBat(player)}
                           color="primary"
-                          startIcon={
-                            isMobile ? (
-                              <AssignmentIcon fontSize="small" />
-                            ) : undefined
-                          }
+                          startIcon={<AssignmentIcon fontSize="small" />}
+                          sx={{ minHeight: 40 }}
                         >
-                          {isMobile ? '打席' : '打席登録'}
+                          打席登録
                         </Button>
                       )}
                       {onToggleStatus && (
@@ -187,13 +441,10 @@ const PlayerList: React.FC<PlayerListProps> = ({
                           size="small"
                           onClick={() => onToggleStatus(player.id)}
                           color="secondary"
-                          startIcon={
-                            isMobile ? (
-                              <PersonOffIcon fontSize="small" />
-                            ) : undefined
-                          }
+                          startIcon={<PersonOffIcon fontSize="small" />}
+                          sx={{ minHeight: 40 }}
                         >
-                          {isMobile ? '控え' : '控えに'}
+                          控えに
                         </Button>
                       )}
                       {onEditPlayer && (
@@ -201,6 +452,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                           <IconButton
                             size="small"
                             onClick={() => onEditPlayer(player.id)}
+                            aria-label="選手情報を編集"
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>
@@ -228,6 +480,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
             variant="subtitle1"
             sx={{
               px: 2,
+              py: 1,
               mt: 2,
               fontWeight: 'bold',
               bgcolor: 'action.hover',
@@ -239,9 +492,9 @@ const PlayerList: React.FC<PlayerListProps> = ({
             <TableHead>
               <TableRow>
                 <TableCell>打順</TableCell>
-                <TableCell>{isMobile ? '番号' : '背番号'}</TableCell>
+                <TableCell>背番号</TableCell>
                 <TableCell>名前</TableCell>
-                <TableCell>{isMobile ? 'ポジ' : 'ポジション'}</TableCell>
+                <TableCell>ポジション</TableCell>
                 <TableCell>アクション</TableCell>
               </TableRow>
             </TableHead>
@@ -287,10 +540,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                         display: 'flex',
                         flexWrap: 'wrap',
                         gap: 0.5,
-                        '& .MuiButton-root': {
-                          minWidth: isMobile ? '36px' : '64px',
-                          padding: isMobile ? '4px 8px' : undefined,
-                        },
+                        alignItems: 'center',
                       }}
                     >
                       {onToggleStatus && (
@@ -299,13 +549,10 @@ const PlayerList: React.FC<PlayerListProps> = ({
                           size="small"
                           onClick={() => onToggleStatus(player.id)}
                           color="success"
-                          startIcon={
-                            isMobile ? (
-                              <PersonIcon fontSize="small" />
-                            ) : undefined
-                          }
+                          startIcon={<PersonIcon fontSize="small" />}
+                          sx={{ minHeight: 40 }}
                         >
-                          {isMobile ? '出場' : '出場させる'}
+                          出場させる
                         </Button>
                       )}
                       {onEditPlayer && (
@@ -313,6 +560,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                           <IconButton
                             size="small"
                             onClick={() => onEditPlayer(player.id)}
+                            aria-label="選手情報を編集"
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>
