@@ -73,4 +73,3 @@ describe('theme tokens & contrast compliance', () => {
     expect(contrastOnDark).toBeGreaterThanOrEqual(3.0);
   });
 });
-
