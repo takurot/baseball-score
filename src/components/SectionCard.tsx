@@ -8,7 +8,10 @@ import {
   TypographyProps,
 } from '@mui/material';
 
-interface SectionCardProps extends PaperProps {
+interface SectionCardProps extends Omit<
+  PaperProps,
+  'component' | 'aria-labelledby'
+> {
   title: string;
   actions?: React.ReactNode;
   children: React.ReactNode;
@@ -38,7 +41,7 @@ const SectionCard: React.FC<SectionCardProps> = ({
           p: { xs: 2, sm: 3 },
           mb: 3,
         },
-        ...(Array.isArray(sx) ? sx : [sx]),
+        ...(sx ? (Array.isArray(sx) ? sx : [sx]) : []),
       ]}
     >
       <Stack

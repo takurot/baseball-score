@@ -23,7 +23,7 @@ const TournamentVenue: React.FC<Props> = ({
     if (venue) {
       return venue;
     }
-    return isSharedMode ? '' : '大会名をクリックして設定';
+    return isClickable ? '大会名をクリックして設定' : '';
   })();
 
   return (
@@ -45,7 +45,11 @@ const TournamentVenue: React.FC<Props> = ({
       }}
       onClick={isClickable ? onClick : undefined}
     >
-      <Typography variant="subtitle1" align="center">
+      <Typography
+        variant="subtitle1"
+        align="center"
+        component={isClickable ? 'span' : 'p'}
+      >
         {displayText}
       </Typography>
     </Box>
