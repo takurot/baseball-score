@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useId } from 'react';
 import {
-  Box,
   Paper,
   Table,
   TableBody,
@@ -10,8 +9,8 @@ import {
   TableRow,
   Typography,
   useMediaQuery,
-  Stack,
 } from '@mui/material';
+
 import { alpha, useTheme } from '@mui/material/styles';
 import { Team, RunEvent } from '../types';
 import { ScoreCalculator } from '../services/ScoreCalculator';
@@ -21,6 +20,18 @@ const countHits = (team: Team): number =>
 
 const countErrors = (team: Team): number =>
   ScoreCalculator.calculateErrors(team.atBats);
+
+const SUMMARY_COLUMNS = [
+  { key: 'runs', label: 'R', ariaLabel: '合計得点' },
+  { key: 'hits', label: 'H', ariaLabel: '安打数' },
+  { key: 'errors', label: 'E', ariaLabel: '失策数' },
+] as const;
+
+const getSummaryColumnRightOffset = (index: number, isMobile: boolean) => {
+  const colWidth = isMobile ? 32 : 40;
+  const fromRight = SUMMARY_COLUMNS.length - 1 - index;
+  return fromRight * colWidth;
+};
 
 interface ScoreBoardProps {
   homeTeam: Team;
@@ -91,11 +102,6 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
     [awayTeam, homeTeam, totalScores]
   );
 
-  const teamSummaries: Array<{ team: Team; key: 'home' | 'away' }> = [
-    { team: awayTeam, key: 'away' },
-    { team: homeTeam, key: 'home' },
-  ];
-
   const highlightStyles = {
     backgroundColor: alpha(theme.palette.primary.main, 0.12),
     borderLeft: `2px solid ${theme.palette.primary.main}`,
@@ -114,55 +120,14 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
       aria-labelledby={headingId}
       sx={{ mb: 3, mt: 3, p: { xs: 2, sm: 3 } }}
     >
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', md: 'center' }}
-        spacing={2}
+      <Typography
+        id={headingId}
+        component="h2"
+        variant="subtitle1"
+        sx={{ fontWeight: 600, mb: 1 }}
       >
-        <Typography
-          id={headingId}
-          component="h2"
-          variant="subtitle1"
-          sx={{ fontWeight: 600 }}
-        >
-          スコアボード
-        </Typography>
-
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
-          sx={{
-            width: '100%',
-            justifyContent: { xs: 'flex-start', md: 'flex-end' },
-          }}
-        >
-          {teamSummaries.map(({ team, key }) => {
-            const summary = summaryData[key];
-            return (
-              <Box
-                key={key}
-                data-testid={`scoreboard-summary-${key}`}
-                sx={{
-                  flex: 1,
-                  minWidth: 160,
-                  border: `1px solid ${theme.palette.divider}`,
-                  borderRadius: 1,
-                  p: 1.5,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                <Typography variant="body2" color="text.secondary">
-                  {team.name}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  R {summary.runs} / H {summary.hits} / E {summary.errors}
-                </Typography>
-              </Box>
-            );
-          })}
-        </Stack>
-      </Stack>
+        スコアボード
+      </Typography>
 
       <TableContainer
         ref={containerRef}
@@ -201,7 +166,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
           size={isMobile ? 'small' : 'medium'}
           sx={{
             minWidth: isMobile ? 300 : 'auto',
-            mt: 2,
+            mt: 1,
             '& .MuiTableCell-root': {
               fontSize: isMobile ? '0.8rem' : '0.875rem',
               padding: isMobile ? '6px 8px' : '8px 16px',
@@ -243,23 +208,26 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                   {inning}
                 </TableCell>
               ))}
-              <TableCell
-                component="th"
-                scope="col"
-                align="right"
-                aria-label="合計得点"
-                title="合計得点"
-                sx={{
-                  fontWeight: 'bold',
-                  minWidth: isMobile ? '40px' : '50px',
-                  position: 'sticky',
-                  right: 0,
-                  backgroundColor: theme.palette.background.paper,
-                  zIndex: 2,
-                }}
-              >
-                R
-              </TableCell>
+              {SUMMARY_COLUMNS.map((col, idx) => (
+                <TableCell
+                  key={col.key}
+                  component="th"
+                  scope="col"
+                  align="right"
+                  aria-label={col.ariaLabel}
+                  title={col.ariaLabel}
+                  sx={{
+                    fontWeight: 'bold',
+                    minWidth: isMobile ? '32px' : '40px',
+                    position: 'sticky',
+                    right: getSummaryColumnRightOffset(idx, isMobile),
+                    backgroundColor: theme.palette.background.paper,
+                    zIndex: 2,
+                  }}
+                >
+                  {col.label}
+                </TableCell>
+              ))}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -308,18 +276,22 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                   )}
                 </TableCell>
               ))}
-              <TableCell
-                align="right"
-                sx={{
-                  fontWeight: 'bold',
-                  position: 'sticky',
-                  right: 0,
-                  backgroundColor: theme.palette.background.paper,
-                  zIndex: 1,
-                }}
-              >
-                {totalScores.away}
-              </TableCell>
+              {SUMMARY_COLUMNS.map((col, idx) => (
+                <TableCell
+                  key={col.key}
+                  align="right"
+                  sx={{
+                    fontWeight: 'bold',
+                    position: 'sticky',
+                    right: getSummaryColumnRightOffset(idx, isMobile),
+                    backgroundColor: theme.palette.background.paper,
+                    zIndex: 1,
+                  }}
+                  data-testid={`scoreboard-${col.label.toLowerCase()}-away`}
+                >
+                  {summaryData.away[col.key]}
+                </TableCell>
+              ))}
             </TableRow>
 
             {/* 後攻チーム */}
@@ -367,18 +339,22 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                   )}
                 </TableCell>
               ))}
-              <TableCell
-                align="right"
-                sx={{
-                  fontWeight: 'bold',
-                  position: 'sticky',
-                  right: 0,
-                  backgroundColor: theme.palette.background.paper,
-                  zIndex: 1,
-                }}
-              >
-                {totalScores.home}
-              </TableCell>
+              {SUMMARY_COLUMNS.map((col, idx) => (
+                <TableCell
+                  key={col.key}
+                  align="right"
+                  sx={{
+                    fontWeight: 'bold',
+                    position: 'sticky',
+                    right: getSummaryColumnRightOffset(idx, isMobile),
+                    backgroundColor: theme.palette.background.paper,
+                    zIndex: 1,
+                  }}
+                  data-testid={`scoreboard-${col.label.toLowerCase()}-home`}
+                >
+                  {summaryData.home[col.key]}
+                </TableCell>
+              ))}
             </TableRow>
           </TableBody>
         </Table>

@@ -86,29 +86,36 @@ describe('ScoreBoard accessibility', () => {
     expect(currentInningCells.length).toBe(3);
   });
 
-  test('total score column has descriptive label', () => {
+  test('total score, hit, and error columns have descriptive labels', () => {
     renderScoreBoard();
 
-    // 合計得点列にaria-labelがあること
     const totalHeader = screen.getByRole('columnheader', { name: /合計得点/i });
     expect(totalHeader).toBeInTheDocument();
     expect(totalHeader).toHaveAttribute('title', '合計得点');
+
+    const hitsHeader = screen.getByRole('columnheader', { name: /安打数/i });
+    expect(hitsHeader).toBeInTheDocument();
+    expect(hitsHeader).toHaveAttribute('title', '安打数');
+
+    const errorsHeader = screen.getByRole('columnheader', { name: /失策数/i });
+    expect(errorsHeader).toBeInTheDocument();
+    expect(errorsHeader).toHaveAttribute('title', '失策数');
   });
 
-  test('renders scoreboard heading and team summaries with R/H/E values', () => {
+  test('renders scoreboard heading and R/H/E values in table rows', () => {
     renderScoreBoard();
 
     expect(screen.getByText('スコアボード')).toBeInTheDocument();
-    const awaySummary = screen.getByTestId('scoreboard-summary-away');
-    const homeSummary = screen.getByTestId('scoreboard-summary-home');
+    expect(screen.getByTestId('scoreboard-r-away')).toHaveTextContent('0');
+    expect(screen.getByTestId('scoreboard-h-away')).toHaveTextContent('0');
+    expect(screen.getByTestId('scoreboard-e-away')).toHaveTextContent('0');
 
-    expect(awaySummary).toHaveTextContent(/チームB/);
-    expect(awaySummary).toHaveTextContent(/R 0 \/ H 0 \/ E 0/);
-    expect(homeSummary).toHaveTextContent(/チームA/);
-    expect(homeSummary).toHaveTextContent(/R 0 \/ H 0 \/ E 0/);
+    expect(screen.getByTestId('scoreboard-r-home')).toHaveTextContent('0');
+    expect(screen.getByTestId('scoreboard-h-home')).toHaveTextContent('0');
+    expect(screen.getByTestId('scoreboard-e-home')).toHaveTextContent('0');
   });
 
-  test('summary values reflect hits, errors, and run events', () => {
+  test('R/H/E values reflect hits, errors, and run events', () => {
     const scoringHomeTeam: Team = {
       ...mockTeamA,
       atBats: [
@@ -150,9 +157,9 @@ describe('ScoreBoard accessibility', () => {
       currentInning: 2,
     });
 
-    const homeSummary = screen.getByTestId('scoreboard-summary-home');
-
-    expect(homeSummary).toHaveTextContent(/R 3 \/ H 1 \/ E 1/);
+    expect(screen.getByTestId('scoreboard-r-home')).toHaveTextContent('3');
+    expect(screen.getByTestId('scoreboard-h-home')).toHaveTextContent('1');
+    expect(screen.getByTestId('scoreboard-e-home')).toHaveTextContent('1');
   });
 
   test('TypographyコンポーネントにfontWeightがsx経由で正しく適用されReactのDOM警告が出ない', () => {
