@@ -71,7 +71,7 @@
     "jest-axe": "^11.0.0",
     "jest-junit": "^17.0.0",
     "patch-package": "^8.0.1",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.7",
     "typescript": "^5.9.3"
   },
   "overrides": {
