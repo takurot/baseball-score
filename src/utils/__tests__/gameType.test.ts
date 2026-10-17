@@ -2,6 +2,7 @@ import {
   getEffectiveGameType,
   getGameTypeLabel,
   matchesGameTypeFilter,
+  parseGameTypeFilter,
 } from '../gameType';
 import { Game } from '../../types';
 
@@ -42,6 +43,16 @@ describe('gameType utils', () => {
     it('returns correct Japanese labels', () => {
       expect(getGameTypeLabel('official')).toBe('公式戦');
       expect(getGameTypeLabel('practice')).toBe('練習試合');
+    });
+  });
+
+  describe('parseGameTypeFilter', () => {
+    it('correctly parses valid game type filters and falls back to "all"', () => {
+      expect(parseGameTypeFilter('official')).toBe('official');
+      expect(parseGameTypeFilter('practice')).toBe('practice');
+      expect(parseGameTypeFilter('all')).toBe('all');
+      expect(parseGameTypeFilter(null)).toBe('all');
+      expect(parseGameTypeFilter('invalid')).toBe('all');
     });
   });
 

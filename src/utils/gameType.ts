@@ -2,6 +2,15 @@ import { GameType } from '../types';
 
 export type GameTypeFilter = 'all' | GameType;
 
+export const GAME_TYPE_PARAM = 'gameType';
+
+export const parseGameTypeFilter = (value: string | null): GameTypeFilter => {
+  if (value === 'official' || value === 'practice') {
+    return value;
+  }
+  return 'all';
+};
+
 export type GameTypeSource = {
   gameType?: GameType;
   tournament?: string;

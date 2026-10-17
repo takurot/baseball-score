@@ -199,98 +199,108 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
         保存された試合一覧
       </Typography>
       <List>
-        {games.map((game, index) => (
-          <React.Fragment key={game.id}>
-            {index > 0 && <Divider />}
-            <ListItem
-              disablePadding
-              secondaryAction={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Tooltip title={game.isPublic ? '公開中' : '非公開'}>
-                    <span>
-                      <Switch
-                        checked={Boolean(game.isPublic)}
-                        onChange={(event, checked) =>
-                          handleTogglePublic(game.id, checked, event)
-                        }
-                        disabled={updatingPublicStatus.has(game.id)}
-                        color="primary"
-                        size="small"
-                        icon={<PublicOffIcon />}
-                        checkedIcon={<PublicIcon />}
-                      />
-                    </span>
-                  </Tooltip>
+        {games.map((game, index) => {
+          const effectiveType = getEffectiveGameType(game);
+          const isOfficial = effectiveType === 'official';
 
-                  {game.isPublic && (
-                    <Tooltip title="共有URLを表示">
-                      <IconButton
-                        aria-label="copy share link"
-                        onClick={(e) => handleShowShareUrl(game.id, e)}
-                        size="small"
-                      >
-                        <ContentCopyIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-
-                  <IconButton
-                    edge="end"
-                    aria-label="delete"
-                    onClick={(e) => handleOpenDeleteDialog(game.id, e)}
-                    size="small"
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Box>
-              }
-            >
-              <ListItemButton onClick={() => onSelectGame(game.id)}>
-                <ListItemText
-                  primary={
-                    <Box>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          flexWrap: 'wrap',
-                          mb: isMobile ? 0.5 : 0.25,
-                        }}
-                      >
-                        <Chip
+          return (
+            <React.Fragment key={game.id}>
+              {index > 0 && <Divider />}
+              <ListItem
+                disablePadding
+                secondaryAction={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Tooltip title={game.isPublic ? '公開中' : '非公開'}>
+                      <span>
+                        <Switch
+                          checked={Boolean(game.isPublic)}
+                          onChange={(event, checked) =>
+                            handleTogglePublic(game.id, checked, event)
+                          }
+                          disabled={updatingPublicStatus.has(game.id)}
+                          color="primary"
                           size="small"
-                          label={getGameTypeLabel(getEffectiveGameType(game))}
-                          color={
-                            getEffectiveGameType(game) === 'official'
-                              ? 'primary'
-                              : 'default'
-                          }
-                          variant={
-                            getEffectiveGameType(game) === 'official'
-                              ? 'filled'
-                              : 'outlined'
-                          }
-                          sx={{ height: 20, fontSize: '0.75rem' }}
+                          icon={<PublicOffIcon />}
+                          checkedIcon={<PublicIcon />}
                         />
-                        <Typography
-                          variant={isMobile ? 'body1' : 'h6'}
-                          component="div"
+                      </span>
+                    </Tooltip>
+
+                    {game.isPublic && (
+                      <Tooltip title="共有URLを表示">
+                        <IconButton
+                          aria-label="copy share link"
+                          onClick={(e) => handleShowShareUrl(game.id, e)}
+                          size="small"
+                        >
+                          <ContentCopyIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+
+                    <IconButton
+                      edge="end"
+                      aria-label="delete"
+                      onClick={(e) => handleOpenDeleteDialog(game.id, e)}
+                      size="small"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                }
+              >
+                <ListItemButton onClick={() => onSelectGame(game.id)}>
+                  <ListItemText
+                    primary={
+                      <Box>
+                        <Box
                           sx={{
-                            fontWeight: 'bold',
-                            fontSize: isMobile ? '1.1rem' : '1.25rem',
-                            lineHeight: 1.2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            flexWrap: 'wrap',
+                            mb: isMobile ? 0.5 : 0.25,
                           }}
                         >
-                          {game.awayTeam.name} vs {game.homeTeam.name}
-                        </Typography>
+                          <Chip
+                            size="small"
+                            label={getGameTypeLabel(effectiveType)}
+                            color={isOfficial ? 'primary' : 'default'}
+                            variant={isOfficial ? 'filled' : 'outlined'}
+                            sx={{ height: 20, fontSize: '0.75rem' }}
+                          />
+                          <Typography
+                            variant={isMobile ? 'body1' : 'h6'}
+                            component="div"
+                            sx={{
+                              fontWeight: 'bold',
+                              fontSize: isMobile ? '1.1rem' : '1.25rem',
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            {game.awayTeam.name} vs {game.homeTeam.name}
+                          </Typography>
+                        </Box>
+                        {isMobile && (
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontSize: '0.9rem', lineHeight: 1.3 }}
+                          >
+                            {formatDate(game.date)}
+                            {game.tournament && ` | ${game.tournament}`}
+                            {game.venue && ` @ ${game.venue}`}
+                            {game.currentInning > 0
+                              ? ` | ${game.currentInning}回`
+                              : ''}
+                            {game.isPublic && ' | 公開中'}
+                          </Typography>
+                        )}
                       </Box>
-                      {isMobile && (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ fontSize: '0.9rem', lineHeight: 1.3 }}
-                        >
+                    }
+                    secondary={
+                      !isMobile ? (
+                        <>
                           {formatDate(game.date)}
                           {game.tournament && ` | ${game.tournament}`}
                           {game.venue && ` @ ${game.venue}`}
@@ -298,28 +308,15 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
                             ? ` | ${game.currentInning}回`
                             : ''}
                           {game.isPublic && ' | 公開中'}
-                        </Typography>
-                      )}
-                    </Box>
-                  }
-                  secondary={
-                    !isMobile ? (
-                      <>
-                        {formatDate(game.date)}
-                        {game.tournament && ` | ${game.tournament}`}
-                        {game.venue && ` @ ${game.venue}`}
-                        {game.currentInning > 0
-                          ? ` | ${game.currentInning}回`
-                          : ''}
-                        {game.isPublic && ' | 公開中'}
-                      </>
-                    ) : null
-                  }
-                />
-              </ListItemButton>
-            </ListItem>
-          </React.Fragment>
-        ))}
+                        </>
+                      ) : null
+                    }
+                  />
+                </ListItemButton>
+              </ListItem>
+            </React.Fragment>
+          );
+        })}
       </List>
 
       {/* 削除確認ダイアログ */}

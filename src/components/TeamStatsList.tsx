@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Typography,
@@ -35,7 +35,11 @@ import {
   GameTypeFilter,
   MIN_QUALIFYING_AT_BATS,
 } from '../firebase/statsService';
-import { getGameTypeLabel } from '../utils/gameType';
+import {
+  getGameTypeLabel,
+  GAME_TYPE_PARAM,
+  parseGameTypeFilter,
+} from '../utils/gameType';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -163,12 +167,9 @@ const getErrorMessage = (error: unknown): string => {
 
 const getGameTypeFromUrl = (): GameTypeFilter => {
   if (typeof window === 'undefined') return 'all';
-  const params = new URLSearchParams(window.location.search);
-  const type = params.get('gameType');
-  if (type === 'official' || type === 'practice') {
-    return type;
-  }
-  return 'all';
+  return parseGameTypeFilter(
+    new URLSearchParams(window.location.search).get(GAME_TYPE_PARAM)
+  );
 };
 
 const TeamStatsList: React.FC = () => {
@@ -179,6 +180,7 @@ const TeamStatsList: React.FC = () => {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [gameTypeFilter, setGameTypeFilter] =
     useState<GameTypeFilter>(getGameTypeFromUrl);
+  const isInitialMountRef = useRef(true);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -196,10 +198,14 @@ const TeamStatsList: React.FC = () => {
 
     const fetchTeamStats = async () => {
       try {
-        setLoading(true);
+        if (isInitialMountRef.current) {
+          setLoading(true);
+        }
         setError(null);
         const stats = await getAllTeamStats(gameTypeFilter);
         if (cancelled) return;
+
+        isInitialMountRef.current = false;
 
         const safeStats = Array.isArray(stats) ? stats : [];
         setTeamStats(safeStats);
@@ -244,11 +250,11 @@ const TeamStatsList: React.FC = () => {
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       if (newFilter === 'all') {
-        url.searchParams.delete('gameType');
+        url.searchParams.delete(GAME_TYPE_PARAM);
       } else {
-        url.searchParams.set('gameType', newFilter);
+        url.searchParams.set(GAME_TYPE_PARAM, newFilter);
       }
-      window.history.replaceState(window.history.state, '', url.toString());
+      window.history.pushState(window.history.state, '', url.toString());
     }
   };
 

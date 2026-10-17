@@ -451,7 +451,7 @@ describe('MainApp - URL駆動の画面遷移', () => {
 
     // ダイアログが開く
     expect(
-      screen.getByRole('heading', { name: '場所と大会名を設定' })
+      screen.getByRole('heading', { name: '試合情報を設定' })
     ).toBeInTheDocument();
     const officialRadio = screen.getByRole('radio', { name: '公式戦' });
     const practiceRadio = screen.getByRole('radio', { name: '練習試合' });
