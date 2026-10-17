@@ -438,4 +438,47 @@ describe('MainApp - URL駆動の画面遷移', () => {
     expect(backButton).toBeInTheDocument();
     expect(screen.queryByText('1回の操作')).not.toBeInTheDocument();
   }, 15000);
+
+  test('場所・大会名設定ダイアログで試合区分を選択でき、保存ダイアログに区分が表示される', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+
+    // 初期状態では練習試合が表示される
+    const venueButton = await screen.findByRole('button', {
+      name: '[練習試合] 大会名をクリックして設定',
+    });
+    await user.click(venueButton);
+
+    // ダイアログが開く
+    expect(
+      screen.getByRole('heading', { name: '試合情報を設定' })
+    ).toBeInTheDocument();
+    const officialRadio = screen.getByRole('radio', { name: '公式戦' });
+    const practiceRadio = screen.getByRole('radio', { name: '練習試合' });
+    expect(practiceRadio).toBeChecked();
+    expect(officialRadio).not.toBeChecked();
+
+    // 公式戦に切り替え
+    await user.click(officialRadio);
+    expect(officialRadio).toBeChecked();
+
+    // 大会名を入力
+    const tournamentInput = screen.getByLabelText('大会名');
+    await user.type(tournamentInput, '都大会');
+
+    // 設定ボタンを押す
+    await user.click(screen.getByRole('button', { name: '設定' }));
+
+    // ヘッダーが [公式戦] 都大会 に更新される
+    expect(
+      await screen.findByRole('button', { name: '[公式戦] 都大会' })
+    ).toBeInTheDocument();
+
+    // 保存ダイアログを開く
+    await user.click(screen.getByRole('button', { name: '試合データを保存' }));
+    expect(
+      screen.getByRole('heading', { name: '試合データを保存' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('区分: 公式戦')).toBeInTheDocument();
+  }, 15000);
 });

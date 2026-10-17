@@ -34,6 +34,10 @@ import {
   InputLabel,
   Select,
   FormControl,
+  FormLabel,
+  RadioGroup,
+  Radio,
+  FormControlLabel,
   useMediaQuery,
   Hidden,
   PaletteMode,
@@ -58,6 +62,7 @@ import {
   Player,
   AtBat,
   Game,
+  GameType,
   RunEvent,
   RunEventType,
   OutEvent,
@@ -75,6 +80,7 @@ import {
   saveGameAsNew,
 } from './firebase/gameService';
 import { useAuth } from './contexts/AuthContext';
+import { getGameTypeLabel } from './utils/gameType';
 import Login from './components/Login';
 import HelpIcon from '@mui/icons-material/Help';
 import { useTheme } from '@mui/material/styles';
@@ -103,15 +109,23 @@ const createInitialTeam = (name: string): Team => ({
   atBats: [],
 });
 
+const formatLocalDate = (d = new Date()): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const createInitialGame = (): Game => ({
   id: uuidv4(),
-  date: new Date().toISOString().split('T')[0],
+  date: formatLocalDate(),
   homeTeam: createInitialTeam('後攻チーム'),
   awayTeam: createInitialTeam('先攻チーム'),
   currentInning: 1,
   isTop: true,
   venue: '',
   tournament: '',
+  gameType: 'practice',
 });
 
 // アナリティクスイベントを送信するヘルパー関数
@@ -404,6 +418,7 @@ const MainApp: React.FC<{
           date: gameState.date,
           venue: gameState.venue,
           tournament: gameState.tournament,
+          gameType: gameState.gameType,
           homeTeam: gameState.homeTeam,
           awayTeam: gameState.awayTeam,
           currentInning: gameState.currentInning,
@@ -682,6 +697,7 @@ const MainApp: React.FC<{
         isTop,
         venue,
         tournament,
+        gameType,
         runEvents,
         outEvents,
       } = gameState;
@@ -695,6 +711,7 @@ const MainApp: React.FC<{
         isTop,
         venue,
         tournament,
+        gameType,
         runEvents,
         outEvents,
         lastUpdated: new Date().toISOString(),
@@ -1171,6 +1188,7 @@ const MainApp: React.FC<{
             <TournamentVenue
               tournament={gameState.tournament}
               venue={gameState.venue}
+              gameType={gameState.gameType}
               isSharedMode={isSharedMode}
               onClick={handleOpenVenueDialog}
             />
@@ -1421,6 +1439,9 @@ const MainApp: React.FC<{
             <Typography variant="body2">
               日付: {new Date(gameState.date).toLocaleDateString('ja-JP')}
             </Typography>
+            <Typography variant="body2">
+              区分: {getGameTypeLabel(gameState.gameType)}
+            </Typography>
             {gameState.tournament && (
               <Typography variant="body2">
                 大会名: {gameState.tournament}
@@ -1500,10 +1521,35 @@ const MainApp: React.FC<{
         </DialogActions>
       </Dialog>
 
-      {/* 場所と大会名設定ダイアログ */}
+      {/* 試合情報（区分・場所・大会名）設定ダイアログ */}
       <Dialog open={venueDialogOpen} onClose={handleCloseVenueDialog}>
-        <DialogTitle>場所と大会名を設定</DialogTitle>
+        <DialogTitle>試合情報を設定</DialogTitle>
         <DialogContent>
+          <FormControl component="fieldset" margin="normal">
+            <FormLabel component="legend" id="game-type-label">
+              試合区分
+            </FormLabel>
+            <RadioGroup
+              row
+              name="gameType"
+              aria-labelledby="game-type-label"
+              value={gameState.gameType}
+              onChange={(e) =>
+                gameActions.setGameType(e.target.value as GameType)
+              }
+            >
+              <FormControlLabel
+                value="official"
+                control={<Radio />}
+                label="公式戦"
+              />
+              <FormControlLabel
+                value="practice"
+                control={<Radio />}
+                label="練習試合"
+              />
+            </RadioGroup>
+          </FormControl>
           <TextField
             label="大会名"
             type="text"

@@ -115,4 +115,68 @@ describe('TeamStatsList', () => {
       )
     ).toBeInTheDocument();
   }, 15000);
+
+  test('試合区分の切り替え（すべて・公式戦・練習試合）で再集計され、URLと同期する', async () => {
+    mockedGetAllTeamStats.mockResolvedValue([allWins]);
+    window.history.replaceState({}, '', '/?view=teamStats');
+
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <TeamStatsList />
+      </ThemeProvider>
+    );
+
+    const user = userEvent.setup();
+    await screen.findByText('全勝チーム');
+    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('all');
+
+    // 「公式戦」に切り替え
+    const officialButton = screen.getByRole('button', { name: '公式戦' });
+    await user.click(officialButton);
+
+    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('official');
+    expect(window.location.search).toContain('gameType=official');
+
+    // 「練習試合」に切り替え
+    const practiceButton = screen.getByRole('button', { name: '練習試合' });
+    await user.click(practiceButton);
+
+    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('practice');
+    expect(window.location.search).toContain('gameType=practice');
+
+    // 「すべて（統合）」に切り替え
+    const allButton = screen.getByRole('button', { name: 'すべて（統合）' });
+    await user.click(allButton);
+
+    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('all');
+    expect(window.location.search).not.toContain('gameType=');
+  }, 15000);
+
+  test('URLクエリ ?gameType=official で初期表示した場合は公式戦フィルターが適用される', async () => {
+    mockedGetAllTeamStats.mockResolvedValue([allWins]);
+    window.history.replaceState({}, '', '/?view=teamStats&gameType=official');
+
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <TeamStatsList />
+      </ThemeProvider>
+    );
+
+    await screen.findByText('全勝チーム');
+    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('official');
+  }, 15000);
+
+  test('該当区分の試合が0件の場合に空状態のメッセージを表示する', async () => {
+    mockedGetAllTeamStats.mockResolvedValue([]);
+
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <TeamStatsList />
+      </ThemeProvider>
+    );
+
+    expect(
+      await screen.findByText('該当する試合の記録はありません。')
+    ).toBeInTheDocument();
+  }, 15000);
 });
