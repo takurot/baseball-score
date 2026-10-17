@@ -54,11 +54,22 @@ describe('dependency overrides policy', () => {
     ['node_modules/lodash', '4.18.1'],
     ['node_modules/flatted', '3.4.2'],
     ['node_modules/path-to-regexp', '0.1.13'],
-    ['node_modules/svgo', '2.8.3'],
+    ['node_modules/svgo', '2.8.4'],
     ['node_modules/postcss', '8.5.23'],
     ['node_modules/postcss-load-config/node_modules/yaml', '2.8.3'],
     ['node_modules/yaml', '1.10.3'],
     ['node_modules/sockjs/node_modules/uuid', '11.1.1'],
+    ['node_modules/proxy-addr', '2.0.8'],
+    ['node_modules/shell-quote', '1.12.0'],
+    ['node_modules/@grpc/grpc-js', '1.14.6'],
+    ['node_modules/compression', '1.8.2'],
+    ['node_modules/source-map-js', '1.2.2'],
+    ['node_modules/fast-uri', '3.1.8'],
+    ['node_modules/browserslist', '4.29.3'],
+    ['node_modules/baseline-browser-mapping', '2.11.29'],
+    ['node_modules/colord', '2.10.0'],
+    ['node_modules/postcss-selector-parser', '7.1.6'],
+    ['node_modules/qs', '6.16.1'],
   ])('keeps %s at or above %s', (packagePath, minimumVersion) => {
     const packageLock = readPackageLock();
     const installedVersion = getInstalledVersion(packageLock, packagePath);
