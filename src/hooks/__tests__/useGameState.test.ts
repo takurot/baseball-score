@@ -14,6 +14,34 @@ describe('useGameState', () => {
       second: false,
       third: false,
     });
+    expect(result.current.state.gameType).toBe('practice');
+  });
+
+  test('setGameType updates gameType correctly', () => {
+    const { result } = renderHook(() => useGameState());
+
+    expect(result.current.state.gameType).toBe('practice');
+
+    act(() => {
+      result.current.actions.setGameType('official');
+    });
+
+    expect(result.current.state.gameType).toBe('official');
+
+    act(() => {
+      result.current.actions.setGameType('practice');
+    });
+
+    expect(result.current.state.gameType).toBe('practice');
+  });
+
+  test('initialGame preserves specified gameType', () => {
+    const initialGame: Partial<Game> = {
+      gameType: 'official',
+    };
+    const { result } = renderHook(() => useGameState(initialGame as Game));
+
+    expect(result.current.state.gameType).toBe('official');
   });
 
   test('updateInning action works correctly', () => {
@@ -41,11 +69,13 @@ describe('useGameState', () => {
     });
 
     act(() => {
+      result.current.actions.setGameType('official');
       result.current.actions.resetGame();
     });
 
     expect(result.current.state.currentInning).toBe(1);
     expect(result.current.state.isTop).toBe(true);
+    expect(result.current.state.gameType).toBe('practice');
     expect(result.current.state.runEvents).toHaveLength(0);
     expect(result.current.state.outEvents).toHaveLength(0);
   });
@@ -58,6 +88,7 @@ describe('useGameState', () => {
       awayTeam: { id: 'away', name: 'Away Team', players: [], atBats: [] },
       currentInning: 3,
       isTop: false,
+      gameType: 'official',
     };
 
     act(() => {
@@ -67,6 +98,7 @@ describe('useGameState', () => {
     expect(result.current.state.homeTeam.name).toBe('Home Team');
     expect(result.current.state.currentInning).toBe(3);
     expect(result.current.state.isTop).toBe(false);
+    expect(result.current.state.gameType).toBe('official');
   });
 
   test('addAtBat action works correctly', () => {

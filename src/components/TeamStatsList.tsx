@@ -24,12 +24,15 @@ import {
   IconButton,
   Tooltip,
   Button,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import {
   getAllTeamStats,
   TeamStats,
+  GameTypeFilter,
   MIN_QUALIFYING_AT_BATS,
 } from '../firebase/statsService';
 
@@ -157,14 +160,34 @@ const getErrorMessage = (error: unknown): string => {
   return '不明なエラーが発生しました';
 };
 
+const getGameTypeFromUrl = (): GameTypeFilter => {
+  if (typeof window === 'undefined') return 'all';
+  const params = new URLSearchParams(window.location.search);
+  const type = params.get('gameType');
+  if (type === 'official' || type === 'practice') {
+    return type;
+  }
+  return 'all';
+};
+
 const TeamStatsList: React.FC = () => {
   const [teamStats, setTeamStats] = useState<TeamStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [gameTypeFilter, setGameTypeFilter] =
+    useState<GameTypeFilter>(getGameTypeFromUrl);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setGameTypeFilter(getGameTypeFromUrl());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // 成績をフェッチ
   useEffect(() => {
@@ -174,14 +197,20 @@ const TeamStatsList: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const stats = await getAllTeamStats();
+        const stats = await getAllTeamStats(gameTypeFilter);
         if (cancelled) return;
 
         const safeStats = Array.isArray(stats) ? stats : [];
         setTeamStats(safeStats);
         // 最初のチームが選択された状態にする
         if (safeStats.length > 0) {
-          setSelectedTeamId(safeStats[0].teamId);
+          setSelectedTeamId((prev) =>
+            safeStats.some((t) => t.teamId === prev)
+              ? prev
+              : safeStats[0].teamId
+          );
+        } else {
+          setSelectedTeamId(null);
         }
       } catch (err: unknown) {
         if (cancelled) return;
@@ -199,15 +228,54 @@ const TeamStatsList: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [gameTypeFilter]);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
+  const handleGameTypeFilterChange = (
+    _event: React.MouseEvent<HTMLElement>,
+    newFilter: GameTypeFilter | null
+  ) => {
+    if (!newFilter || newFilter === gameTypeFilter) return;
+    setGameTypeFilter(newFilter);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (newFilter === 'all') {
+        url.searchParams.delete('gameType');
+      } else {
+        url.searchParams.set('gameType', newFilter);
+      }
+      window.history.replaceState(window.history.state, '', url.toString());
+    }
+  };
+
   // 選択中のチーム（一覧が変化しても存在しないIDを指し続けない）
   const selectedTeam =
     teamStats?.find((team) => team.teamId === selectedTeamId) ?? null;
+
+  const renderFilterControls = () => (
+    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+      <ToggleButtonGroup
+        value={gameTypeFilter}
+        exclusive
+        onChange={handleGameTypeFilterChange}
+        aria-label="試合区分フィルター"
+        size="small"
+      >
+        <ToggleButton value="all" aria-label="すべて（統合）">
+          すべて（統合）
+        </ToggleButton>
+        <ToggleButton value="official" aria-label="公式戦">
+          公式戦
+        </ToggleButton>
+        <ToggleButton value="practice" aria-label="練習試合">
+          練習試合
+        </ToggleButton>
+      </ToggleButtonGroup>
+    </Box>
+  );
 
   if (loading) {
     return (
@@ -230,11 +298,19 @@ const TeamStatsList: React.FC = () => {
 
   if (teamStats.length === 0) {
     return (
-      <Container sx={{ py: 4 }}>
+      <Container sx={{ py: 2 }}>
+        <Typography variant="h5" component="h1" gutterBottom align="center">
+          チーム通算成績
+        </Typography>
+        {renderFilterControls()}
         <Paper sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="h6">チーム成績がありません</Typography>
+          <Typography variant="h6" component="h2">
+            {gameTypeFilter === 'all'
+              ? 'チーム成績がありません'
+              : `${gameTypeFilter === 'official' ? '公式戦' : '練習試合'}の記録はありません`}
+          </Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-            試合データを登録すると、チームごとの通算成績が表示されます。
+            該当する試合の記録はありません。
           </Typography>
         </Paper>
       </Container>
@@ -246,6 +322,7 @@ const TeamStatsList: React.FC = () => {
       <Typography variant="h5" component="h1" gutterBottom align="center">
         チーム通算成績
       </Typography>
+      {renderFilterControls()}
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
         <Tabs

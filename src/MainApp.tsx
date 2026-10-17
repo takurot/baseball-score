@@ -34,6 +34,10 @@ import {
   InputLabel,
   Select,
   FormControl,
+  FormLabel,
+  RadioGroup,
+  Radio,
+  FormControlLabel,
   useMediaQuery,
   Hidden,
   PaletteMode,
@@ -58,6 +62,7 @@ import {
   Player,
   AtBat,
   Game,
+  GameType,
   RunEvent,
   RunEventType,
   OutEvent,
@@ -75,6 +80,7 @@ import {
   saveGameAsNew,
 } from './firebase/gameService';
 import { useAuth } from './contexts/AuthContext';
+import { getGameTypeLabel } from './utils/gameType';
 import Login from './components/Login';
 import HelpIcon from '@mui/icons-material/Help';
 import { useTheme } from '@mui/material/styles';
@@ -112,6 +118,7 @@ const createInitialGame = (): Game => ({
   isTop: true,
   venue: '',
   tournament: '',
+  gameType: 'practice',
 });
 
 // アナリティクスイベントを送信するヘルパー関数
@@ -682,6 +689,7 @@ const MainApp: React.FC<{
         isTop,
         venue,
         tournament,
+        gameType,
         runEvents,
         outEvents,
       } = gameState;
@@ -695,6 +703,7 @@ const MainApp: React.FC<{
         isTop,
         venue,
         tournament,
+        gameType,
         runEvents,
         outEvents,
         lastUpdated: new Date().toISOString(),
@@ -1171,6 +1180,7 @@ const MainApp: React.FC<{
             <TournamentVenue
               tournament={gameState.tournament}
               venue={gameState.venue}
+              gameType={gameState.gameType}
               isSharedMode={isSharedMode}
               onClick={handleOpenVenueDialog}
             />
@@ -1421,6 +1431,9 @@ const MainApp: React.FC<{
             <Typography variant="body2">
               日付: {new Date(gameState.date).toLocaleDateString('ja-JP')}
             </Typography>
+            <Typography variant="body2">
+              区分: {getGameTypeLabel(gameState.gameType || 'practice')}
+            </Typography>
             {gameState.tournament && (
               <Typography variant="body2">
                 大会名: {gameState.tournament}
@@ -1504,6 +1517,28 @@ const MainApp: React.FC<{
       <Dialog open={venueDialogOpen} onClose={handleCloseVenueDialog}>
         <DialogTitle>場所と大会名を設定</DialogTitle>
         <DialogContent>
+          <FormControl component="fieldset" margin="normal">
+            <FormLabel component="legend">試合区分</FormLabel>
+            <RadioGroup
+              row
+              name="gameType"
+              value={gameState.gameType || 'practice'}
+              onChange={(e) =>
+                gameActions.setGameType(e.target.value as GameType)
+              }
+            >
+              <FormControlLabel
+                value="official"
+                control={<Radio />}
+                label="公式戦"
+              />
+              <FormControlLabel
+                value="practice"
+                control={<Radio />}
+                label="練習試合"
+              />
+            </RadioGroup>
+          </FormControl>
           <TextField
             label="大会名"
             type="text"

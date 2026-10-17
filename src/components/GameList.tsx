@@ -21,6 +21,7 @@ import {
   TextField,
   Snackbar,
   Alert,
+  Chip,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -34,6 +35,7 @@ import {
   updateGamePublicStatus,
 } from '../firebase/gameService';
 import { Game } from '../types';
+import { getEffectiveGameType, getGameTypeLabel } from '../utils/gameType';
 
 interface GameListProps {
   onSelectGame: (gameId: string) => void;
@@ -247,18 +249,42 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
                 <ListItemText
                   primary={
                     <Box>
-                      <Typography
-                        variant={isMobile ? 'body1' : 'h6'}
-                        component="div"
+                      <Box
                         sx={{
-                          fontWeight: 'bold',
-                          fontSize: isMobile ? '1.1rem' : '1.25rem',
-                          lineHeight: 1.2,
-                          mb: isMobile ? 0.5 : 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          flexWrap: 'wrap',
+                          mb: isMobile ? 0.5 : 0.25,
                         }}
                       >
-                        {game.awayTeam.name} vs {game.homeTeam.name}
-                      </Typography>
+                        <Chip
+                          size="small"
+                          label={getGameTypeLabel(getEffectiveGameType(game))}
+                          color={
+                            getEffectiveGameType(game) === 'official'
+                              ? 'primary'
+                              : 'default'
+                          }
+                          variant={
+                            getEffectiveGameType(game) === 'official'
+                              ? 'filled'
+                              : 'outlined'
+                          }
+                          sx={{ height: 20, fontSize: '0.75rem' }}
+                        />
+                        <Typography
+                          variant={isMobile ? 'body1' : 'h6'}
+                          component="div"
+                          sx={{
+                            fontWeight: 'bold',
+                            fontSize: isMobile ? '1.1rem' : '1.25rem',
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {game.awayTeam.name} vs {game.homeTeam.name}
+                        </Typography>
+                      </Box>
                       {isMobile && (
                         <Typography
                           variant="body2"

@@ -1,9 +1,12 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
+import { GameType } from '../types';
+import { getGameTypeLabel } from '../utils/gameType';
 
 interface Props {
   tournament?: string;
   venue?: string;
+  gameType?: GameType;
   isSharedMode?: boolean;
   onClick?: () => void;
 }
@@ -11,12 +14,13 @@ interface Props {
 const TournamentVenue: React.FC<Props> = ({
   tournament,
   venue,
+  gameType,
   isSharedMode,
   onClick,
 }) => {
   const isClickable = !isSharedMode && Boolean(onClick);
 
-  const displayText = (() => {
+  const mainText = (() => {
     if (tournament) {
       return venue ? `${tournament} @ ${venue}` : tournament;
     }
@@ -24,6 +28,15 @@ const TournamentVenue: React.FC<Props> = ({
       return venue;
     }
     return isClickable ? '大会名をクリックして設定' : '';
+  })();
+
+  const typeLabel = gameType ? `[${getGameTypeLabel(gameType)}]` : '';
+
+  const displayText = (() => {
+    if (typeLabel && mainText) {
+      return `${typeLabel} ${mainText}`;
+    }
+    return mainText || typeLabel;
   })();
 
   return (

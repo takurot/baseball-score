@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Game, Team, AtBat, RunEvent, OutEvent } from '../types';
+import { Game, Team, AtBat, RunEvent, OutEvent, GameType } from '../types';
 import { useUndoRedo } from './useUndoRedo';
 
 type RunnerState = { first: boolean; second: boolean; third: boolean };
@@ -9,6 +9,7 @@ export interface GameState {
   date: string;
   venue: string;
   tournament: string;
+  gameType: GameType;
   homeTeam: Team;
   awayTeam: Team;
   currentInning: number;
@@ -24,6 +25,7 @@ export interface GameStateActions {
   setDate: (date: string) => void;
   setVenue: (venue: string) => void;
   setTournament: (tournament: string) => void;
+  setGameType: (gameType: GameType) => void;
   setHomeTeam: (team: Team) => void;
   setAwayTeam: (team: Team) => void;
   addAtBat: (atBat: AtBat) => void;
@@ -72,6 +74,7 @@ const buildInitialState = (game?: Game): GameState => ({
   date: game?.date ?? todayISO(),
   venue: game?.venue ?? '',
   tournament: game?.tournament ?? '',
+  gameType: game?.gameType ?? 'practice',
   homeTeam: normalizeTeam(game?.homeTeam),
   awayTeam: normalizeTeam(game?.awayTeam),
   currentInning: game?.currentInning ?? 1,
@@ -217,6 +220,16 @@ export const useGameState = (initialGame?: Game): UseGameStateReturn => {
       setState((prev) => ({
         ...prev,
         tournament,
+      }));
+    },
+    [setState]
+  );
+
+  const setGameType = useCallback(
+    (gameType: GameType) => {
+      setState((prev) => ({
+        ...prev,
+        gameType,
       }));
     },
     [setState]
@@ -392,6 +405,7 @@ export const useGameState = (initialGame?: Game): UseGameStateReturn => {
       setDate,
       setVenue,
       setTournament,
+      setGameType,
       setHomeTeam,
       setAwayTeam,
       addAtBat,
