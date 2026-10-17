@@ -411,6 +411,7 @@ const MainApp: React.FC<{
           date: gameState.date,
           venue: gameState.venue,
           tournament: gameState.tournament,
+          gameType: gameState.gameType,
           homeTeam: gameState.homeTeam,
           awayTeam: gameState.awayTeam,
           currentInning: gameState.currentInning,
@@ -1432,7 +1433,7 @@ const MainApp: React.FC<{
               日付: {new Date(gameState.date).toLocaleDateString('ja-JP')}
             </Typography>
             <Typography variant="body2">
-              区分: {getGameTypeLabel(gameState.gameType || 'practice')}
+              区分: {getGameTypeLabel(gameState.gameType)}
             </Typography>
             {gameState.tournament && (
               <Typography variant="body2">
@@ -1518,11 +1519,14 @@ const MainApp: React.FC<{
         <DialogTitle>場所と大会名を設定</DialogTitle>
         <DialogContent>
           <FormControl component="fieldset" margin="normal">
-            <FormLabel component="legend">試合区分</FormLabel>
+            <FormLabel component="legend" id="game-type-label">
+              試合区分
+            </FormLabel>
             <RadioGroup
               row
               name="gameType"
-              value={gameState.gameType || 'practice'}
+              aria-labelledby="game-type-label"
+              value={gameState.gameType}
               onChange={(e) =>
                 gameActions.setGameType(e.target.value as GameType)
               }

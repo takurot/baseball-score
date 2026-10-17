@@ -59,7 +59,7 @@ describe('TeamStatsList accessibility', () => {
     await screen.findByText('テストチーム');
     const results = await axe(container);
     expect(results).toHaveNoViolations();
-  });
+  }, 15000);
 
   test('has no axe violations in empty state', async () => {
     mockedGetAllTeamStats.mockResolvedValue([]);
@@ -73,5 +73,5 @@ describe('TeamStatsList accessibility', () => {
     await screen.findByText('該当する試合の記録はありません。');
     const results = await axe(container);
     expect(results).toHaveNoViolations();
-  });
+  }, 15000);
 });

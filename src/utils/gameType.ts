@@ -1,6 +1,11 @@
 import { GameType } from '../types';
 
-export type GameTypeFilter = 'all' | 'official' | 'practice';
+export type GameTypeFilter = 'all' | GameType;
+
+export type GameTypeSource = {
+  gameType?: GameType;
+  tournament?: string;
+};
 
 /**
  * 試合データの試合区分を取得する。
@@ -8,10 +13,10 @@ export type GameTypeFilter = 'all' | 'official' | 'practice';
  * - tournament に有効な文字列があれば 'official'
  * - それ以外は 'practice'
  */
-export const getEffectiveGameType = (game: {
-  gameType?: GameType;
-  tournament?: string;
-}): GameType => {
+export const getEffectiveGameType = (game?: GameTypeSource): GameType => {
+  if (!game) {
+    return 'practice';
+  }
   if (game.gameType) {
     return game.gameType;
   }
@@ -32,7 +37,7 @@ export const getGameTypeLabel = (gameType: GameType): string => {
  * 試合が指定のフィルター条件（すべて / 公式戦 / 練習試合）に合致するか判定する。
  */
 export const matchesGameTypeFilter = (
-  game: { gameType?: GameType; tournament?: string },
+  game: GameTypeSource,
   filter: GameTypeFilter
 ): boolean => {
   if (filter === 'all') {

@@ -35,6 +35,7 @@ import {
   GameTypeFilter,
   MIN_QUALIFYING_AT_BATS,
 } from '../firebase/statsService';
+import { getGameTypeLabel } from '../utils/gameType';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -307,11 +308,16 @@ const TeamStatsList: React.FC = () => {
           <Typography variant="h6" component="h2">
             {gameTypeFilter === 'all'
               ? 'チーム成績がありません'
-              : `${gameTypeFilter === 'official' ? '公式戦' : '練習試合'}の記録はありません`}
+              : `${getGameTypeLabel(gameTypeFilter)}の記録はありません`}
           </Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
             該当する試合の記録はありません。
           </Typography>
+          {gameTypeFilter === 'all' && (
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
+              試合データを登録すると、チームごとの通算成績が表示されます。
+            </Typography>
+          )}
         </Paper>
       </Container>
     );

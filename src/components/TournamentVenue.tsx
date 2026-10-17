@@ -31,13 +31,7 @@ const TournamentVenue: React.FC<Props> = ({
   })();
 
   const typeLabel = gameType ? `[${getGameTypeLabel(gameType)}]` : '';
-
-  const displayText = (() => {
-    if (typeLabel && mainText) {
-      return `${typeLabel} ${mainText}`;
-    }
-    return mainText || typeLabel;
-  })();
+  const displayText = [typeLabel, mainText].filter(Boolean).join(' ');
 
   return (
     <Box

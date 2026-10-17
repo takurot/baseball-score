@@ -101,6 +101,22 @@ describe('useGameState', () => {
     expect(result.current.state.gameType).toBe('official');
   });
 
+  test('loadGame falls back to official when gameType is undefined but tournament exists', () => {
+    const { result } = renderHook(() => useGameState());
+
+    const legacyGame: Partial<Game> = {
+      homeTeam: { id: 'home', name: 'Home Team', players: [], atBats: [] },
+      awayTeam: { id: 'away', name: 'Away Team', players: [], atBats: [] },
+      tournament: '都民大会',
+    };
+
+    act(() => {
+      result.current.actions.loadGame(legacyGame as Game);
+    });
+
+    expect(result.current.state.gameType).toBe('official');
+  });
+
   test('addAtBat action works correctly', () => {
     const { result } = renderHook(() => useGameState());
 

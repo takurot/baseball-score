@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { Game, Team, AtBat, RunEvent, OutEvent, GameType } from '../types';
 import { useUndoRedo } from './useUndoRedo';
+import { getEffectiveGameType } from '../utils/gameType';
 
 type RunnerState = { first: boolean; second: boolean; third: boolean };
 
@@ -74,7 +75,7 @@ const buildInitialState = (game?: Game): GameState => ({
   date: game?.date ?? todayISO(),
   venue: game?.venue ?? '',
   tournament: game?.tournament ?? '',
-  gameType: game?.gameType ?? 'practice',
+  gameType: getEffectiveGameType(game),
   homeTeam: normalizeTeam(game?.homeTeam),
   awayTeam: normalizeTeam(game?.awayTeam),
   currentInning: game?.currentInning ?? 1,
