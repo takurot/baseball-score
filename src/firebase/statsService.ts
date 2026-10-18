@@ -3,6 +3,9 @@ import { db } from './config';
 import { Game, Team, AtBat, Player } from '../types';
 import { getCurrentUser } from './authService';
 import { BattingStats, ScoreCalculator } from '../services/ScoreCalculator';
+import { GameTypeFilter, matchesGameTypeFilter } from '../utils/gameType';
+
+export type { GameTypeFilter };
 
 // チームの通算成績インターフェース
 export interface TeamStats {
@@ -35,7 +38,9 @@ const GAMES_COLLECTION = 'games';
 export const MIN_QUALIFYING_AT_BATS = 10;
 
 // チームごとの通算成績を取得
-export const getAllTeamStats = async (): Promise<TeamStats[]> => {
+export const getAllTeamStats = async (
+  gameTypeFilter: GameTypeFilter = 'all'
+): Promise<TeamStats[]> => {
   try {
     const user = getCurrentUser();
     if (!user) {
@@ -55,11 +60,15 @@ export const getAllTeamStats = async (): Promise<TeamStats[]> => {
       return { ...data, id: doc.id };
     });
 
+    const filteredGames = games.filter((game) =>
+      matchesGameTypeFilter(game, gameTypeFilter)
+    );
+
     // チームIDをキーとした成績集計マップ
     const teamStatsMap: Map<string, TeamStats> = new Map();
 
-    // 全ゲームをループして各チームの成績を集計
-    for (const game of games) {
+    // 対象ゲームをループして各チームの成績を集計
+    for (const game of filteredGames) {
       // ホームチームの処理
       processTeamStats(teamStatsMap, game.homeTeam, game, false);
 

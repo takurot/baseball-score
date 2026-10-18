@@ -1,12 +1,25 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { axe } from '../../test/axe';
 import TournamentVenue from '../TournamentVenue';
 
 const renderWithTheme = (ui: React.ReactElement) =>
   render(<ThemeProvider theme={createTheme()}>{ui}</ThemeProvider>);
 
 describe('TournamentVenue', () => {
+  test('has no axe violations when rendered as button with gameType', async () => {
+    const { container } = renderWithTheme(
+      <TournamentVenue
+        gameType="official"
+        tournament="夏季大会"
+        venue="阪神甲子園球場"
+        onClick={jest.fn()}
+      />
+    );
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
   test('renders placeholder text when tournament is not provided and not in shared mode', () => {
     renderWithTheme(<TournamentVenue onClick={jest.fn()} />);
 
@@ -67,5 +80,37 @@ describe('TournamentVenue', () => {
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.getByText('夏季大会')).toBeInTheDocument();
+  });
+
+  test('renders [公式戦] prefix when gameType is official', () => {
+    renderWithTheme(
+      <TournamentVenue
+        gameType="official"
+        tournament="夏季大会"
+        venue="阪神甲子園球場"
+      />
+    );
+
+    expect(
+      screen.getByText('[公式戦] 夏季大会 @ 阪神甲子園球場')
+    ).toBeInTheDocument();
+  });
+
+  test('renders [練習試合] prefix when gameType is practice', () => {
+    renderWithTheme(
+      <TournamentVenue gameType="practice" venue="市民グラウンド" />
+    );
+
+    expect(screen.getByText('[練習試合] 市民グラウンド')).toBeInTheDocument();
+  });
+
+  test('renders gameType with placeholder when tournament and venue are not set and clickable', () => {
+    renderWithTheme(
+      <TournamentVenue gameType="official" onClick={jest.fn()} />
+    );
+
+    expect(
+      screen.getByText('[公式戦] 大会名をクリックして設定')
+    ).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
-import { Game, Team, AtBat, RunEvent, OutEvent } from '../types';
+import { Game, Team, AtBat, RunEvent, OutEvent, GameType } from '../types';
 import { useUndoRedo } from './useUndoRedo';
+import { getEffectiveGameType } from '../utils/gameType';
 
 type RunnerState = { first: boolean; second: boolean; third: boolean };
 
@@ -9,6 +10,7 @@ export interface GameState {
   date: string;
   venue: string;
   tournament: string;
+  gameType: GameType;
   homeTeam: Team;
   awayTeam: Team;
   currentInning: number;
@@ -24,6 +26,7 @@ export interface GameStateActions {
   setDate: (date: string) => void;
   setVenue: (venue: string) => void;
   setTournament: (tournament: string) => void;
+  setGameType: (gameType: GameType) => void;
   setHomeTeam: (team: Team) => void;
   setAwayTeam: (team: Team) => void;
   addAtBat: (atBat: AtBat) => void;
@@ -65,13 +68,20 @@ const normalizeTeam = (team?: Team): Team => ({
   atBats: team?.atBats ?? [],
 });
 
-const todayISO = () => new Date().toISOString().split('T')[0];
+const todayISO = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const buildInitialState = (game?: Game): GameState => ({
   id: game?.id ?? '',
   date: game?.date ?? todayISO(),
   venue: game?.venue ?? '',
   tournament: game?.tournament ?? '',
+  gameType: getEffectiveGameType(game),
   homeTeam: normalizeTeam(game?.homeTeam),
   awayTeam: normalizeTeam(game?.awayTeam),
   currentInning: game?.currentInning ?? 1,
@@ -217,6 +227,16 @@ export const useGameState = (initialGame?: Game): UseGameStateReturn => {
       setState((prev) => ({
         ...prev,
         tournament,
+      }));
+    },
+    [setState]
+  );
+
+  const setGameType = useCallback(
+    (gameType: GameType) => {
+      setState((prev) => ({
+        ...prev,
+        gameType,
       }));
     },
     [setState]
@@ -392,6 +412,7 @@ export const useGameState = (initialGame?: Game): UseGameStateReturn => {
       setDate,
       setVenue,
       setTournament,
+      setGameType,
       setHomeTeam,
       setAwayTeam,
       addAtBat,

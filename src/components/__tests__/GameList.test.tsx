@@ -133,4 +133,32 @@ describe('GameList', () => {
     await screen.findByText('game-1アウェイ vs game-1ホーム');
     expect(container).not.toHaveTextContent('大会0');
   });
+
+  test('各試合カードに公式戦・練習試合のバッジ（Chip）を表示する', async () => {
+    mockedGetAllGames.mockResolvedValue([
+      makeGame('game-official', {
+        gameType: 'official',
+        tournament: '春季大会',
+      }),
+      makeGame('game-practice', {
+        gameType: 'practice',
+        tournament: '',
+      }),
+      makeGame('game-legacy-official', {
+        gameType: undefined,
+        tournament: '夏季大会',
+      }),
+      makeGame('game-legacy-practice', {
+        gameType: undefined,
+        tournament: '',
+      }),
+    ]);
+    renderGameList();
+
+    const officialChips = await screen.findAllByText('公式戦');
+    expect(officialChips).toHaveLength(2);
+
+    const practiceChips = await screen.findAllByText('練習試合');
+    expect(practiceChips).toHaveLength(2);
+  });
 });
