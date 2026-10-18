@@ -30,7 +30,7 @@ describe('security configuration', () => {
     );
     expect(html).toContain('http-equiv="Content-Security-Policy"');
     expect(html).toContain(
-      "script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com"
+      "script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://accounts.google.com https://www.googletagmanager.com"
     );
     expect(html).toContain(
       "connect-src 'self' ws://localhost:3000 http://localhost:8080 ws://localhost:8080"
@@ -76,7 +76,7 @@ describe('security configuration', () => {
     )?.value;
 
     expect(productionCsp).toContain(
-      "script-src 'self' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com"
+      "script-src 'self' https://apis.google.com https://www.gstatic.com https://accounts.google.com https://www.googletagmanager.com"
     );
     expect(productionCsp).not.toContain("script-src 'self' 'unsafe-inline'");
     expect(productionCsp).not.toContain('localhost');

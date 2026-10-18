@@ -71,15 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   // Googleでサインイン
-  const signIn = async (): Promise<User> => {
-    try {
-      const user = await signInWithGoogle();
-      return user;
-    } catch (error) {
-      console.error('Sign in error:', error);
-      throw error;
-    }
-  };
+  const signIn = (): Promise<User> => signInWithGoogle();
 
   // サインアウト
   const logOut = async (): Promise<void> => {
