@@ -30,11 +30,13 @@ describe('security configuration', () => {
     );
     expect(html).toContain('http-equiv="Content-Security-Policy"');
     expect(html).toContain(
-      "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com"
+      "script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com"
     );
     expect(html).toContain(
       "connect-src 'self' ws://localhost:3000 http://localhost:8080 ws://localhost:8080"
     );
+    expect(html).toMatch(/connect-src[^;]*https:\/\/\*\.firebaseapp\.com/);
+    expect(html).toMatch(/connect-src[^;]*https:\/\/accounts\.google\.com/);
     expect(html).toMatch(
       /connect-src[^;]*https:\/\/www\.googletagmanager\.com/
     );
@@ -74,10 +76,16 @@ describe('security configuration', () => {
     )?.value;
 
     expect(productionCsp).toContain(
-      "script-src 'self' https://www.googletagmanager.com"
+      "script-src 'self' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com"
     );
     expect(productionCsp).not.toContain("script-src 'self' 'unsafe-inline'");
     expect(productionCsp).not.toContain('localhost');
+    expect(productionCsp).toMatch(
+      /connect-src[^;]*https:\/\/\*\.firebaseapp\.com/
+    );
+    expect(productionCsp).toMatch(
+      /connect-src[^;]*https:\/\/accounts\.google\.com/
+    );
     expect(productionCsp).toMatch(
       /connect-src[^;]*https:\/\/www\.googletagmanager\.com/
     );
