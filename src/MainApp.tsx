@@ -81,7 +81,11 @@ import {
 } from './firebase/gameService';
 import { useAuth } from './contexts/AuthContext';
 import { getGameTypeLabel } from './utils/gameType';
-import { getTeamTabLabel } from './utils/teamTabUtils';
+import {
+  getTeamTabLabel,
+  DEFAULT_AWAY_TEAM_NAME,
+  DEFAULT_HOME_TEAM_NAME,
+} from './utils/teamTabUtils';
 import Login from './components/Login';
 import HelpIcon from '@mui/icons-material/Help';
 import { useTheme } from '@mui/material/styles';
@@ -120,8 +124,8 @@ const formatLocalDate = (d = new Date()): string => {
 const createInitialGame = (): Game => ({
   id: uuidv4(),
   date: formatLocalDate(),
-  homeTeam: createInitialTeam('後攻チーム'),
-  awayTeam: createInitialTeam('先攻チーム'),
+  homeTeam: createInitialTeam(DEFAULT_HOME_TEAM_NAME),
+  awayTeam: createInitialTeam(DEFAULT_AWAY_TEAM_NAME),
   currentInning: 1,
   isTop: true,
   venue: '',
@@ -1214,12 +1218,10 @@ const MainApp: React.FC<{
                 <Tab
                   label={getTeamTabLabel(awayTeam.name, '先攻')}
                   id="team-tab-0"
-                  aria-controls="team-tabpanel-0"
                 />
                 <Tab
                   label={getTeamTabLabel(homeTeam.name, '後攻')}
                   id="team-tab-1"
-                  aria-controls="team-tabpanel-1"
                 />
               </Tabs>
             </Box>
@@ -1341,7 +1343,9 @@ const MainApp: React.FC<{
                       <TeamManager
                         team={currentTeam}
                         defaultRoleName={
-                          tabIndex === 0 ? '先攻チーム' : '後攻チーム'
+                          tabIndex === 0
+                            ? DEFAULT_AWAY_TEAM_NAME
+                            : DEFAULT_HOME_TEAM_NAME
                         }
                         onTeamUpdate={handleTeamUpdate}
                         onRegisterAtBat={handleRegisterAtBat}

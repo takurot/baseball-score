@@ -28,6 +28,7 @@ import PlayerList from './PlayerList';
 import { getUserTeams, getTeamById } from '../firebase/teamService';
 import { getNextBatterPlayerId } from '../services/BattingOrder';
 import { useAuth } from '../contexts/AuthContext';
+import { DEFAULT_AWAY_TEAM_NAME } from '../utils/teamTabUtils';
 
 interface TeamManagerProps {
   team: Team;
@@ -289,7 +290,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="h5">
-              {team.name?.trim() || defaultRoleName || 'チーム名未設定'}
+              {team.name?.trim() || defaultRoleName || DEFAULT_AWAY_TEAM_NAME}
             </Typography>
             <Tooltip title="チーム名を編集">
               <IconButton

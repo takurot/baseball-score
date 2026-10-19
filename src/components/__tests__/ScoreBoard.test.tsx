@@ -28,7 +28,7 @@ describe('ScoreBoard', () => {
     expect(screen.getByText('ライオンズ')).toBeInTheDocument();
   });
 
-  it('チーム名が空または空白の場合、「先攻」「後攻」とフォールバック表示される', () => {
+  it('チーム名が空または空白の場合、「先攻チーム」「後攻チーム」とフォールバック表示される', () => {
     const awayTeam = createMockTeam('');
     const homeTeam = createMockTeam('   ');
 
@@ -38,7 +38,7 @@ describe('ScoreBoard', () => {
       </ThemeProvider>
     );
 
-    expect(screen.getByText('先攻')).toBeInTheDocument();
-    expect(screen.getByText('後攻')).toBeInTheDocument();
+    expect(screen.getByText('先攻チーム')).toBeInTheDocument();
+    expect(screen.getByText('後攻チーム')).toBeInTheDocument();
   });
 });

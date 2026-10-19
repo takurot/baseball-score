@@ -1,3 +1,27 @@
+export const DEFAULT_AWAY_TEAM_NAME = '先攻チーム';
+export const DEFAULT_HOME_TEAM_NAME = '後攻チーム';
+
+const DEFAULT_TEAM_NAMES: readonly string[] = [
+  '先攻',
+  '後攻',
+  DEFAULT_AWAY_TEAM_NAME,
+  DEFAULT_HOME_TEAM_NAME,
+];
+
+/**
+ * チームの表示用名称を取得する（空の場合はデフォルト名）
+ */
+export function getDisplayTeamName(
+  teamName: string | undefined | null,
+  role: '先攻' | '後攻'
+): string {
+  const trimmed = teamName?.trim();
+  if (trimmed) {
+    return trimmed;
+  }
+  return role === '先攻' ? DEFAULT_AWAY_TEAM_NAME : DEFAULT_HOME_TEAM_NAME;
+}
+
 /**
  * チーム選択タブの表示ラベルを生成する
  *
@@ -17,17 +41,7 @@ export function getTeamTabLabel(
   role: '先攻' | '後攻'
 ): string {
   const trimmed = teamName?.trim();
-  if (!trimmed) {
-    return role;
-  }
-  if (
-    trimmed === role ||
-    trimmed === `${role}チーム` ||
-    trimmed === '先攻チーム' ||
-    trimmed === '後攻チーム' ||
-    trimmed === '先攻' ||
-    trimmed === '後攻'
-  ) {
+  if (!trimmed || DEFAULT_TEAM_NAMES.includes(trimmed)) {
     return role;
   }
   return `${role}（${trimmed}）`;

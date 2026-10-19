@@ -11,16 +11,8 @@ describe('TeamTabs a11y', () => {
       <ThemeProvider theme={createTheme()}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
           <Tabs value={0} onChange={jest.fn()} aria-label="チーム選択タブ">
-            <Tab
-              label={getTeamTabLabel('', '先攻')}
-              id="team-tab-0"
-              aria-controls="team-tabpanel-0"
-            />
-            <Tab
-              label={getTeamTabLabel('', '後攻')}
-              id="team-tab-1"
-              aria-controls="team-tabpanel-1"
-            />
+            <Tab label={getTeamTabLabel('', '先攻')} id="team-tab-0" />
+            <Tab label={getTeamTabLabel('', '後攻')} id="team-tab-1" />
           </Tabs>
         </Box>
         <Box role="tabpanel" id="team-tabpanel-0" aria-labelledby="team-tab-0">
@@ -38,15 +30,10 @@ describe('TeamTabs a11y', () => {
       <ThemeProvider theme={createTheme()}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
           <Tabs value={0} onChange={jest.fn()} aria-label="チーム選択タブ">
-            <Tab
-              label={getTeamTabLabel('豊郷中央', '先攻')}
-              id="team-tab-0"
-              aria-controls="team-tabpanel-0"
-            />
+            <Tab label={getTeamTabLabel('豊郷中央', '先攻')} id="team-tab-0" />
             <Tab
               label={getTeamTabLabel('ライオンズ', '後攻')}
               id="team-tab-1"
-              aria-controls="team-tabpanel-1"
             />
           </Tabs>
         </Box>

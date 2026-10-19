@@ -14,6 +14,7 @@ import {
 import { alpha, useTheme } from '@mui/material/styles';
 import { Team, RunEvent } from '../types';
 import { ScoreCalculator } from '../services/ScoreCalculator';
+import { getDisplayTeamName } from '../utils/teamTabUtils';
 
 const countHits = (team: Team): number =>
   ScoreCalculator.calculateHits(team.atBats);
@@ -256,7 +257,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                     fontSize: isMobile ? '0.8rem' : '0.875rem',
                   }}
                 >
-                  {awayTeam.name?.trim() || '先攻'}
+                  {getDisplayTeamName(awayTeam.name, '先攻')}
                 </Typography>
               </TableCell>
               {innings.map((inning) => (
@@ -319,7 +320,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                     fontSize: isMobile ? '0.8rem' : '0.875rem',
                   }}
                 >
-                  {homeTeam.name?.trim() || '後攻'}
+                  {getDisplayTeamName(homeTeam.name, '後攻')}
                 </Typography>
               </TableCell>
               {innings.map((inning) => (
