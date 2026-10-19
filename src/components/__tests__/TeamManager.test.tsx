@@ -149,12 +149,12 @@ describe('TeamManager - チーム選択導線の統合', () => {
     );
   });
 
-  test('チーム名が空の場合、defaultRoleName が見出しにフォールバック表示される', () => {
-    render(
+  test('チーム名が空の場合、roleに応じたデフォルトチーム名が見出しにフォールバック表示される', () => {
+    const { rerender } = render(
       <ThemeProvider theme={createTheme()}>
         <TeamManager
           team={makeTeam({ name: '' })}
-          defaultRoleName="先攻チーム"
+          role="away"
           onTeamUpdate={jest.fn()}
         />
       </ThemeProvider>
@@ -162,6 +162,20 @@ describe('TeamManager - チーム選択導線の統合', () => {
 
     expect(
       screen.getByRole('heading', { level: 5, name: '先攻チーム' })
+    ).toBeInTheDocument();
+
+    rerender(
+      <ThemeProvider theme={createTheme()}>
+        <TeamManager
+          team={makeTeam({ name: '   ' })}
+          role="home"
+          onTeamUpdate={jest.fn()}
+        />
+      </ThemeProvider>
+    );
+
+    expect(
+      screen.getByRole('heading', { level: 5, name: '後攻チーム' })
     ).toBeInTheDocument();
   });
 });

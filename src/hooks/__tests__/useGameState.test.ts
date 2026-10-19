@@ -119,6 +119,28 @@ describe('useGameState', () => {
     expect(result.current.state.gameType).toBe('official');
   });
 
+  test('setHomeTeam and setAwayTeam fall back to default names when given empty names', () => {
+    const { result } = renderHook(() => useGameState());
+
+    act(() => {
+      result.current.actions.setAwayTeam({
+        id: 'team-away',
+        name: '   ',
+        players: [],
+        atBats: [],
+      });
+      result.current.actions.setHomeTeam({
+        id: 'team-home',
+        name: '',
+        players: [],
+        atBats: [],
+      });
+    });
+
+    expect(result.current.state.awayTeam.name).toBe('先攻チーム');
+    expect(result.current.state.homeTeam.name).toBe('後攻チーム');
+  });
+
   test('addAtBat action works correctly', () => {
     const { result } = renderHook(() => useGameState());
 

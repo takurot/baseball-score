@@ -1,32 +1,45 @@
+export type TeamRole = '先攻' | '後攻';
+export const AWAY_ROLE: TeamRole = '先攻';
+export const HOME_ROLE: TeamRole = '後攻';
+
 export const DEFAULT_AWAY_TEAM_NAME = '先攻チーム';
 export const DEFAULT_HOME_TEAM_NAME = '後攻チーム';
 
 const DEFAULT_TEAM_NAMES: readonly string[] = [
-  '先攻',
-  '後攻',
+  AWAY_ROLE,
+  HOME_ROLE,
   DEFAULT_AWAY_TEAM_NAME,
   DEFAULT_HOME_TEAM_NAME,
 ];
+
+export function resolveRole(role: TeamRole | 'away' | 'home'): TeamRole {
+  if (role === 'away') return AWAY_ROLE;
+  if (role === 'home') return HOME_ROLE;
+  return role;
+}
 
 /**
  * チームの表示用名称を取得する（空の場合はデフォルト名）
  */
 export function getDisplayTeamName(
   teamName: string | undefined | null,
-  role: '先攻' | '後攻'
+  role: TeamRole | 'away' | 'home'
 ): string {
+  const resolvedRole = resolveRole(role);
   const trimmed = teamName?.trim();
   if (trimmed) {
     return trimmed;
   }
-  return role === '先攻' ? DEFAULT_AWAY_TEAM_NAME : DEFAULT_HOME_TEAM_NAME;
+  return resolvedRole === AWAY_ROLE
+    ? DEFAULT_AWAY_TEAM_NAME
+    : DEFAULT_HOME_TEAM_NAME;
 }
 
 /**
  * チーム選択タブの表示ラベルを生成する
  *
  * @param teamName チーム名
- * @param role '先攻' | '後攻'
+ * @param role '先攻' | '後攻' | 'away' | 'home'
  * @returns タブに表示するラベル文字列
  *
  * - チーム名が未設定（undefined, null, 空文字, 空白のみ）の場合:
@@ -38,11 +51,12 @@ export function getDisplayTeamName(
  */
 export function getTeamTabLabel(
   teamName: string | undefined | null,
-  role: '先攻' | '後攻'
+  role: TeamRole | 'away' | 'home'
 ): string {
+  const resolvedRole = resolveRole(role);
   const trimmed = teamName?.trim();
   if (!trimmed || DEFAULT_TEAM_NAMES.includes(trimmed)) {
-    return role;
+    return resolvedRole;
   }
-  return `${role}（${trimmed}）`;
+  return `${resolvedRole}（${trimmed}）`;
 }

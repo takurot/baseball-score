@@ -180,7 +180,7 @@ export const useGameState = (initialGame?: Game): UseGameStateReturn => {
     (team: Team) => {
       setState((prev) => ({
         ...prev,
-        homeTeam: normalizeTeam(team),
+        homeTeam: normalizeTeam(team, DEFAULT_HOME_TEAM_NAME),
       }));
     },
     [setState]
@@ -190,7 +190,7 @@ export const useGameState = (initialGame?: Game): UseGameStateReturn => {
     (team: Team) => {
       setState((prev) => ({
         ...prev,
-        awayTeam: normalizeTeam(team),
+        awayTeam: normalizeTeam(team, DEFAULT_AWAY_TEAM_NAME),
       }));
     },
     [setState]

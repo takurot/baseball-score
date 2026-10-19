@@ -1216,11 +1216,11 @@ const MainApp: React.FC<{
                 aria-label="チーム選択タブ"
               >
                 <Tab
-                  label={getTeamTabLabel(awayTeam.name, '先攻')}
+                  label={getTeamTabLabel(awayTeam.name, 'away')}
                   id="team-tab-0"
                 />
                 <Tab
-                  label={getTeamTabLabel(homeTeam.name, '後攻')}
+                  label={getTeamTabLabel(homeTeam.name, 'home')}
                   id="team-tab-1"
                 />
               </Tabs>
@@ -1342,11 +1342,7 @@ const MainApp: React.FC<{
                     >
                       <TeamManager
                         team={currentTeam}
-                        defaultRoleName={
-                          tabIndex === 0
-                            ? DEFAULT_AWAY_TEAM_NAME
-                            : DEFAULT_HOME_TEAM_NAME
-                        }
+                        role={tabIndex === 0 ? 'away' : 'home'}
                         onTeamUpdate={handleTeamUpdate}
                         onRegisterAtBat={handleRegisterAtBat}
                       />

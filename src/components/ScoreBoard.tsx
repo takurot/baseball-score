@@ -257,7 +257,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                     fontSize: isMobile ? '0.8rem' : '0.875rem',
                   }}
                 >
-                  {getDisplayTeamName(awayTeam.name, '先攻')}
+                  {getDisplayTeamName(awayTeam.name, 'away')}
                 </Typography>
               </TableCell>
               {innings.map((inning) => (
@@ -320,7 +320,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
                     fontSize: isMobile ? '0.8rem' : '0.875rem',
                   }}
                 >
-                  {getDisplayTeamName(homeTeam.name, '後攻')}
+                  {getDisplayTeamName(homeTeam.name, 'home')}
                 </Typography>
               </TableCell>
               {innings.map((inning) => (
