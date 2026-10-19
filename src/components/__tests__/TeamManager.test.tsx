@@ -50,10 +50,14 @@ const savedTeam: TeamSetting = {
   userId: 'user-1',
 };
 
-const renderTeamManager = (team: Team, onTeamUpdate = jest.fn()) => {
+const renderTeamManager = (
+  team: Team,
+  onTeamUpdate = jest.fn(),
+  role: 'away' | 'home' = 'away'
+) => {
   render(
     <ThemeProvider theme={createTheme()}>
-      <TeamManager team={team} onTeamUpdate={onTeamUpdate} />
+      <TeamManager team={team} role={role} onTeamUpdate={onTeamUpdate} />
     </ThemeProvider>
   );
   return { onTeamUpdate };

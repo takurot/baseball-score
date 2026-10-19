@@ -32,7 +32,7 @@ import { TeamRole, getDisplayTeamName } from '../utils/teamTabUtils';
 
 interface TeamManagerProps {
   team: Team;
-  role?: TeamRole | 'away' | 'home';
+  role: TeamRole | 'away' | 'home';
   onTeamUpdate: (updatedTeam: Team) => void;
   onRegisterAtBat?: (player: Player) => void;
 }
@@ -290,7 +290,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="h5">
-              {getDisplayTeamName(team.name, role ?? 'away')}
+              {getDisplayTeamName(team.name, role)}
             </Typography>
             <Tooltip title="チーム名を編集">
               <IconButton
