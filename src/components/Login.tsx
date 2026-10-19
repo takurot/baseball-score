@@ -73,9 +73,30 @@ const Login: React.FC = () => {
       setLoading(true);
       setError(null);
       await signIn();
-    } catch (err) {
-      console.error('Login failed:', err);
-      setError('ログインに失敗しました。もう一度お試しください。');
+    } catch (err: unknown) {
+      console.error('Google sign in failed:', err);
+      setError(
+        getAuthErrorMessage(
+          err,
+          {
+            'auth/popup-closed-by-user':
+              'ログインがキャンセルされました（ウィンドウが閉じられました）',
+            'auth/popup-blocked':
+              'ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください',
+            'auth/cancelled-popup-request':
+              'ログイン処理が中断されました。再度お試しください',
+            'auth/unauthorized-domain':
+              'このドメインからのログインは許可されていません（Firebaseの設定をご確認ください）',
+            'auth/operation-not-allowed':
+              'Googleログインが有効になっていません（Firebaseの設定をご確認ください）',
+            'auth/network-request-failed':
+              'ネットワークエラーが発生しました。接続を確認して再度お試しください',
+            'auth/internal-error':
+              '認証サービスで内部エラーが発生しました。しばらく時間をおいて再度お試しください',
+          },
+          'Googleログインに失敗しました。もう一度お試しください。'
+        )
+      );
     } finally {
       setLoading(false);
     }

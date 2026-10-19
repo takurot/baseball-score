@@ -30,14 +30,18 @@ describe('security configuration', () => {
     );
     expect(html).toContain('http-equiv="Content-Security-Policy"');
     expect(html).toContain(
-      "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com"
+      "script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://accounts.google.com https://www.googletagmanager.com"
     );
     expect(html).toContain(
       "connect-src 'self' ws://localhost:3000 http://localhost:8080 ws://localhost:8080"
     );
+    expect(html).not.toMatch(/connect-src[^;]*https:\/\/\*\.firebaseapp\.com/);
+    expect(html).toMatch(/connect-src[^;]*https:\/\/accounts\.google\.com/);
     expect(html).toMatch(
       /connect-src[^;]*https:\/\/www\.googletagmanager\.com/
     );
+    expect(html).toMatch(/frame-src[^;]*https:\/\/\*\.firebaseapp\.com/);
+    expect(html).toMatch(/frame-src[^;]*https:\/\/accounts\.google\.com/);
     expect(html).toContain("object-src 'none'");
     expect(html).toContain("base-uri 'self'");
   });
@@ -74,12 +78,24 @@ describe('security configuration', () => {
     )?.value;
 
     expect(productionCsp).toContain(
-      "script-src 'self' https://www.googletagmanager.com"
+      "script-src 'self' https://apis.google.com https://www.gstatic.com https://accounts.google.com https://www.googletagmanager.com"
     );
     expect(productionCsp).not.toContain("script-src 'self' 'unsafe-inline'");
     expect(productionCsp).not.toContain('localhost');
+    expect(productionCsp).not.toMatch(
+      /connect-src[^;]*https:\/\/\*\.firebaseapp\.com/
+    );
+    expect(productionCsp).toMatch(
+      /connect-src[^;]*https:\/\/accounts\.google\.com/
+    );
     expect(productionCsp).toMatch(
       /connect-src[^;]*https:\/\/www\.googletagmanager\.com/
+    );
+    expect(productionCsp).toMatch(
+      /frame-src[^;]*https:\/\/\*\.firebaseapp\.com/
+    );
+    expect(productionCsp).toMatch(
+      /frame-src[^;]*https:\/\/accounts\.google\.com/
     );
   });
 });

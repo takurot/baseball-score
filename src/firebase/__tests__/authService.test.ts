@@ -1,6 +1,11 @@
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signInWithPopup,
+} from 'firebase/auth';
 import {
   registerWithEmailAndPassword,
+  signInWithGoogle,
   getAuthErrorMessage,
 } from '../authService';
 
@@ -20,6 +25,29 @@ jest.mock('../config', () => ({ app: {} }));
 
 const mockedCreateUser = createUserWithEmailAndPassword as jest.Mock;
 const mockedUpdateProfile = updateProfile as jest.Mock;
+const mockedSignInWithPopup = signInWithPopup as jest.Mock;
+
+describe('signInWithGoogle', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('signInWithPopup 成功時は user を返す', async () => {
+    const user = { uid: 'google-user-123', email: 'google@example.com' };
+    mockedSignInWithPopup.mockResolvedValueOnce({ user });
+
+    const result = await signInWithGoogle();
+    expect(result).toBe(user);
+    expect(mockedSignInWithPopup).toHaveBeenCalledTimes(1);
+  });
+
+  test('signInWithPopup 失敗時はエラーを再送出する', async () => {
+    const error = { code: 'auth/popup-closed-by-user' };
+    mockedSignInWithPopup.mockRejectedValueOnce(error);
+
+    await expect(signInWithGoogle()).rejects.toEqual(error);
+  });
+});
 
 describe('registerWithEmailAndPassword', () => {
   beforeEach(() => {

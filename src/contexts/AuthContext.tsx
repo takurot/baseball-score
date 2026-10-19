@@ -13,7 +13,7 @@ import {
 interface AuthContextType {
   currentUser: User | null;
   isLoading: boolean;
-  signIn: () => Promise<User | null>;
+  signIn: () => Promise<User>;
   logOut: () => Promise<void>;
   loginWithEmailAndPassword: (email: string, password: string) => Promise<User>;
   registerWithEmailAndPassword: (
@@ -28,7 +28,9 @@ interface AuthContextType {
 const defaultAuthContext: AuthContextType = {
   currentUser: null,
   isLoading: true,
-  signIn: async () => null,
+  signIn: async () => {
+    throw new Error('Not implemented');
+  },
   logOut: async () => {},
   loginWithEmailAndPassword: async () => {
     throw new Error('Not implemented');
@@ -69,15 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   // Googleでサインイン
-  const signIn = async (): Promise<User | null> => {
-    try {
-      const user = await signInWithGoogle();
-      return user;
-    } catch (error) {
-      console.error('Sign in error:', error);
-      return null;
-    }
-  };
+  const signIn = (): Promise<User> => signInWithGoogle();
 
   // サインアウト
   const logOut = async (): Promise<void> => {
