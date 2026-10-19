@@ -31,12 +31,14 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface TeamManagerProps {
   team: Team;
+  defaultRoleName?: string;
   onTeamUpdate: (updatedTeam: Team) => void;
   onRegisterAtBat?: (player: Player) => void;
 }
 
 const TeamManager: React.FC<TeamManagerProps> = ({
   team,
+  defaultRoleName,
   onTeamUpdate,
   onRegisterAtBat,
 }) => {
@@ -286,7 +288,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="h5">{team.name}</Typography>
+            <Typography variant="h5">
+              {team.name?.trim() || defaultRoleName || 'チーム名未設定'}
+            </Typography>
             <Tooltip title="チーム名を編集">
               <IconButton
                 onClick={handleOpenTeamNameDialog}

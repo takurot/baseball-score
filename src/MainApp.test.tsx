@@ -144,6 +144,10 @@ describe('MainApp - 試合データの損失防止', () => {
     expect(
       screen.queryByText('保存されていない変更があります')
     ).not.toBeInTheDocument();
+
+    // チーム選択タブに「先攻」「後攻」が表示され、空白にならないこと
+    expect(screen.getByRole('tab', { name: '先攻' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '後攻' })).toBeInTheDocument();
   }, 30000);
 
   test('未保存の変更がある状態で「新しい試合」を選ぶと確認ダイアログが出て、キャンセルするとデータが残る', async () => {
@@ -481,4 +485,33 @@ describe('MainApp - URL駆動の画面遷移', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('区分: 公式戦')).toBeInTheDocument();
   }, 15000);
+});
+
+describe('MainApp - チーム選択タブの表示と先攻・後攻の切り替え', () => {
+  test('初期表示時に「先攻」「後攻」タブが表示され、先攻が選択されている', async () => {
+    renderMainApp();
+
+    const awayTab = screen.getByRole('tab', { name: '先攻' });
+    const homeTab = screen.getByRole('tab', { name: '後攻' });
+
+    expect(awayTab).toBeInTheDocument();
+    expect(homeTab).toBeInTheDocument();
+    expect(awayTab).toHaveAttribute('aria-selected', 'true');
+    expect(homeTab).toHaveAttribute('aria-selected', 'false');
+  });
+
+  test('後攻タブを選択した後に「新しい試合」を開始すると、先攻タブにリセットされる', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+
+    const homeTab = screen.getByRole('tab', { name: '後攻' });
+    await user.click(homeTab);
+    expect(homeTab).toHaveAttribute('aria-selected', 'true');
+
+    await openMenu(user);
+    await user.click(screen.getByRole('menuitem', { name: /新しい試合/ }));
+
+    const awayTabAfterReset = screen.getByRole('tab', { name: '先攻' });
+    expect(awayTabAfterReset).toHaveAttribute('aria-selected', 'true');
+  });
 });

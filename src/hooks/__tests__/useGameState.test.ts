@@ -76,6 +76,8 @@ describe('useGameState', () => {
     expect(result.current.state.currentInning).toBe(1);
     expect(result.current.state.isTop).toBe(true);
     expect(result.current.state.gameType).toBe('practice');
+    expect(result.current.state.awayTeam.name).toBe('先攻チーム');
+    expect(result.current.state.homeTeam.name).toBe('後攻チーム');
     expect(result.current.state.runEvents).toHaveLength(0);
     expect(result.current.state.outEvents).toHaveLength(0);
   });

@@ -61,9 +61,9 @@ const emptyRunners = (): RunnerState => ({
   third: false,
 });
 
-const normalizeTeam = (team?: Team): Team => ({
+const normalizeTeam = (team?: Team, defaultName = ''): Team => ({
   id: team?.id ?? '',
-  name: team?.name ?? '',
+  name: team?.name?.trim() ? team.name : defaultName,
   players: team?.players ?? [],
   atBats: team?.atBats ?? [],
 });
@@ -82,8 +82,8 @@ const buildInitialState = (game?: Game): GameState => ({
   venue: game?.venue ?? '',
   tournament: game?.tournament ?? '',
   gameType: getEffectiveGameType(game),
-  homeTeam: normalizeTeam(game?.homeTeam),
-  awayTeam: normalizeTeam(game?.awayTeam),
+  homeTeam: normalizeTeam(game?.homeTeam, '後攻チーム'),
+  awayTeam: normalizeTeam(game?.awayTeam, '先攻チーム'),
   currentInning: game?.currentInning ?? 1,
   isTop: game?.isTop ?? true,
   outs: 0,
