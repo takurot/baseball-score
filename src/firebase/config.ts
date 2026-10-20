@@ -1,11 +1,34 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
+// Firebase Hosting 環境（*.web.app, *.firebaseapp.com 等）では現在のホスト名を
+// authDomain として使用することで、iOS Safari等のITP（クロスサイトストレージ遮断による
+// missing initial state エラー）を防止する。
+export const getAuthDomain = (): string | undefined => {
+  if (
+    typeof window !== 'undefined' &&
+    window.location &&
+    window.location.hostname
+  ) {
+    const hostname = window.location.hostname;
+    if (
+      hostname !== 'localhost' &&
+      hostname !== '127.0.0.1' &&
+      (hostname.endsWith('.web.app') ||
+        hostname.endsWith('.firebaseapp.com') ||
+        process.env.REACT_APP_USE_CURRENT_ORIGIN_FOR_AUTH === 'true')
+    ) {
+      return hostname;
+    }
+  }
+  return process.env.REACT_APP_FIREBASE_AUTH_DOMAIN;
+};
+
 // Firebaseの設定
 // 環境変数から設定情報を読み込む
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  authDomain: getAuthDomain(),
   projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
   storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,

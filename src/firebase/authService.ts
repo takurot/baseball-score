@@ -1,5 +1,9 @@
 import {
   getAuth,
+  initializeAuth,
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+  indexedDBLocalPersistence,
   signInWithPopup,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
@@ -9,14 +13,24 @@ import {
   signInWithEmailAndPassword as firebaseSignInWithEmailAndPassword,
   sendPasswordResetEmail,
   updateProfile,
+  Auth,
 } from 'firebase/auth';
 import { app } from './config';
 // getAuthErrorMessage は firebase/auth に依存しない純粋な文言変換ロジックのため
 // 別モジュールに切り出してある。呼び出し元の互換性のためここで再エクスポートする。
 import { getAuthErrorMessage } from '../utils/authErrorMessage';
 
-// 認証インスタンスを取得
-const auth = getAuth(app);
+// 認証インスタンスを取得（IndexedDB / localStorage 永続化を指定してセッション保持を安定化）
+let auth: Auth;
+try {
+  auth = initializeAuth(app, {
+    persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+    popupRedirectResolver: browserPopupRedirectResolver,
+  });
+} catch {
+  auth = getAuth(app);
+}
+
 const googleProvider = new GoogleAuthProvider();
 
 // エラーをログに記録したうえで再送出する（各関数の catch を単純化するための共通処理）

@@ -93,6 +93,10 @@ const Login: React.FC = () => {
               'ネットワークエラーが発生しました。接続を確認して再度お試しください',
             'auth/internal-error':
               '認証サービスで内部エラーが発生しました。しばらく時間をおいて再度お試しください',
+            'auth/missing-or-invalid-nonce':
+              '認証ステートの確認に失敗しました。iPhone/Safariをお使いの場合はプライベートブラウズを解除するか、メールアドレスでのログイン・新規登録をお試しください',
+            'auth/web-storage-unsupported':
+              'ブラウザのストレージ機能が無効になっています。プライベートブラウズを解除するかCookieを許可してください',
           },
           'Googleログインに失敗しました。もう一度お試しください。'
         )
@@ -430,8 +434,22 @@ const Login: React.FC = () => {
       </Box>
 
       <Box sx={{ mt: 3 }}>
-        <Typography variant="body2" color="text.secondary" align="center">
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          align="center"
+          sx={{ mb: 1 }}
+        >
           ※ログインすることで、あなたのデータが安全に保存されます。
+        </Typography>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          align="center"
+          display="block"
+        >
+          ※ iPhone/Safari 等で Google
+          ログイン・登録ができない場合は、メールアドレスでのご利用をおすすめします。
         </Typography>
       </Box>
     </Paper>
