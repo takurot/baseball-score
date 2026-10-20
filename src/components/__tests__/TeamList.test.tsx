@@ -1,6 +1,6 @@
 import React from 'react';
 import nodeCrypto from 'crypto';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import TeamList from '../TeamList';
