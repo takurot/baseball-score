@@ -41,6 +41,7 @@ import {
 } from '../firebase/teamService';
 import { useAuth } from '../contexts/AuthContext';
 import { generateDefaultPlayers } from '../utils/defaultPlayers';
+import LoadingButton from './LoadingButton';
 
 const TeamList: React.FC = () => {
   const { currentUser } = useAuth();
@@ -55,6 +56,9 @@ const TeamList: React.FC = () => {
   const [confirmDeleteTeamId, setConfirmDeleteTeamId] = useState<string | null>(
     null
   );
+  const [teamDialogError, setTeamDialogError] = useState<string | null>(null);
+  const [isSavingTeam, setIsSavingTeam] = useState(false);
+  const [isDeletingTeam, setIsDeletingTeam] = useState(false);
 
   // 選手関連の状態
   const [openPlayerDialog, setOpenPlayerDialog] = useState(false);
@@ -66,6 +70,11 @@ const TeamList: React.FC = () => {
   const [confirmDeletePlayerId, setConfirmDeletePlayerId] = useState<
     string | null
   >(null);
+  const [playerDialogError, setPlayerDialogError] = useState<string | null>(
+    null
+  );
+  const [isSavingPlayer, setIsSavingPlayer] = useState(false);
+  const [isDeletingPlayer, setIsDeletingPlayer] = useState(false);
 
   // アコーディオンの開閉状態
   const [expandedAccordions, setExpandedAccordions] = useState<
@@ -82,54 +91,48 @@ const TeamList: React.FC = () => {
     };
 
   // チームデータの読み込み - useCallbackでメモ化
-  const loadTeams = useCallback(async () => {
-    if (!currentUser) return;
+  const loadTeams = useCallback(
+    async (isInitial = false) => {
+      if (!currentUser) return;
 
-    try {
-      setLoading(true);
-      setError(null);
-      const teamsData = await getUserTeams();
-      setTeams(teamsData || []);
-    } catch (err: any) {
-      console.error('Failed to load teams:', err);
-      setError(
-        'チームデータの読み込みに失敗しました: ' +
-          (err.message || 'エラーが発生しました')
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser]);
-
-  // 初回読み込み
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchTeams = async () => {
       try {
-        setLoading(true);
-        await loadTeams();
-      } catch (error) {
-        console.error('Failed to load teams:', error);
-        if (mounted) {
-          setError('チームの読み込みに失敗しました');
+        if (isInitial) {
+          setLoading(true);
         }
+        setError(null);
+        const teamsData = await getUserTeams();
+        setTeams(teamsData || []);
+      } catch (err: unknown) {
+        console.error('Failed to load teams:', err);
+        setError(
+          'チームデータの読み込みに失敗しました: ' +
+            (err instanceof Error ? err.message : 'エラーが発生しました')
+        );
       } finally {
-        if (mounted) {
+        if (isInitial) {
           setLoading(false);
         }
       }
-    };
+    },
+    [currentUser]
+  );
 
-    fetchTeams();
+  // 初回読み込み
+  useEffect(() => {
+    loadTeams(true);
+  }, [loadTeams]);
 
-    return () => {
-      mounted = false;
-    };
-  }, [loadTeams]); // loadTeamsが変更されたときだけ実行
+  // チームダイアログの内部リセット
+  const resetTeamDialogState = () => {
+    setOpenTeamDialog(false);
+    setTeamName('');
+    setEditingTeamId(null);
+    setTeamDialogError(null);
+  };
 
   // チーム追加・編集ダイアログを開く
   const handleOpenTeamDialog = (team?: TeamSetting) => {
+    setTeamDialogError(null);
     if (team) {
       setTeamName(team.name);
       setEditingTeamId(team.id);
@@ -142,20 +145,20 @@ const TeamList: React.FC = () => {
 
   // チーム追加・編集ダイアログを閉じる
   const handleCloseTeamDialog = () => {
-    setOpenTeamDialog(false);
-    setTeamName('');
-    setEditingTeamId(null);
+    if (isSavingTeam) return;
+    resetTeamDialogState();
   };
 
   // チーム追加・編集を保存
   const handleSaveTeam = async () => {
-    try {
-      setError(null);
+    if (!teamName.trim()) {
+      setTeamDialogError('チーム名を入力してください');
+      return;
+    }
 
-      if (!teamName.trim()) {
-        setError('チーム名を入力してください');
-        return;
-      }
+    try {
+      setIsSavingTeam(true);
+      setTeamDialogError(null);
 
       if (editingTeamId) {
         // 既存チームの更新
@@ -168,12 +171,17 @@ const TeamList: React.FC = () => {
         await createTeam({ name: teamName, players: defaultPlayers });
       }
 
-      // ダイアログを閉じてデータを再読み込み
-      handleCloseTeamDialog();
-      await loadTeams();
-    } catch (err: any) {
+      // 保存成功時は直接ダイアログ状態をリセット
+      resetTeamDialogState();
+      await loadTeams(false);
+    } catch (err: unknown) {
       console.error('Failed to save team:', err);
-      setError('チームの保存に失敗しました: ' + err.message);
+      setTeamDialogError(
+        'チームの保存に失敗しました: ' +
+          (err instanceof Error ? err.message : 'エラーが発生しました')
+      );
+    } finally {
+      setIsSavingTeam(false);
     }
   };
 
@@ -184,6 +192,7 @@ const TeamList: React.FC = () => {
 
   // チーム削除の確認ダイアログを閉じる
   const handleCancelDeleteTeam = () => {
+    if (isDeletingTeam) return;
     setConfirmDeleteTeamId(null);
   };
 
@@ -192,19 +201,37 @@ const TeamList: React.FC = () => {
     if (!confirmDeleteTeamId) return;
 
     try {
+      setIsDeletingTeam(true);
       setError(null);
       await deleteTeam(confirmDeleteTeamId);
       setConfirmDeleteTeamId(null);
-      await loadTeams();
-    } catch (err: any) {
+      await loadTeams(false);
+    } catch (err: unknown) {
       console.error('Failed to delete team:', err);
-      setError('チームの削除に失敗しました: ' + err.message);
+      setError(
+        'チームの削除に失敗しました: ' +
+          (err instanceof Error ? err.message : 'エラーが発生しました')
+      );
+    } finally {
+      setIsDeletingTeam(false);
     }
+  };
+
+  // 選手ダイアログの内部リセット
+  const resetPlayerDialogState = () => {
+    setOpenPlayerDialog(false);
+    setCurrentTeamId(null);
+    setPlayerName('');
+    setPlayerNumber('');
+    setPlayerPosition('');
+    setEditingPlayerId(null);
+    setPlayerDialogError(null);
   };
 
   // 選手追加・編集ダイアログを開く
   const handleOpenPlayerDialog = (teamId: string, player?: PlayerSetting) => {
     setCurrentTeamId(teamId);
+    setPlayerDialogError(null);
 
     // アコーディオンを開く状態に設定
     setExpandedAccordions((prev) => ({
@@ -229,25 +256,22 @@ const TeamList: React.FC = () => {
 
   // 選手追加・編集ダイアログを閉じる
   const handleClosePlayerDialog = () => {
-    setOpenPlayerDialog(false);
-    setCurrentTeamId(null);
-    setPlayerName('');
-    setPlayerNumber('');
-    setPlayerPosition('');
-    setEditingPlayerId(null);
+    if (isSavingPlayer) return;
+    resetPlayerDialogState();
   };
 
   // 選手追加・編集を保存
   const handleSavePlayer = async () => {
     if (!currentTeamId) return;
 
-    try {
-      setError(null);
+    if (!playerName.trim()) {
+      setPlayerDialogError('選手名を入力してください');
+      return;
+    }
 
-      if (!playerName.trim()) {
-        setError('選手名を入力してください');
-        return;
-      }
+    try {
+      setIsSavingPlayer(true);
+      setPlayerDialogError(null);
 
       const playerData = {
         name: playerName,
@@ -263,18 +287,23 @@ const TeamList: React.FC = () => {
         await addPlayerToTeam(currentTeamId, playerData);
       }
 
-      // ダイアログを閉じてデータを再読み込み
-      handleClosePlayerDialog();
-      await loadTeams();
+      // 保存成功時は直接ダイアログ状態をリセット
+      resetPlayerDialogState();
+      await loadTeams(false);
 
       // 現在のチームのアコーディオンは開いたままにする
       setExpandedAccordions((prev) => ({
         ...prev,
         [currentTeamId]: true,
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to save player:', err);
-      setError('選手の保存に失敗しました: ' + err.message);
+      setPlayerDialogError(
+        '選手の保存に失敗しました: ' +
+          (err instanceof Error ? err.message : 'エラーが発生しました')
+      );
+    } finally {
+      setIsSavingPlayer(false);
     }
   };
 
@@ -285,6 +314,7 @@ const TeamList: React.FC = () => {
 
   // 選手削除の確認ダイアログを閉じる
   const handleCancelDeletePlayer = () => {
+    if (isDeletingPlayer) return;
     setConfirmDeletePlayerId(null);
   };
 
@@ -293,19 +323,25 @@ const TeamList: React.FC = () => {
     if (!currentTeamId || !confirmDeletePlayerId) return;
 
     try {
+      setIsDeletingPlayer(true);
       setError(null);
       await removePlayerFromTeam(currentTeamId, confirmDeletePlayerId);
       setConfirmDeletePlayerId(null);
-      await loadTeams();
+      await loadTeams(false);
 
       // 現在のチームのアコーディオンは開いたままにする
       setExpandedAccordions((prev) => ({
         ...prev,
         [currentTeamId]: true,
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to delete player:', err);
-      setError('選手の削除に失敗しました: ' + err.message);
+      setError(
+        '選手の削除に失敗しました: ' +
+          (err instanceof Error ? err.message : 'エラーが発生しました')
+      );
+    } finally {
+      setIsDeletingPlayer(false);
     }
   };
 
@@ -336,36 +372,40 @@ const TeamList: React.FC = () => {
               expandIcon={<ExpandMoreIcon />}
               aria-controls={`team-${team.id}-content`}
               id={`team-${team.id}-header`}
-              sx={{
-                '& .MuiAccordionSummary-content': {
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  mr: 1,
-                },
-              }}
             >
-              <Typography variant="h6">{team.name}</Typography>
-              <Box onClick={(e) => e.stopPropagation()}>
-                <IconButton
-                  size="small"
-                  onClick={() => handleOpenTeamDialog(team)}
-                  aria-label="チーム名を編集"
-                  sx={{ mr: 1 }}
-                >
-                  <EditIcon />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  onClick={() => handleConfirmDeleteTeam(team.id)}
-                  aria-label="チームを削除"
-                  color="error"
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Box>
+              <Typography variant="h6" component="h3">
+                {team.name}
+              </Typography>
             </AccordionSummary>
             <AccordionDetails>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  mb: 1.5,
+                  gap: 1,
+                }}
+              >
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  onClick={() => handleOpenTeamDialog(team)}
+                  aria-label="チーム名を編集"
+                >
+                  チーム名を編集
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={() => handleConfirmDeleteTeam(team.id)}
+                  aria-label="チームを削除"
+                >
+                  チームを削除
+                </Button>
+              </Box>
               <Divider sx={{ mb: 2 }} />
               <Box
                 sx={{
@@ -500,6 +540,11 @@ const TeamList: React.FC = () => {
           {editingTeamId ? 'チーム情報を編集' : '新しいチームを作成'}
         </DialogTitle>
         <DialogContent>
+          {teamDialogError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {teamDialogError}
+            </Alert>
+          )}
           <TextField
             autoFocus
             margin="dense"
@@ -509,13 +554,21 @@ const TeamList: React.FC = () => {
             fullWidth
             value={teamName}
             onChange={(e) => setTeamName(e.target.value)}
+            disabled={isSavingTeam}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseTeamDialog}>キャンセル</Button>
-          <Button onClick={handleSaveTeam} color="primary">
-            保存
+          <Button onClick={handleCloseTeamDialog} disabled={isSavingTeam}>
+            キャンセル
           </Button>
+          <LoadingButton
+            onClick={handleSaveTeam}
+            color="primary"
+            loading={isSavingTeam}
+            loadingText="保存中..."
+          >
+            保存
+          </LoadingButton>
         </DialogActions>
       </Dialog>
 
@@ -525,6 +578,11 @@ const TeamList: React.FC = () => {
           {editingPlayerId ? '選手情報を編集' : '新しい選手を追加'}
         </DialogTitle>
         <DialogContent>
+          {playerDialogError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {playerDialogError}
+            </Alert>
+          )}
           <TextField
             autoFocus
             margin="dense"
@@ -534,6 +592,7 @@ const TeamList: React.FC = () => {
             fullWidth
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
+            disabled={isSavingPlayer}
             sx={{ mb: 2 }}
           />
           <TextField
@@ -544,6 +603,7 @@ const TeamList: React.FC = () => {
             fullWidth
             value={playerNumber}
             onChange={(e) => setPlayerNumber(e.target.value)}
+            disabled={isSavingPlayer}
             sx={{ mb: 2 }}
           />
           <TextField
@@ -554,13 +614,21 @@ const TeamList: React.FC = () => {
             fullWidth
             value={playerPosition}
             onChange={(e) => setPlayerPosition(e.target.value)}
+            disabled={isSavingPlayer}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClosePlayerDialog}>キャンセル</Button>
-          <Button onClick={handleSavePlayer} color="primary">
-            保存
+          <Button onClick={handleClosePlayerDialog} disabled={isSavingPlayer}>
+            キャンセル
           </Button>
+          <LoadingButton
+            onClick={handleSavePlayer}
+            color="primary"
+            loading={isSavingPlayer}
+            loadingText="保存中..."
+          >
+            保存
+          </LoadingButton>
         </DialogActions>
       </Dialog>
 
@@ -573,10 +641,17 @@ const TeamList: React.FC = () => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCancelDeleteTeam}>キャンセル</Button>
-          <Button onClick={handleDeleteTeam} color="error">
-            削除
+          <Button onClick={handleCancelDeleteTeam} disabled={isDeletingTeam}>
+            キャンセル
           </Button>
+          <LoadingButton
+            onClick={handleDeleteTeam}
+            color="error"
+            loading={isDeletingTeam}
+            loadingText="削除中..."
+          >
+            削除
+          </LoadingButton>
         </DialogActions>
       </Dialog>
 
@@ -589,10 +664,20 @@ const TeamList: React.FC = () => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCancelDeletePlayer}>キャンセル</Button>
-          <Button onClick={handleDeletePlayer} color="error">
-            削除
+          <Button
+            onClick={handleCancelDeletePlayer}
+            disabled={isDeletingPlayer}
+          >
+            キャンセル
           </Button>
+          <LoadingButton
+            onClick={handleDeletePlayer}
+            color="error"
+            loading={isDeletingPlayer}
+            loadingText="削除中..."
+          >
+            削除
+          </LoadingButton>
         </DialogActions>
       </Dialog>
     </Paper>
