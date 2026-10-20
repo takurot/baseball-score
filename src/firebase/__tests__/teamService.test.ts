@@ -144,6 +144,24 @@ describe('addPlayerToTeam', () => {
     expect(payload.players[2].id).toBeDefined();
   });
 
+  it('preserves the supplied player id and returns the created player', async () => {
+    const result = await addPlayerToTeam('team-1', {
+      id: 'custom-player-id',
+      name: '鈴木',
+      number: '5',
+      position: '三',
+    });
+
+    const payload = mockTransaction.update.mock.calls[0][1];
+    expect(payload.players[2].id).toBe('custom-player-id');
+    expect(result).toMatchObject({
+      id: 'custom-player-id',
+      name: '鈴木',
+      number: '5',
+      position: '三',
+    });
+  });
+
   it('rejects inside the transaction when the team belongs to another user', async () => {
     mockTransaction.get.mockResolvedValue({
       exists: () => true,

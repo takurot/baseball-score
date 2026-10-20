@@ -180,8 +180,8 @@ export const getUserTeams = async (): Promise<TeamSetting[]> => {
 // 選手データをチームに追加
 export const addPlayerToTeam = async (
   teamId: string,
-  player: Omit<PlayerSetting, 'id' | 'createdAt'>
-): Promise<void> => {
+  player: Omit<PlayerSetting, 'id' | 'createdAt'> & { id?: string }
+): Promise<PlayerSetting> => {
   try {
     const user = getCurrentUser();
     if (!user) {
@@ -190,24 +190,29 @@ export const addPlayerToTeam = async (
 
     // トランザクション内で読み取り・権限チェック・書き込みを一貫させる
     const teamRef = doc(db, TEAMS_COLLECTION, teamId);
+    let createdPlayer: PlayerSetting;
+
     await runTransaction(db, async (transaction) => {
       const teamSnap = await transaction.get(teamRef);
       const team = requireOwnedTeamFromSnapshot(teamSnap, user);
 
-      // 新しい選手データを準備
-      const newPlayer: PlayerSetting = {
-        ...player,
-        id: crypto.randomUUID(), // クライアントサイドでIDを生成
+      // 新しい選手データを準備（指定されたIDがあればそれを使用、なければクライアントサイドで生成）
+      createdPlayer = {
+        name: player.name,
+        number: player.number,
+        position: player.position,
+        id: player.id || crypto.randomUUID(),
         createdAt: new Date().toISOString(), // サーバータイムスタンプの代わりに現在時刻を文字列で保存
       };
 
       // 既存の選手リストに追加
       transaction.update(teamRef, {
-        players: [...team.players, newPlayer],
+        players: [...team.players, createdPlayer],
         updatedAt: serverTimestamp(),
       });
     });
     console.log('Player added to team successfully');
+    return createdPlayer!;
   } catch (error) {
     console.error('Error adding player to team:', error);
     throw error;

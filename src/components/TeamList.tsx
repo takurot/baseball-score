@@ -41,7 +41,6 @@ import {
 } from '../firebase/teamService';
 import { useAuth } from '../contexts/AuthContext';
 import { generateDefaultPlayers } from '../utils/defaultPlayers';
-import LoadingButton from './LoadingButton';
 
 const TeamList: React.FC = () => {
   const { currentUser } = useAuth();
@@ -57,8 +56,6 @@ const TeamList: React.FC = () => {
     null
   );
   const [teamDialogError, setTeamDialogError] = useState<string | null>(null);
-  const [isSavingTeam, setIsSavingTeam] = useState(false);
-  const [isDeletingTeam, setIsDeletingTeam] = useState(false);
 
   // 選手関連の状態
   const [openPlayerDialog, setOpenPlayerDialog] = useState(false);
@@ -73,8 +70,6 @@ const TeamList: React.FC = () => {
   const [playerDialogError, setPlayerDialogError] = useState<string | null>(
     null
   );
-  const [isSavingPlayer, setIsSavingPlayer] = useState(false);
-  const [isDeletingPlayer, setIsDeletingPlayer] = useState(false);
 
   // アコーディオンの開閉状態
   const [expandedAccordions, setExpandedAccordions] = useState<
@@ -145,43 +140,87 @@ const TeamList: React.FC = () => {
 
   // チーム追加・編集ダイアログを閉じる
   const handleCloseTeamDialog = () => {
-    if (isSavingTeam) return;
     resetTeamDialogState();
   };
 
   // チーム追加・編集を保存
   const handleSaveTeam = async () => {
-    if (!teamName.trim()) {
+    const trimmedTeamName = teamName.trim();
+    if (!trimmedTeamName) {
       setTeamDialogError('チーム名を入力してください');
       return;
     }
 
-    try {
-      setIsSavingTeam(true);
-      setTeamDialogError(null);
+    setTeamDialogError(null);
 
-      if (editingTeamId) {
-        // 既存チームの更新
-        await updateTeam(editingTeamId, { name: teamName });
-      } else {
-        // 新規チーム作成（デフォルト9名の選手を追加）
-        const defaultPlayers = generateDefaultPlayers().map(
-          ({ id, name, number, position }) => ({ id, name, number, position })
-        );
-        await createTeam({ name: teamName, players: defaultPlayers });
-      }
+    if (editingTeamId) {
+      // 既存チームの更新（楽観的更新）
+      const targetTeamId = editingTeamId;
+      const originalTeam = teams.find((t) => t.id === targetTeamId);
+      const prevName = originalTeam?.name || '';
 
-      // 保存成功時は直接ダイアログ状態をリセット
-      resetTeamDialogState();
-      await loadTeams(false);
-    } catch (err: unknown) {
-      console.error('Failed to save team:', err);
-      setTeamDialogError(
-        'チームの保存に失敗しました: ' +
-          (err instanceof Error ? err.message : 'エラーが発生しました')
+      // ローカル state を即座に更新し、ダイアログを閉じる
+      setTeams((prev) =>
+        prev.map((t) =>
+          t.id === targetTeamId ? { ...t, name: trimmedTeamName } : t
+        )
       );
-    } finally {
-      setIsSavingTeam(false);
+      resetTeamDialogState();
+
+      // バックグラウンドでサーバーへ保存
+      updateTeam(targetTeamId, { name: trimmedTeamName }).catch(
+        (err: unknown) => {
+          console.error('Failed to update team:', err);
+          // 失敗時はロールバック
+          setTeams((prev) =>
+            prev.map((t) =>
+              t.id === targetTeamId ? { ...t, name: prevName } : t
+            )
+          );
+          setError(
+            'チームの更新に失敗しました: ' +
+              (err instanceof Error ? err.message : 'エラーが発生しました')
+          );
+        }
+      );
+    } else {
+      // 新規チーム作成（楽観的更新）
+      const tempTeamId = 'temp-' + crypto.randomUUID();
+      const defaultPlayers = generateDefaultPlayers().map(
+        ({ id, name, number, position }) => ({ id, name, number, position })
+      );
+
+      const optimisticTeam: TeamSetting = {
+        id: tempTeamId,
+        name: trimmedTeamName,
+        players: defaultPlayers,
+        userId: currentUser?.uid || '',
+        userEmail: currentUser?.email || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // ローカル state を即座に更新し、ダイアログを閉じる
+      setTeams((prev) => [...prev, optimisticTeam]);
+      resetTeamDialogState();
+
+      // バックグラウンドでサーバーへ保存
+      createTeam({ name: trimmedTeamName, players: defaultPlayers })
+        .then((newId) => {
+          // 成功時は仮IDを本IDに差し替え
+          setTeams((prev) =>
+            prev.map((t) => (t.id === tempTeamId ? { ...t, id: newId } : t))
+          );
+        })
+        .catch((err: unknown) => {
+          console.error('Failed to create team:', err);
+          // 失敗時はロールバック（仮チームを除外）
+          setTeams((prev) => prev.filter((t) => t.id !== tempTeamId));
+          setError(
+            'チームの保存に失敗しました: ' +
+              (err instanceof Error ? err.message : 'エラーが発生しました')
+          );
+        });
     }
   };
 
@@ -192,7 +231,6 @@ const TeamList: React.FC = () => {
 
   // チーム削除の確認ダイアログを閉じる
   const handleCancelDeleteTeam = () => {
-    if (isDeletingTeam) return;
     setConfirmDeleteTeamId(null);
   };
 
@@ -200,21 +238,30 @@ const TeamList: React.FC = () => {
   const handleDeleteTeam = async () => {
     if (!confirmDeleteTeamId) return;
 
-    try {
-      setIsDeletingTeam(true);
-      setError(null);
-      await deleteTeam(confirmDeleteTeamId);
-      setConfirmDeleteTeamId(null);
-      await loadTeams(false);
-    } catch (err: unknown) {
+    const targetTeamId = confirmDeleteTeamId;
+    const teamIndex = teams.findIndex((t) => t.id === targetTeamId);
+    const targetTeam = teams[teamIndex];
+
+    // 即座に一覧から除外し、ダイアログを閉じる
+    setTeams((prev) => prev.filter((t) => t.id !== targetTeamId));
+    setConfirmDeleteTeamId(null);
+
+    // バックグラウンドで削除処理を実行
+    deleteTeam(targetTeamId).catch((err: unknown) => {
       console.error('Failed to delete team:', err);
+      // 失敗時は元の位置にロールバック
+      if (targetTeam) {
+        setTeams((prev) => {
+          const next = [...prev];
+          next.splice(teamIndex, 0, targetTeam);
+          return next;
+        });
+      }
       setError(
         'チームの削除に失敗しました: ' +
           (err instanceof Error ? err.message : 'エラーが発生しました')
       );
-    } finally {
-      setIsDeletingTeam(false);
-    }
+    });
   };
 
   // 選手ダイアログの内部リセット
@@ -256,7 +303,6 @@ const TeamList: React.FC = () => {
 
   // 選手追加・編集ダイアログを閉じる
   const handleClosePlayerDialog = () => {
-    if (isSavingPlayer) return;
     resetPlayerDialogState();
   };
 
@@ -264,46 +310,116 @@ const TeamList: React.FC = () => {
   const handleSavePlayer = async () => {
     if (!currentTeamId) return;
 
-    if (!playerName.trim()) {
+    const trimmedPlayerName = playerName.trim();
+    if (!trimmedPlayerName) {
       setPlayerDialogError('選手名を入力してください');
       return;
     }
 
-    try {
-      setIsSavingPlayer(true);
-      setPlayerDialogError(null);
+    setPlayerDialogError(null);
 
-      const playerData = {
-        name: playerName,
-        number: playerNumber,
-        position: playerPosition,
+    const targetTeamId = currentTeamId;
+    const playerData = {
+      name: trimmedPlayerName,
+      number: playerNumber.trim(),
+      position: playerPosition.trim(),
+    };
+
+    if (editingPlayerId) {
+      // 既存選手の更新（楽観的更新）
+      const targetPlayerId = editingPlayerId;
+      const currentTeam = teams.find((t) => t.id === targetTeamId);
+      const originalPlayer = currentTeam?.players.find(
+        (p) => p.id === targetPlayerId
+      );
+
+      // 即座にローカル一覧を更新し、ダイアログを閉じる
+      setTeams((prev) =>
+        prev.map((t) =>
+          t.id === targetTeamId
+            ? {
+                ...t,
+                players: t.players.map((p) =>
+                  p.id === targetPlayerId ? { ...p, ...playerData } : p
+                ),
+              }
+            : t
+        )
+      );
+      resetPlayerDialogState();
+
+      // バックグラウンドで更新
+      updatePlayerInTeam(targetTeamId, targetPlayerId, playerData).catch(
+        (err: unknown) => {
+          console.error('Failed to update player:', err);
+          // 失敗時は元の選手データにロールバック
+          if (originalPlayer) {
+            setTeams((prev) =>
+              prev.map((t) =>
+                t.id === targetTeamId
+                  ? {
+                      ...t,
+                      players: t.players.map((p) =>
+                        p.id === targetPlayerId ? originalPlayer : p
+                      ),
+                    }
+                  : t
+              )
+            );
+          }
+          setError(
+            '選手の保存に失敗しました: ' +
+              (err instanceof Error ? err.message : 'エラーが発生しました')
+          );
+        }
+      );
+    } else {
+      // 新規選手追加（楽観的更新）
+      const newPlayerId = crypto.randomUUID();
+      const optimisticPlayer: PlayerSetting = {
+        id: newPlayerId,
+        ...playerData,
+        createdAt: new Date().toISOString(),
       };
 
-      if (editingPlayerId) {
-        // 既存選手の更新
-        await updatePlayerInTeam(currentTeamId, editingPlayerId, playerData);
-      } else {
-        // 新規選手追加
-        await addPlayerToTeam(currentTeamId, playerData);
-      }
-
-      // 保存成功時は直接ダイアログ状態をリセット
+      // 即座にローカル一覧に追加し、ダイアログを閉じる
+      setTeams((prev) =>
+        prev.map((t) =>
+          t.id === targetTeamId
+            ? { ...t, players: [...t.players, optimisticPlayer] }
+            : t
+        )
+      );
       resetPlayerDialogState();
-      await loadTeams(false);
 
       // 現在のチームのアコーディオンは開いたままにする
       setExpandedAccordions((prev) => ({
         ...prev,
-        [currentTeamId]: true,
+        [targetTeamId]: true,
       }));
-    } catch (err: unknown) {
-      console.error('Failed to save player:', err);
-      setPlayerDialogError(
-        '選手の保存に失敗しました: ' +
-          (err instanceof Error ? err.message : 'エラーが発生しました')
-      );
-    } finally {
-      setIsSavingPlayer(false);
+
+      // バックグラウンドでサーバーへ保存
+      addPlayerToTeam(targetTeamId, {
+        id: newPlayerId,
+        ...playerData,
+      }).catch((err: unknown) => {
+        console.error('Failed to add player:', err);
+        // 失敗時はロールバック
+        setTeams((prev) =>
+          prev.map((t) =>
+            t.id === targetTeamId
+              ? {
+                  ...t,
+                  players: t.players.filter((p) => p.id !== newPlayerId),
+                }
+              : t
+          )
+        );
+        setError(
+          '選手の保存に失敗しました: ' +
+            (err instanceof Error ? err.message : 'エラーが発生しました')
+        );
+      });
     }
   };
 
@@ -314,7 +430,6 @@ const TeamList: React.FC = () => {
 
   // 選手削除の確認ダイアログを閉じる
   const handleCancelDeletePlayer = () => {
-    if (isDeletingPlayer) return;
     setConfirmDeletePlayerId(null);
   };
 
@@ -322,27 +437,45 @@ const TeamList: React.FC = () => {
   const handleDeletePlayer = async () => {
     if (!currentTeamId || !confirmDeletePlayerId) return;
 
-    try {
-      setIsDeletingPlayer(true);
-      setError(null);
-      await removePlayerFromTeam(currentTeamId, confirmDeletePlayerId);
-      setConfirmDeletePlayerId(null);
-      await loadTeams(false);
+    const targetTeamId = currentTeamId;
+    const targetPlayerId = confirmDeletePlayerId;
+    const currentTeam = teams.find((t) => t.id === targetTeamId);
+    const playerIndex =
+      currentTeam?.players.findIndex((p) => p.id === targetPlayerId) ?? -1;
+    const targetPlayer = currentTeam?.players[playerIndex];
 
-      // 現在のチームのアコーディオンは開いたままにする
-      setExpandedAccordions((prev) => ({
-        ...prev,
-        [currentTeamId]: true,
-      }));
-    } catch (err: unknown) {
+    // 即座にローカル一覧から除外し、ダイアログを閉じる
+    setTeams((prev) =>
+      prev.map((t) =>
+        t.id === targetTeamId
+          ? {
+              ...t,
+              players: t.players.filter((p) => p.id !== targetPlayerId),
+            }
+          : t
+      )
+    );
+    setConfirmDeletePlayerId(null);
+
+    // バックグラウンドで削除処理を実行
+    removePlayerFromTeam(targetTeamId, targetPlayerId).catch((err: unknown) => {
       console.error('Failed to delete player:', err);
+      // 失敗時は元の位置にロールバック
+      if (targetPlayer && playerIndex !== -1) {
+        setTeams((prev) =>
+          prev.map((t) => {
+            if (t.id !== targetTeamId) return t;
+            const nextPlayers = [...t.players];
+            nextPlayers.splice(playerIndex, 0, targetPlayer);
+            return { ...t, players: nextPlayers };
+          })
+        );
+      }
       setError(
         '選手の削除に失敗しました: ' +
           (err instanceof Error ? err.message : 'エラーが発生しました')
       );
-    } finally {
-      setIsDeletingPlayer(false);
-    }
+    });
   };
 
   // チーム・選手一覧（統合後のメインリスト）
@@ -554,21 +687,13 @@ const TeamList: React.FC = () => {
             fullWidth
             value={teamName}
             onChange={(e) => setTeamName(e.target.value)}
-            disabled={isSavingTeam}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseTeamDialog} disabled={isSavingTeam}>
-            キャンセル
-          </Button>
-          <LoadingButton
-            onClick={handleSaveTeam}
-            color="primary"
-            loading={isSavingTeam}
-            loadingText="保存中..."
-          >
+          <Button onClick={handleCloseTeamDialog}>キャンセル</Button>
+          <Button onClick={handleSaveTeam} color="primary">
             保存
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -592,7 +717,6 @@ const TeamList: React.FC = () => {
             fullWidth
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
-            disabled={isSavingPlayer}
             sx={{ mb: 2 }}
           />
           <TextField
@@ -603,7 +727,6 @@ const TeamList: React.FC = () => {
             fullWidth
             value={playerNumber}
             onChange={(e) => setPlayerNumber(e.target.value)}
-            disabled={isSavingPlayer}
             sx={{ mb: 2 }}
           />
           <TextField
@@ -614,21 +737,13 @@ const TeamList: React.FC = () => {
             fullWidth
             value={playerPosition}
             onChange={(e) => setPlayerPosition(e.target.value)}
-            disabled={isSavingPlayer}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClosePlayerDialog} disabled={isSavingPlayer}>
-            キャンセル
-          </Button>
-          <LoadingButton
-            onClick={handleSavePlayer}
-            color="primary"
-            loading={isSavingPlayer}
-            loadingText="保存中..."
-          >
+          <Button onClick={handleClosePlayerDialog}>キャンセル</Button>
+          <Button onClick={handleSavePlayer} color="primary">
             保存
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -641,17 +756,10 @@ const TeamList: React.FC = () => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCancelDeleteTeam} disabled={isDeletingTeam}>
-            キャンセル
-          </Button>
-          <LoadingButton
-            onClick={handleDeleteTeam}
-            color="error"
-            loading={isDeletingTeam}
-            loadingText="削除中..."
-          >
+          <Button onClick={handleCancelDeleteTeam}>キャンセル</Button>
+          <Button onClick={handleDeleteTeam} color="error">
             削除
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -664,20 +772,10 @@ const TeamList: React.FC = () => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={handleCancelDeletePlayer}
-            disabled={isDeletingPlayer}
-          >
-            キャンセル
-          </Button>
-          <LoadingButton
-            onClick={handleDeletePlayer}
-            color="error"
-            loading={isDeletingPlayer}
-            loadingText="削除中..."
-          >
+          <Button onClick={handleCancelDeletePlayer}>キャンセル</Button>
+          <Button onClick={handleDeletePlayer} color="error">
             削除
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </Paper>
