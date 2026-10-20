@@ -2,6 +2,11 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   signInWithPopup,
+  getAuth,
+  initializeAuth,
+  browserLocalPersistence,
+  indexedDBLocalPersistence,
+  browserPopupRedirectResolver,
 } from 'firebase/auth';
 import {
   registerWithEmailAndPassword,
@@ -115,5 +120,44 @@ describe('getAuthErrorMessage', () => {
     expect(getAuthErrorMessage(null, {}, 'デフォルトメッセージ')).toBe(
       'デフォルトメッセージ'
     );
+  });
+});
+
+describe('auth initialization', () => {
+  test('initializeAuth が browserLocalPersistence 優先で呼び出されていること', () => {
+    (initializeAuth as jest.Mock).mockClear();
+    jest.isolateModules(() => {
+      require('../authService');
+    });
+
+    expect(initializeAuth).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        persistence: [browserLocalPersistence, indexedDBLocalPersistence],
+        popupRedirectResolver: browserPopupRedirectResolver,
+      })
+    );
+  });
+
+  test('initializeAuth が失敗した場合に getAuth にフォールバックし警告をログ出力すること', () => {
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+    (initializeAuth as jest.Mock).mockImplementationOnce(() => {
+      throw new Error('already initialized');
+    });
+
+    jest.isolateModules(() => {
+      require('../authService');
+    });
+
+    expect(getAuth).toHaveBeenCalled();
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'initializeAuth failed. Falling back to getAuth with default persistence.'
+      ),
+      expect.any(Error)
+    );
+    consoleWarnSpy.mockRestore();
   });
 });

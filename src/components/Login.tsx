@@ -205,6 +205,7 @@ const Login: React.FC = () => {
         getAuthErrorMessage(
           err,
           {
+            ...SHARED_STORAGE_ERROR_MESSAGES,
             'auth/user-not-found':
               'このメールアドレスに関連するアカウントが見つかりません',
             'auth/invalid-email': '有効なメールアドレスを入力してください',
