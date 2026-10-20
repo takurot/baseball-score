@@ -203,7 +203,7 @@ describe('Login component - Google Sign In', () => {
     );
   });
 
-  test('ストレージ非対応エラー (auth/web-storage-unsupported) の場合にプライベートブラウズ解除の案内を表示する', async () => {
+  test('ストレージ非対応エラー (auth/web-storage-unsupported) の場合にプライベートブラウズ解除の案内を表示する (Googleログイン)', async () => {
     const user = userEvent.setup();
     mockSignIn.mockRejectedValueOnce({
       code: 'auth/web-storage-unsupported',
@@ -214,6 +214,49 @@ describe('Login component - Google Sign In', () => {
       name: 'Googleでログイン',
     });
     await user.click(googleButton);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'ブラウザのストレージ機能が無効になっています。プライベートブラウズを解除するかCookieを許可してください'
+    );
+  });
+
+  test('メールログイン時にストレージ非対応エラー (auth/web-storage-unsupported) が発生した場合に対処案内を表示する', async () => {
+    const user = userEvent.setup();
+    mockLoginWithEmailAndPassword.mockRejectedValueOnce({
+      code: 'auth/web-storage-unsupported',
+    });
+
+    render(<Login />);
+    await user.type(
+      screen.getByLabelText(/メールアドレス/i),
+      'test@example.com'
+    );
+    await user.type(screen.getByLabelText(/^パスワード/i), 'password123');
+    await user.click(screen.getByRole('button', { name: 'ログイン' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'ブラウザのストレージ機能が無効になっています。プライベートブラウズを解除するかCookieを許可してください'
+    );
+  });
+
+  test('新規ユーザー登録時にストレージ非対応エラー (auth/web-storage-unsupported) が発生した場合に対処案内を表示する', async () => {
+    const user = userEvent.setup();
+    mockRegisterWithEmailAndPassword.mockRejectedValueOnce({
+      code: 'auth/web-storage-unsupported',
+    });
+
+    render(<Login />);
+    const registerTab = screen.getByRole('tab', { name: '新規登録' });
+    await user.click(registerTab);
+
+    await user.type(
+      screen.getByLabelText(/メールアドレス/i),
+      'new@example.com'
+    );
+    await user.type(screen.getByLabelText(/^パスワード/i), 'password123');
+    await user.click(screen.getByRole('button', { name: 'アカウントを作成' }));
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(

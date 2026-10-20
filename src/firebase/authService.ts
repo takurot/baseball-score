@@ -20,14 +20,19 @@ import { app } from './config';
 // 別モジュールに切り出してある。呼び出し元の互換性のためここで再エクスポートする。
 import { getAuthErrorMessage } from '../utils/authErrorMessage';
 
-// 認証インスタンスを取得（IndexedDB / localStorage 永続化を指定してセッション保持を安定化）
+// 認証インスタンスを取得（browserLocalPersistence を最優先として既存ユーザーの localStorage セッションを維持）
 let auth: Auth;
 try {
   auth = initializeAuth(app, {
-    persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+    persistence: [browserLocalPersistence, indexedDBLocalPersistence],
     popupRedirectResolver: browserPopupRedirectResolver,
   });
-} catch {
+} catch (error) {
+  // すでに getAuth() 等で初期化済みの場合はデフォルト設定にフォールバックする
+  console.warn(
+    'initializeAuth failed. Falling back to getAuth with default persistence.',
+    error
+  );
   auth = getAuth(app);
 }
 

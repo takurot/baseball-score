@@ -11,6 +11,10 @@ import {
 
 jest.mock('firebase/auth', () => ({
   getAuth: jest.fn(() => ({})),
+  initializeAuth: jest.fn(() => ({})),
+  browserLocalPersistence: {},
+  indexedDBLocalPersistence: {},
+  browserPopupRedirectResolver: {},
   GoogleAuthProvider: jest.fn(),
   signInWithPopup: jest.fn(),
   signOut: jest.fn(),
