@@ -184,4 +184,92 @@ describe('Login component - Google Sign In', () => {
       'ログインがキャンセルされました（ウィンドウが閉じられました）'
     );
   });
+
+  test('認証ステート欠落エラー (auth/missing-or-invalid-nonce) の場合にモバイルSafari向けの対処案内を表示する', async () => {
+    const user = userEvent.setup();
+    mockSignIn.mockRejectedValueOnce({
+      code: 'auth/missing-or-invalid-nonce',
+    });
+
+    render(<Login />);
+    const googleButton = screen.getByRole('button', {
+      name: 'Googleでログイン',
+    });
+    await user.click(googleButton);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      '認証ステートの確認に失敗しました。iPhone/Safariをお使いの場合はプライベートブラウズを解除するか、メールアドレスでのログイン・新規登録をお試しください'
+    );
+  });
+
+  test('ストレージ非対応エラー (auth/web-storage-unsupported) の場合にプライベートブラウズ解除の案内を表示する (Googleログイン)', async () => {
+    const user = userEvent.setup();
+    mockSignIn.mockRejectedValueOnce({
+      code: 'auth/web-storage-unsupported',
+    });
+
+    render(<Login />);
+    const googleButton = screen.getByRole('button', {
+      name: 'Googleでログイン',
+    });
+    await user.click(googleButton);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'ブラウザのストレージ機能が無効になっています。プライベートブラウズを解除するかCookieを許可してください'
+    );
+  });
+
+  test('メールログイン時にストレージ非対応エラー (auth/web-storage-unsupported) が発生した場合に対処案内を表示する', async () => {
+    const user = userEvent.setup();
+    mockLoginWithEmailAndPassword.mockRejectedValueOnce({
+      code: 'auth/web-storage-unsupported',
+    });
+
+    render(<Login />);
+    await user.type(
+      screen.getByLabelText(/メールアドレス/i),
+      'test@example.com'
+    );
+    await user.type(screen.getByLabelText(/^パスワード/i), 'password123');
+    await user.click(screen.getByRole('button', { name: 'ログイン' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'ブラウザのストレージ機能が無効になっています。プライベートブラウズを解除するかCookieを許可してください'
+    );
+  });
+
+  test('新規ユーザー登録時にストレージ非対応エラー (auth/web-storage-unsupported) が発生した場合に対処案内を表示する', async () => {
+    const user = userEvent.setup();
+    mockRegisterWithEmailAndPassword.mockRejectedValueOnce({
+      code: 'auth/web-storage-unsupported',
+    });
+
+    render(<Login />);
+    const registerTab = screen.getByRole('tab', { name: '新規登録' });
+    await user.click(registerTab);
+
+    await user.type(
+      screen.getByLabelText(/メールアドレス/i),
+      'new@example.com'
+    );
+    await user.type(screen.getByLabelText(/^パスワード/i), 'password123');
+    await user.click(screen.getByRole('button', { name: 'アカウントを作成' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'ブラウザのストレージ機能が無効になっています。プライベートブラウズを解除するかCookieを許可してください'
+    );
+  });
+
+  test('新規登録・ログイン画面にメールアドレス登録の推奨・案内注記が表示される', () => {
+    render(<Login />);
+    expect(
+      screen.getByText(
+        /※ iPhone\/Safari 等で Google ログイン・登録ができない場合は、メールアドレスでのご利用をおすすめします。/
+      )
+    ).toBeInTheDocument();
+  });
 });
