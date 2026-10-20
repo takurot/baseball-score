@@ -263,4 +263,29 @@ describe('TeamList', () => {
       screen.queryByText('チーム情報を読み込み中...')
     ).not.toBeInTheDocument();
   });
+
+  test('チーム名未入力で保存を押した際、ダイアログ内にエラーが表示される', async () => {
+    const user = userEvent.setup();
+    renderTeamList();
+
+    expect(await screen.findByText('ライオンズ')).toBeInTheDocument();
+
+    const newTeamButton = screen.getByRole('button', {
+      name: '新しいチームを作成',
+    });
+    await user.click(newTeamButton);
+
+    const dialog = screen.getByRole('dialog');
+    const saveButton = screen.getByRole('button', { name: '保存' });
+
+    // 未入力のまま保存をクリック
+    await user.click(saveButton);
+
+    // ダイアログ内の Alert にエラーが表示されること
+    const dialogAlert = dialog.querySelector('.MuiAlert-root');
+    expect(dialogAlert).toBeInTheDocument();
+    expect(dialogAlert).toHaveTextContent('チーム名を入力してください');
+    // ダイアログは開いたままであること
+    expect(dialog).toBeInTheDocument();
+  });
 });
