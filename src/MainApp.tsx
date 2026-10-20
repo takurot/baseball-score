@@ -81,6 +81,11 @@ import {
 } from './firebase/gameService';
 import { useAuth } from './contexts/AuthContext';
 import { getGameTypeLabel } from './utils/gameType';
+import {
+  getTeamTabLabel,
+  DEFAULT_AWAY_TEAM_NAME,
+  DEFAULT_HOME_TEAM_NAME,
+} from './utils/teamTabUtils';
 import Login from './components/Login';
 import HelpIcon from '@mui/icons-material/Help';
 import { useTheme } from '@mui/material/styles';
@@ -119,8 +124,8 @@ const formatLocalDate = (d = new Date()): string => {
 const createInitialGame = (): Game => ({
   id: uuidv4(),
   date: formatLocalDate(),
-  homeTeam: createInitialTeam('後攻チーム'),
-  awayTeam: createInitialTeam('先攻チーム'),
+  homeTeam: createInitialTeam(DEFAULT_HOME_TEAM_NAME),
+  awayTeam: createInitialTeam(DEFAULT_AWAY_TEAM_NAME),
   currentInning: 1,
   isTop: true,
   venue: '',
@@ -623,6 +628,10 @@ const MainApp: React.FC<{
   const performNewGame = () => {
     pendingBaselineResetRef.current = true;
     gameActions.resetGame();
+    setTabIndex(0);
+    if (draftStorageKey) {
+      localStorage.removeItem(draftStorageKey);
+    }
     handleMenuClose();
     if (currentView !== 'game') {
       navigateToView('game');
@@ -1207,225 +1216,230 @@ const MainApp: React.FC<{
                 aria-label="チーム選択タブ"
               >
                 <Tab
-                  label={awayTeam.name}
+                  label={getTeamTabLabel(awayTeam.name, 'away')}
                   id="team-tab-0"
-                  aria-controls="team-tabpanel-0"
                 />
                 <Tab
-                  label={homeTeam.name}
+                  label={getTeamTabLabel(homeTeam.name, 'home')}
                   id="team-tab-1"
-                  aria-controls="team-tabpanel-1"
                 />
               </Tabs>
             </Box>
 
-            {activeStep === 1 || isSharedMode ? (
-              // 打席結果一覧表示モード
-              <AtBatSummaryTable
-                team={currentTeam}
-                maxInning={currentInning}
-                isTop={tabIndex === 0}
-                outEvents={gameState.outEvents}
-              />
-            ) : (
-              // 編集モード（共有モードでは表示しない）
-              <>
-                <SectionCard
-                  title={`${currentInning}回の操作`}
-                  actions={
+            <Box
+              role="tabpanel"
+              id={`team-tabpanel-${tabIndex}`}
+              aria-labelledby={`team-tab-${tabIndex}`}
+            >
+              {activeStep === 1 || isSharedMode ? (
+                // 打席結果一覧表示モード
+                <AtBatSummaryTable
+                  team={currentTeam}
+                  maxInning={currentInning}
+                  isTop={tabIndex === 0}
+                  outEvents={gameState.outEvents}
+                />
+              ) : (
+                // 編集モード（共有モードでは表示しない）
+                <>
+                  <SectionCard
+                    title={`${currentInning}回の操作`}
+                    actions={
+                      <Stack
+                        direction={{ xs: 'column', sm: 'row' }}
+                        spacing={1}
+                        sx={{ width: { xs: '100%', sm: 'auto' } }}
+                      >
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => handleInningChange(-1)}
+                          disabled={currentInning <= 1}
+                          fullWidth={isMobile}
+                          sx={{ minHeight: isMobile ? 48 : 40 }}
+                        >
+                          前の回
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={() => handleInningChange(1)}
+                          fullWidth={isMobile}
+                          sx={{ minHeight: isMobile ? 48 : 40 }}
+                        >
+                          次の回
+                        </Button>
+                      </Stack>
+                    }
+                  >
                     <Stack
                       direction={{ xs: 'column', sm: 'row' }}
-                      spacing={1}
-                      sx={{ width: { xs: '100%', sm: 'auto' } }}
+                      spacing={1.5}
+                      sx={{ width: '100%' }}
+                    >
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={handleOpenRunDialog}
+                        startIcon={<AddCircleOutlineIcon />}
+                        fullWidth={isMobile}
+                        sx={{ minHeight: isMobile ? 48 : 40 }}
+                      >
+                        得点追加
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="secondary"
+                        onClick={handleOpenOutDialog}
+                        startIcon={<HighlightOffIcon />}
+                        fullWidth={isMobile}
+                        sx={{ minHeight: isMobile ? 48 : 40 }}
+                      >
+                        アウト追加
+                      </Button>
+                    </Stack>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1.5}
+                      sx={{ width: '100%', mt: 1.5 }}
                     >
                       <Button
                         variant="outlined"
-                        color="primary"
-                        onClick={() => handleInningChange(-1)}
-                        disabled={currentInning <= 1}
+                        onClick={gameHistory.undo}
+                        disabled={!gameHistory.canUndo}
+                        startIcon={<UndoIcon />}
                         fullWidth={isMobile}
                         sx={{ minHeight: isMobile ? 48 : 40 }}
                       >
-                        前の回
+                        元に戻す
                       </Button>
                       <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => handleInningChange(1)}
+                        variant="outlined"
+                        onClick={gameHistory.redo}
+                        disabled={!gameHistory.canRedo}
+                        startIcon={<RedoIcon />}
                         fullWidth={isMobile}
                         sx={{ minHeight: isMobile ? 48 : 40 }}
                       >
-                        次の回
+                        やり直す
                       </Button>
                     </Stack>
-                  }
-                >
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    spacing={1.5}
-                    sx={{ width: '100%' }}
-                  >
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      onClick={handleOpenRunDialog}
-                      startIcon={<AddCircleOutlineIcon />}
-                      fullWidth={isMobile}
-                      sx={{ minHeight: isMobile ? 48 : 40 }}
-                    >
-                      得点追加
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      onClick={handleOpenOutDialog}
-                      startIcon={<HighlightOffIcon />}
-                      fullWidth={isMobile}
-                      sx={{ minHeight: isMobile ? 48 : 40 }}
-                    >
-                      アウト追加
-                    </Button>
-                  </Stack>
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    spacing={1.5}
-                    sx={{ width: '100%', mt: 1.5 }}
-                  >
-                    <Button
-                      variant="outlined"
-                      onClick={gameHistory.undo}
-                      disabled={!gameHistory.canUndo}
-                      startIcon={<UndoIcon />}
-                      fullWidth={isMobile}
-                      sx={{ minHeight: isMobile ? 48 : 40 }}
-                    >
-                      元に戻す
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={gameHistory.redo}
-                      disabled={!gameHistory.canRedo}
-                      startIcon={<RedoIcon />}
-                      fullWidth={isMobile}
-                      sx={{ minHeight: isMobile ? 48 : 40 }}
-                    >
-                      やり直す
-                    </Button>
-                  </Stack>
-                </SectionCard>
+                  </SectionCard>
 
-                <SectionCard title="選手一覧">
-                  <Suspense
-                    fallback={
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'center',
-                          py: 4,
-                        }}
-                      >
-                        <CircularProgress size={32} />
-                      </Box>
-                    }
-                  >
-                    <TeamManager
-                      team={currentTeam}
-                      onTeamUpdate={handleTeamUpdate}
-                      onRegisterAtBat={handleRegisterAtBat}
-                    />
-                  </Suspense>
-                </SectionCard>
-
-                <SectionCard title={`${currentInning}回の記録`}>
-                  <Suspense
-                    fallback={
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'center',
-                          py: 4,
-                        }}
-                      >
-                        <CircularProgress size={32} />
-                      </Box>
-                    }
-                  >
-                    <AtBatHistory
-                      atBats={currentTeam.atBats}
-                      players={currentTeam.players}
-                      inning={currentInning}
-                      isTop={tabIndex === 0}
-                      runEvents={gameState.runEvents}
-                      outEvents={gameState.outEvents}
-                      onEditAtBat={handleEditAtBat}
-                      onDeleteAtBat={handleDeleteAtBat}
-                      onDeleteRunEvent={(eventId) => {
-                        gameActions.deleteRunEvent(eventId);
-                      }}
-                      onDeleteOutEvent={(eventId) => {
-                        gameActions.deleteOutEvent(eventId);
-                      }}
-                      currentTeamName={currentTeam.name}
-                      opposingTeamName={
-                        tabIndex === 0 ? homeTeam.name : awayTeam.name
-                      }
-                    />
-                  </Suspense>
-                </SectionCard>
-
-                {/* 打席登録ダイアログ */}
-                <Dialog
-                  open={atBatDialogOpen}
-                  onClose={handleCloseAtBatDialog}
-                  maxWidth="md"
-                  fullWidth
-                >
-                  <DialogTitle>
-                    {editingAtBat ? '打席結果の編集' : '打席結果の登録'}
-                  </DialogTitle>
-                  <DialogContent>
+                  <SectionCard title="選手一覧">
                     <Suspense
                       fallback={
                         <Box
                           sx={{
                             display: 'flex',
                             justifyContent: 'center',
-                            alignItems: 'center',
-                            minHeight: 240,
+                            py: 4,
                           }}
                         >
-                          <CircularProgress />
+                          <CircularProgress size={32} />
                         </Box>
                       }
                     >
-                      <AtBatForm
-                        player={selectedPlayer}
-                        inning={currentInning}
-                        isTop={tabIndex === 0}
-                        onAddAtBat={(atBat) => {
-                          handleAddAtBat(atBat);
-                          handleCloseAtBatDialog();
-                        }}
-                        editingAtBat={editingAtBat}
-                        onUpdateAtBat={(updatedAtBat) => {
-                          handleUpdateAtBat(updatedAtBat);
-                          handleCloseAtBatDialog();
-                        }}
-                        onCancelEdit={() => {
-                          handleCancelEdit();
-                          handleCloseAtBatDialog();
-                        }}
+                      <TeamManager
+                        team={currentTeam}
+                        role={tabIndex === 0 ? 'away' : 'home'}
+                        onTeamUpdate={handleTeamUpdate}
+                        onRegisterAtBat={handleRegisterAtBat}
                       />
                     </Suspense>
-                  </DialogContent>
-                  <DialogActions>
-                    <Button onClick={handleCloseAtBatDialog} color="inherit">
-                      閉じる
-                    </Button>
-                  </DialogActions>
-                </Dialog>
-              </>
-            )}
+                  </SectionCard>
+
+                  <SectionCard title={`${currentInning}回の記録`}>
+                    <Suspense
+                      fallback={
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            py: 4,
+                          }}
+                        >
+                          <CircularProgress size={32} />
+                        </Box>
+                      }
+                    >
+                      <AtBatHistory
+                        atBats={currentTeam.atBats}
+                        players={currentTeam.players}
+                        inning={currentInning}
+                        isTop={tabIndex === 0}
+                        runEvents={gameState.runEvents}
+                        outEvents={gameState.outEvents}
+                        onEditAtBat={handleEditAtBat}
+                        onDeleteAtBat={handleDeleteAtBat}
+                        onDeleteRunEvent={(eventId) => {
+                          gameActions.deleteRunEvent(eventId);
+                        }}
+                        onDeleteOutEvent={(eventId) => {
+                          gameActions.deleteOutEvent(eventId);
+                        }}
+                        currentTeamName={currentTeam.name}
+                        opposingTeamName={
+                          tabIndex === 0 ? homeTeam.name : awayTeam.name
+                        }
+                      />
+                    </Suspense>
+                  </SectionCard>
+
+                  {/* 打席登録ダイアログ */}
+                  <Dialog
+                    open={atBatDialogOpen}
+                    onClose={handleCloseAtBatDialog}
+                    maxWidth="md"
+                    fullWidth
+                  >
+                    <DialogTitle>
+                      {editingAtBat ? '打席結果の編集' : '打席結果の登録'}
+                    </DialogTitle>
+                    <DialogContent>
+                      <Suspense
+                        fallback={
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              minHeight: 240,
+                            }}
+                          >
+                            <CircularProgress />
+                          </Box>
+                        }
+                      >
+                        <AtBatForm
+                          player={selectedPlayer}
+                          inning={currentInning}
+                          isTop={tabIndex === 0}
+                          onAddAtBat={(atBat) => {
+                            handleAddAtBat(atBat);
+                            handleCloseAtBatDialog();
+                          }}
+                          editingAtBat={editingAtBat}
+                          onUpdateAtBat={(updatedAtBat) => {
+                            handleUpdateAtBat(updatedAtBat);
+                            handleCloseAtBatDialog();
+                          }}
+                          onCancelEdit={() => {
+                            handleCancelEdit();
+                            handleCloseAtBatDialog();
+                          }}
+                        />
+                      </Suspense>
+                    </DialogContent>
+                    <DialogActions>
+                      <Button onClick={handleCloseAtBatDialog} color="inherit">
+                        閉じる
+                      </Button>
+                    </DialogActions>
+                  </Dialog>
+                </>
+              )}
+            </Box>
           </>
         )}
       </Container>

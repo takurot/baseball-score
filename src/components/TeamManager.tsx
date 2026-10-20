@@ -28,15 +28,18 @@ import PlayerList from './PlayerList';
 import { getUserTeams, getTeamById } from '../firebase/teamService';
 import { getNextBatterPlayerId } from '../services/BattingOrder';
 import { useAuth } from '../contexts/AuthContext';
+import { TeamRole, getDisplayTeamName } from '../utils/teamTabUtils';
 
 interface TeamManagerProps {
   team: Team;
+  role: TeamRole | 'away' | 'home';
   onTeamUpdate: (updatedTeam: Team) => void;
   onRegisterAtBat?: (player: Player) => void;
 }
 
 const TeamManager: React.FC<TeamManagerProps> = ({
   team,
+  role,
   onTeamUpdate,
   onRegisterAtBat,
 }) => {
@@ -286,7 +289,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="h5">{team.name}</Typography>
+            <Typography variant="h5">
+              {getDisplayTeamName(team.name, role)}
+            </Typography>
             <Tooltip title="チーム名を編集">
               <IconButton
                 onClick={handleOpenTeamNameDialog}

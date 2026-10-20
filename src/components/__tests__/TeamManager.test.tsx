@@ -50,10 +50,14 @@ const savedTeam: TeamSetting = {
   userId: 'user-1',
 };
 
-const renderTeamManager = (team: Team, onTeamUpdate = jest.fn()) => {
+const renderTeamManager = (
+  team: Team,
+  onTeamUpdate = jest.fn(),
+  role: 'away' | 'home' = 'away'
+) => {
   render(
     <ThemeProvider theme={createTheme()}>
-      <TeamManager team={team} onTeamUpdate={onTeamUpdate} />
+      <TeamManager team={team} role={role} onTeamUpdate={onTeamUpdate} />
     </ThemeProvider>
   );
   return { onTeamUpdate };
@@ -147,5 +151,35 @@ describe('TeamManager - チーム選択導線の統合', () => {
         atBats: [existingAtBat],
       })
     );
+  });
+
+  test('チーム名が空の場合、roleに応じたデフォルトチーム名が見出しにフォールバック表示される', () => {
+    const { rerender } = render(
+      <ThemeProvider theme={createTheme()}>
+        <TeamManager
+          team={makeTeam({ name: '' })}
+          role="away"
+          onTeamUpdate={jest.fn()}
+        />
+      </ThemeProvider>
+    );
+
+    expect(
+      screen.getByRole('heading', { level: 5, name: '先攻チーム' })
+    ).toBeInTheDocument();
+
+    rerender(
+      <ThemeProvider theme={createTheme()}>
+        <TeamManager
+          team={makeTeam({ name: '   ' })}
+          role="home"
+          onTeamUpdate={jest.fn()}
+        />
+      </ThemeProvider>
+    );
+
+    expect(
+      screen.getByRole('heading', { level: 5, name: '後攻チーム' })
+    ).toBeInTheDocument();
   });
 });

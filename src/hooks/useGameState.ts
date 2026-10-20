@@ -2,6 +2,10 @@ import { useCallback } from 'react';
 import { Game, Team, AtBat, RunEvent, OutEvent, GameType } from '../types';
 import { useUndoRedo } from './useUndoRedo';
 import { getEffectiveGameType } from '../utils/gameType';
+import {
+  DEFAULT_AWAY_TEAM_NAME,
+  DEFAULT_HOME_TEAM_NAME,
+} from '../utils/teamTabUtils';
 
 type RunnerState = { first: boolean; second: boolean; third: boolean };
 
@@ -61,9 +65,9 @@ const emptyRunners = (): RunnerState => ({
   third: false,
 });
 
-const normalizeTeam = (team?: Team): Team => ({
+const normalizeTeam = (team?: Team, defaultName = ''): Team => ({
   id: team?.id ?? '',
-  name: team?.name ?? '',
+  name: team?.name?.trim() || defaultName,
   players: team?.players ?? [],
   atBats: team?.atBats ?? [],
 });
@@ -82,8 +86,8 @@ const buildInitialState = (game?: Game): GameState => ({
   venue: game?.venue ?? '',
   tournament: game?.tournament ?? '',
   gameType: getEffectiveGameType(game),
-  homeTeam: normalizeTeam(game?.homeTeam),
-  awayTeam: normalizeTeam(game?.awayTeam),
+  homeTeam: normalizeTeam(game?.homeTeam, DEFAULT_HOME_TEAM_NAME),
+  awayTeam: normalizeTeam(game?.awayTeam, DEFAULT_AWAY_TEAM_NAME),
   currentInning: game?.currentInning ?? 1,
   isTop: game?.isTop ?? true,
   outs: 0,
@@ -176,7 +180,7 @@ export const useGameState = (initialGame?: Game): UseGameStateReturn => {
     (team: Team) => {
       setState((prev) => ({
         ...prev,
-        homeTeam: normalizeTeam(team),
+        homeTeam: normalizeTeam(team, DEFAULT_HOME_TEAM_NAME),
       }));
     },
     [setState]
@@ -186,7 +190,7 @@ export const useGameState = (initialGame?: Game): UseGameStateReturn => {
     (team: Team) => {
       setState((prev) => ({
         ...prev,
-        awayTeam: normalizeTeam(team),
+        awayTeam: normalizeTeam(team, DEFAULT_AWAY_TEAM_NAME),
       }));
     },
     [setState]
