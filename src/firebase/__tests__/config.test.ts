@@ -27,14 +27,14 @@ describe('getAuthDomain', () => {
     (window as any).location = new URL(`https://${hostname}`);
   };
 
-  test('Firebase Hosting (*.web.app) の場合は現在のホスト名を返す', () => {
+  test('デフォルトでは (*.web.app であっても) 環境変数の authDomain を返す', () => {
     setHostname('baseball-score-app.web.app');
-    expect(getAuthDomain()).toBe('baseball-score-app.web.app');
+    expect(getAuthDomain()).toBe('default.firebaseapp.com');
   });
 
-  test('Firebase Hosting (*.firebaseapp.com) の場合は現在のホスト名を返す', () => {
+  test('デフォルトでは (*.firebaseapp.com であっても) 環境変数の authDomain を返す', () => {
     setHostname('baseball-score-app.firebaseapp.com');
-    expect(getAuthDomain()).toBe('baseball-score-app.firebaseapp.com');
+    expect(getAuthDomain()).toBe('default.firebaseapp.com');
   });
 
   test('localhost の場合は環境変数の authDomain を返す', () => {
@@ -47,13 +47,19 @@ describe('getAuthDomain', () => {
     expect(getAuthDomain()).toBe('default.firebaseapp.com');
   });
 
-  test('カスタムドメインで REACT_APP_USE_CURRENT_ORIGIN_FOR_AUTH が true の場合はホスト名を返す', () => {
-    setHostname('score.example.com');
+  test('REACT_APP_USE_CURRENT_ORIGIN_FOR_AUTH が true の場合はホスト名を返す', () => {
+    setHostname('baseball-score-app.web.app');
     process.env.REACT_APP_USE_CURRENT_ORIGIN_FOR_AUTH = 'true';
-    expect(getAuthDomain()).toBe('score.example.com');
+    expect(getAuthDomain()).toBe('baseball-score-app.web.app');
   });
 
-  test('その他の通常ドメインでは環境変数の authDomain を返す', () => {
+  test('REACT_APP_USE_CURRENT_ORIGIN_FOR_AUTH が true でも localhost の場合は環境変数の authDomain を返す', () => {
+    setHostname('localhost');
+    process.env.REACT_APP_USE_CURRENT_ORIGIN_FOR_AUTH = 'true';
+    expect(getAuthDomain()).toBe('default.firebaseapp.com');
+  });
+
+  test('その他の通常ドメインでもデフォルトでは環境変数の authDomain を返す', () => {
     setHostname('example.com');
     delete process.env.REACT_APP_USE_CURRENT_ORIGIN_FOR_AUTH;
     expect(getAuthDomain()).toBe('default.firebaseapp.com');
