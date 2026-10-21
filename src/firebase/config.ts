@@ -1,23 +1,20 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
-// Firebase Hosting 環境（*.web.app, *.firebaseapp.com 等）では現在のホスト名を
-// authDomain として使用することで、iOS Safari等のITP（クロスサイトストレージ遮断による
-// missing initial state エラー）を防止する。
+// Google OAuth のリダイレクト URI は Google Cloud Console の認証情報（OAuth 2.0 クライアント）
+// に登録された URI（通常は https://<project-id>.firebaseapp.com/__/auth/handler）と厳格に一致する必要がある。
+// 現在のホスト名を authDomain として使用する場合（iOS Safari等のITP対策など）は、事前に Google Cloud Console 側で
+// 承認済みリダイレクト URI に https://<hostname>/__/auth/handler を追加した上で、
+// REACT_APP_USE_CURRENT_ORIGIN_FOR_AUTH=true を明示的に指定してオプトインする。
 export const getAuthDomain = (): string | undefined => {
   if (
+    process.env.REACT_APP_USE_CURRENT_ORIGIN_FOR_AUTH === 'true' &&
     typeof window !== 'undefined' &&
     window.location &&
     window.location.hostname
   ) {
     const hostname = window.location.hostname;
-    if (
-      hostname !== 'localhost' &&
-      hostname !== '127.0.0.1' &&
-      (hostname.endsWith('.web.app') ||
-        hostname.endsWith('.firebaseapp.com') ||
-        process.env.REACT_APP_USE_CURRENT_ORIGIN_FOR_AUTH === 'true')
-    ) {
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
       return hostname;
     }
   }
