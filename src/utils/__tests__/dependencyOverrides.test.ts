@@ -70,6 +70,8 @@ describe('dependency overrides policy', () => {
     ['node_modules/colord', '2.10.0'],
     ['node_modules/postcss-selector-parser', '7.1.6'],
     ['node_modules/qs', '6.16.1'],
+    ['node_modules/follow-redirects', '1.16.1'],
+    ['node_modules/launch-editor', '2.14.2'],
   ])('keeps %s at or above %s', (packagePath, minimumVersion) => {
     const packageLock = readPackageLock();
     const installedVersion = getInstalledVersion(packageLock, packagePath);
