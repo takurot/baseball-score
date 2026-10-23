@@ -1,5 +1,6 @@
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { useScoreCalculation } from '../useScoreCalculation';
+import { useGameState } from '../useGameState';
 import { Team, RunEvent } from '../../types';
 
 describe('useScoreCalculation', () => {
@@ -115,6 +116,49 @@ describe('useScoreCalculation', () => {
     );
     expect(result.current.homeScore.hits).toBe(2); // IH, HR
     expect(result.current.awayScore.hits).toBe(1); // 2B
-    expect(result.current.awayScore.errors).toBe(1); // E
+    expect(result.current.homeScore.errors).toBe(1);
+    expect(result.current.awayScore.errors).toBe(0);
   });
+
+  test.each([true, false])(
+    '打席の追加・編集・削除を相手の失策数に反映する (isTop=%s)',
+    (isTop) => {
+      const { result } = renderHook(() => {
+        const { state, actions } = useGameState({
+          id: 'game',
+          date: '2026-10-24',
+          currentInning: 1,
+          homeTeam: { ...mockHomeTeam, atBats: [] },
+          awayTeam: { ...mockAwayTeam, atBats: [] },
+        });
+        return {
+          actions,
+          ...useScoreCalculation(
+            state.homeTeam,
+            state.awayTeam,
+            state.runEvents
+          ),
+        };
+      });
+      const atBat = { ...mockAwayTeam.atBats[1], isTop };
+      const battingScore = isTop ? 'awayScore' : 'homeScore';
+      const fieldingScore = isTop ? 'homeScore' : 'awayScore';
+
+      act(() => result.current.actions.addAtBat(atBat));
+      expect(result.current[fieldingScore].errors).toBe(1);
+      expect(result.current[battingScore].errors).toBe(0);
+      expect(result.current[battingScore].hits).toBe(0);
+      expect(result.current[battingScore].totalScore).toBe(0);
+
+      act(() => result.current.actions.updateAtBat({ ...atBat, result: 'IH' }));
+      expect(result.current[fieldingScore].errors).toBe(0);
+      expect(result.current[battingScore].hits).toBe(1);
+
+      act(() => result.current.actions.updateAtBat(atBat));
+      expect(result.current[fieldingScore].errors).toBe(1);
+      act(() => result.current.actions.deleteAtBat(atBat.id));
+      expect(result.current[fieldingScore].errors).toBe(0);
+      expect(result.current[battingScore].errors).toBe(0);
+    }
+  );
 });
