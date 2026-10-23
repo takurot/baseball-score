@@ -92,12 +92,12 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({
       away: {
         runs: totalScores.away,
         hits: countHits(awayTeam),
-        errors: countErrors(awayTeam),
+        errors: countErrors(homeTeam),
       },
       home: {
         runs: totalScores.home,
         hits: countHits(homeTeam),
-        errors: countErrors(homeTeam),
+        errors: countErrors(awayTeam),
       },
     }),
     [awayTeam, homeTeam, totalScores]

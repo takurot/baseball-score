@@ -113,8 +113,9 @@ export class ScoreCalculator {
     return atBats.filter((atBat) => HIT_RESULTS.includes(atBat.result)).length;
   }
 
-  static calculateErrors(atBats: AtBat[]): number {
-    return atBats.filter((atBat) => atBat.result === 'E').length;
+  // Count fielding errors from the opposing team's error-reached at-bats.
+  static calculateErrors(opponentAtBats: AtBat[]): number {
+    return opponentAtBats.filter((atBat) => atBat.result === 'E').length;
   }
 
   static calculateBattingRates(

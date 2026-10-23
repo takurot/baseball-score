@@ -159,7 +159,8 @@ describe('ScoreBoard accessibility', () => {
 
     expect(screen.getByTestId('scoreboard-r-home')).toHaveTextContent('3');
     expect(screen.getByTestId('scoreboard-h-home')).toHaveTextContent('1');
-    expect(screen.getByTestId('scoreboard-e-home')).toHaveTextContent('1');
+    expect(screen.getByTestId('scoreboard-e-home')).toHaveTextContent('0');
+    expect(screen.getByTestId('scoreboard-e-away')).toHaveTextContent('1');
   });
 
   test('TypographyコンポーネントにfontWeightがsx経由で正しく適用されReactのDOM警告が出ない', () => {

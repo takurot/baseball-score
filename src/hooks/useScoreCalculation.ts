@@ -70,9 +70,9 @@ export const useScoreCalculation = (
         maxInning
       ),
       hits: calculateHits(homeTeam),
-      errors: calculateErrors(homeTeam),
+      errors: calculateErrors(awayTeam),
     }),
-    [homeTeam, runEvents, maxInning]
+    [homeTeam, awayTeam, runEvents, maxInning]
   );
 
   const awayScore = useMemo<ScoreData>(
@@ -84,9 +84,9 @@ export const useScoreCalculation = (
       ),
       inningScores: calculateInningScores(awayTeam, true, runEvents, maxInning),
       hits: calculateHits(awayTeam),
-      errors: calculateErrors(awayTeam),
+      errors: calculateErrors(homeTeam),
     }),
-    [awayTeam, runEvents, maxInning]
+    [awayTeam, homeTeam, runEvents, maxInning]
   );
 
   const calculateInningScore = (team: Team, inning: number): number => {
