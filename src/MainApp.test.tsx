@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import MainApp from './MainApp';
+import { saveGame, saveGameAsNew } from './firebase/gameService';
 
 let mockUuidCounter = 0;
 jest.mock('uuid', () => ({ v4: () => `test-uuid-${mockUuidCounter++}` }));
@@ -133,6 +134,70 @@ describe('MainApp - 打席登録フロー', () => {
 });
 
 describe('MainApp - 試合データの損失防止', () => {
+  test.each(['上書き保存', '新規保存'])(
+    '%s後は下書きが再作成されず、開き直しても復元確認が出ない',
+    async (saveLabel) => {
+      (saveGame as jest.Mock).mockResolvedValue('saved-game');
+      (saveGameAsNew as jest.Mock).mockResolvedValue('saved-game');
+      const user = userEvent.setup();
+      const { unmount } = renderMainApp();
+
+      await registerAndSubmitAtBat(user, '選手1');
+      await screen.findByRole('button', { name: '編集' });
+      await user.click(
+        screen.getByRole('button', { name: '試合データを保存' })
+      );
+      await user.click(screen.getByRole('button', { name: saveLabel }));
+      await screen.findByText(
+        saveLabel === '新規保存'
+          ? '新しい試合データとして保存しました'
+          : '試合データを保存しました'
+      );
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+      });
+      expect(localStorage.getItem('baseball-score:draft:test-user')).toBeNull();
+
+      unmount();
+      renderMainApp();
+      expect(
+        screen.queryByText('前回の入力途中の試合があります')
+      ).not.toBeInTheDocument();
+    },
+    30000
+  );
+
+  test('復元確認中は下書きを保持し、復元した入力も未保存として保護する', async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderMainApp();
+    await registerAndSubmitAtBat(user, '選手1');
+    await screen.findByRole('button', { name: '編集' });
+    await waitFor(
+      () => {
+        const raw = localStorage.getItem('baseball-score:draft:test-user');
+        expect(raw && JSON.parse(raw).awayTeam.atBats).toHaveLength(1);
+      },
+      { timeout: 3000 }
+    );
+    const draft = localStorage.getItem('baseball-score:draft:test-user');
+    unmount();
+    renderMainApp();
+    await screen.findByText('前回の入力途中の試合があります');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    });
+    expect(localStorage.getItem('baseball-score:draft:test-user')).toBe(draft);
+
+    await user.click(screen.getByRole('button', { name: '復元する' }));
+    await screen.findByRole('button', { name: '編集' });
+    await openMenu(user);
+    await user.click(screen.getByRole('menuitem', { name: /新しい試合/ }));
+    expect(
+      await screen.findByText('保存されていない変更があります')
+    ).toBeInTheDocument();
+  }, 30000);
+
   test('未保存の変更がない状態で「新しい試合」を選ぶと確認なしでリセットされる', async () => {
     const user = userEvent.setup();
     renderMainApp();

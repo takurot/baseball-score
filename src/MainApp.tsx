@@ -414,7 +414,17 @@ const MainApp: React.FC<{
 
   // gameState の変更を一定時間デバウンスして下書きとして localStorage に保存する
   useEffect(() => {
-    if (!draftStorageKey || isSharedMode) return;
+    // 起動時の確認で見つかった下書きは、復元・破棄を選ぶまで保持する。
+    if (!draftStorageKey || isSharedMode || draftRestoreDataRef.current) return;
+
+    if (!hasUnsavedChanges) {
+      try {
+        localStorage.removeItem(draftStorageKey);
+      } catch (error) {
+        console.error('Failed to remove draft from localStorage:', error);
+      }
+      return;
+    }
 
     const timer = setTimeout(() => {
       try {
@@ -439,13 +449,18 @@ const MainApp: React.FC<{
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [gameState, draftStorageKey, isSharedMode]);
+  }, [
+    gameState,
+    draftStorageKey,
+    isSharedMode,
+    draftRestoreAvailable,
+    hasUnsavedChanges,
+  ]);
 
   // 下書きを復元する
   const handleRestoreDraft = () => {
     const draftGame = draftRestoreDataRef.current;
     if (draftGame) {
-      pendingBaselineResetRef.current = true;
       loadGame(draftGame);
       setSnackbarOpen(true);
       setSnackbarMessage('前回の入力途中の試合を復元しました');
