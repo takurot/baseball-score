@@ -176,7 +176,60 @@ describe('TeamStatsList', () => {
     );
 
     expect(
-      await screen.findByText('該当する試合の記録はありません。')
+      await screen.findByText(
+        '登録チームに紐付いた該当区分の試合はありません。'
+      )
     ).toBeInTheDocument();
   }, 15000);
 });
+
+test.each([false, true])(
+  '登録試合数と控えの説明がデスクトップ／モバイルで一致する (mobile=%s)',
+  async (mobile) => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = jest.fn().mockImplementation((query) => ({
+      matches: mobile,
+      media: query,
+      onchange: null,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    }));
+    mockedGetAllTeamStats.mockResolvedValue([
+      {
+        ...allWins,
+        playerStats: [
+          {
+            ...allWins.battingStats,
+            playerId: 'reserve',
+            playerName: '控え選手',
+            playerNumber: '12',
+            playerPosition: 'P',
+            gameCount: 2,
+          },
+        ],
+      },
+    ]);
+    const user = userEvent.setup();
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <TeamStatsList />
+      </ThemeProvider>
+    );
+    await screen.findByText('全勝チーム');
+    await user.click(screen.getByRole('tab', { name: '個人成績' }));
+    expect(screen.getByText(/打席ゼロの控えも表示します/)).toBeInTheDocument();
+    if (mobile) {
+      await user.click(screen.getByRole('button', { name: /控え選手/ }));
+      expect(screen.getByText('登録試合数: 2')).toBeInTheDocument();
+    } else {
+      expect(
+        screen.getByRole('columnheader', { name: '登録試合数' })
+      ).toBeInTheDocument();
+      expect(screen.getByText('控え選手')).toBeInTheDocument();
+    }
+    window.matchMedia = originalMatchMedia;
+  }
+);

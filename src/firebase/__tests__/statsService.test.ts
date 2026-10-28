@@ -1,13 +1,19 @@
-import { getDocs } from 'firebase/firestore';
+import { getDocs, getDoc, updateDoc } from 'firebase/firestore';
 import { getCurrentUser } from '../authService';
 import { getAllTeamStats } from '../statsService';
 import { getUserTeams } from '../teamService';
-import { Game, Team } from '../../types';
+import { Game, Team, TeamSetting } from '../../types';
+import { linkTeamRoster } from '../../services/TeamRoster';
+import { saveGame } from '../gameService';
 
 jest.mock('../teamService', () => ({ getUserTeams: jest.fn() }));
 
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn(),
+  getDoc: jest.fn(),
+  doc: jest.fn(),
+  updateDoc: jest.fn(),
+  serverTimestamp: jest.fn(),
   getDocs: jest.fn(),
   query: jest.fn(),
   where: jest.fn(),
@@ -252,4 +258,148 @@ describe('registered team boundaries', () => {
     (getUserTeams as jest.Mock).mockResolvedValue([]);
     expect(await getAllTeamStats()).toEqual([]);
   });
+});
+
+describe('player identity and saved-game repair', () => {
+  test.each(['all', 'official', 'practice'] as const)(
+    '%s: explicit repair survives save/reload without changing team outcomes',
+    async (filter) => {
+      const player = (id: string) => ({
+        id,
+        name: '同名',
+        number: '1',
+        position: 'P',
+        isActive: false,
+        order: 0,
+      });
+      const registered: TeamSetting = {
+        id: 'registered',
+        name: '登録',
+        userId: 'user-1',
+        players: [player('canonical')],
+      };
+      mockedGetCurrentUser.mockReturnValue({
+        uid: 'user-1',
+        email: 'me@example.com',
+      });
+      (getUserTeams as jest.Mock).mockResolvedValue([registered]);
+      const stored = new Map<string, Game>();
+      for (const gameType of ['official', 'practice'] as const) {
+        for (const id of ['canonical', 'old']) {
+          const homeTeam: Team = {
+            id: 'registered',
+            name: '登録',
+            players: [player(id), player(id), player('separate')],
+            atBats: [
+              {
+                id: `${gameType}-${id}`,
+                playerId: id,
+                inning: 1,
+                isTop: false,
+                result: 'HR',
+                rbi: 2,
+                isOut: false,
+              },
+              {
+                id: `${gameType}-${id}-orphan`,
+                playerId: 'removed',
+                inning: 1,
+                isTop: false,
+                result: 'BB',
+                rbi: 0,
+                isOut: false,
+              },
+            ],
+          };
+          const game: Game = {
+            id: `${gameType}-${id}`,
+            userId: 'user-1',
+            date: '2026-10-28',
+            gameType,
+            homeTeam,
+            awayTeam: { id: '', name: '相手', players: [], atBats: [] },
+            currentInning: 1,
+            runEvents: [
+              {
+                id: 'run',
+                inning: 1,
+                isTop: true,
+                runType: 'その他',
+                runCount: 1,
+                timestamp: 123,
+              },
+            ],
+            outEvents: [
+              {
+                id: 'out',
+                inning: 1,
+                isTop: true,
+                outType: '牽制アウト',
+                timestamp: 123,
+              },
+            ],
+          };
+          stored.set(game.id, game);
+        }
+      }
+      mockedGetDocs.mockImplementation(async () => ({
+        docs: Array.from(stored.values()).map((game) => ({
+          id: game.id,
+          data: () => game,
+        })),
+      }));
+      const before = (await getAllTeamStats(filter))[0];
+      const count = filter === 'all' ? 4 : 2;
+      expect(
+        before.playerStats.find((p) => p.playerId === 'canonical')
+      ).toMatchObject({ gameCount: count / 2, hits: count / 2 });
+      expect(
+        before.playerStats.find((p) => p.playerId === 'separate')
+      ).toMatchObject({ gameCount: count, atBats: 0 });
+      expect(
+        before.playerStats.find((p) => p.playerId === 'removed')?.walks
+      ).toBe(count);
+      // Exercise the real save service with an in-memory Firestore transport.
+      (getDoc as jest.Mock).mockImplementation(async () => ({
+        exists: () => true,
+        data: () => ({ userId: 'user-1' }),
+        id: 'existing',
+      }));
+      for (const [id, game] of Array.from(stored.entries())) {
+        const linked = {
+          ...game,
+          homeTeam: linkTeamRoster(game.homeTeam, registered, {
+            old: 'canonical',
+          }),
+        };
+        (updateDoc as jest.Mock).mockImplementation(async (_ref, payload) => {
+          stored.set(id, { ...payload, id });
+        });
+        await saveGame(linked);
+        await saveGame(linked);
+        expect(stored.get(id)?.homeTeam.atBats).toEqual(
+          game.homeTeam.atBats.map((ab) => ({
+            ...ab,
+            playerId: ab.playerId === 'old' ? 'canonical' : ab.playerId,
+          }))
+        );
+        expect(stored.get(id)?.runEvents).toEqual(game.runEvents);
+        expect(stored.get(id)?.outEvents).toEqual(game.outEvents);
+      }
+      const after = (await getAllTeamStats(filter))[0];
+      expect({ ...after, playerStats: [] }).toEqual({
+        ...before,
+        playerStats: [],
+      });
+      expect(after.playerStats.map((p) => p.playerId).sort()).toEqual([
+        'canonical',
+        'removed',
+        'separate',
+      ]);
+      expect(
+        after.playerStats.find((p) => p.playerId === 'canonical')
+      ).toMatchObject({ hits: count, gameCount: count });
+      expect(await getAllTeamStats(filter)).toEqual([after]);
+    }
+  );
 });

@@ -317,11 +317,11 @@ const TeamStatsList: React.FC = () => {
               : `${getGameTypeLabel(gameTypeFilter)}の記録はありません`}
           </Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-            該当する試合の記録はありません。
+            登録チームに紐付いた該当区分の試合はありません。
           </Typography>
           {gameTypeFilter === 'all' && (
             <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
-              試合データを登録すると、チームごとの通算成績が表示されます。
+              試合で登録チームを選択して保存すると通算成績に反映されます。未登録の対戦相手は一覧に表示しません。
             </Typography>
           )}
         </Paper>
@@ -490,6 +490,9 @@ const TeamStatsList: React.FC = () => {
               </Tooltip>
             </Typography>
 
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              登録試合数は保存された試合の名簿または打席に含まれる回数です。打席ゼロの控えも表示します。守備・代走を含む実際の出場数は表しません。
+            </Typography>
             {isMobile ? (
               // モバイル向け表示 - アコーディオン形式
               <Box>
@@ -528,8 +531,10 @@ const TeamStatsList: React.FC = () => {
                         >
                           {PLAYER_MOBILE_ORDER.map((key) => (
                             <Typography variant="body2" key={key}>
-                              {STAT_FIELDS[key].label}:{' '}
-                              {formatStatValue(key, player[key])}
+                              {key === 'gameCount'
+                                ? '登録試合数'
+                                : STAT_FIELDS[key].label}
+                              : {formatStatValue(key, player[key])}
                             </Typography>
                           ))}
                         </Box>
@@ -548,7 +553,7 @@ const TeamStatsList: React.FC = () => {
                       <TableCell sx={{ minWidth: '140px', width: '140px' }}>
                         名前
                       </TableCell>
-                      <TableCell align="center">試合</TableCell>
+                      <TableCell align="center">登録試合数</TableCell>
                       {DESKTOP_TABLE_ORDER.map((key) => (
                         <TableCell align="center" key={key}>
                           {STAT_FIELDS[key].shortLabel ??
