@@ -48,10 +48,6 @@ export const getAllTeamStats = async (
       throw new Error('ログインが必要です');
     }
 
-    const registeredTeamIds = new Set(
-      (await getUserTeams()).map((team) => team.id).filter(Boolean)
-    );
-
     // ユーザーの全ゲームデータを取得
     const q = query(
       collection(db, GAMES_COLLECTION),
@@ -59,7 +55,13 @@ export const getAllTeamStats = async (
       orderBy('date', 'desc')
     );
 
-    const querySnapshot = await getDocs(q);
+    const [registeredTeams, querySnapshot] = await Promise.all([
+      getUserTeams(),
+      getDocs(q),
+    ]);
+    const registeredTeamIds = new Set(
+      registeredTeams.map((team) => team.id).filter(Boolean)
+    );
     const games = querySnapshot.docs.map((doc) => {
       const data = doc.data() as Game;
       return { ...data, id: doc.id };
