@@ -17,6 +17,7 @@ import {
   ListItem,
   ListItemText,
   Divider,
+  MenuItem,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -29,6 +30,7 @@ import { getUserTeams, getTeamById } from '../firebase/teamService';
 import { getNextBatterPlayerId } from '../services/BattingOrder';
 import { useAuth } from '../contexts/AuthContext';
 import { TeamRole, getDisplayTeamName } from '../utils/teamTabUtils';
+import { getTeamPlayers, linkTeamRoster } from '../services/TeamRoster';
 
 interface TeamManagerProps {
   team: Team;
@@ -65,6 +67,10 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   // 打席が既に記録された状態でチームを差し替える前の確認用
   const [pendingTeamReplacement, setPendingTeamReplacement] =
     useState<TeamSetting | null>(null);
+
+  const [playerMapping, setPlayerMapping] = useState<Record<string, string>>(
+    {}
+  );
 
   // teamプロップが変更されたらチーム名の状態を更新
   useEffect(() => {
@@ -221,23 +227,6 @@ const TeamManager: React.FC<TeamManagerProps> = ({
     }, 300); // ダイアログのアニメーション終了後にリセット
   };
 
-  // 登録済みのチーム情報から現在の試合用のチームデータを作成する
-  const buildUpdatedTeam = (teamSetting: TeamSetting): Team => ({
-    ...team,
-    id: teamSetting.id,
-    name: teamSetting.name,
-    players:
-      teamSetting.players?.map((player) => ({
-        id: player.id,
-        name: player.name,
-        number: player.number,
-        position: player.position,
-        isActive: true,
-        order: 0, // 初期値は0に設定
-      })) || [],
-    // 注意: atBats は維持される（打席データを無言で破棄しない）
-  });
-
   // 選択したチームでデータを更新
   const handleSelectTeam = async (teamSettingId: string) => {
     if (!teamSettingId) return;
@@ -251,15 +240,22 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         throw new Error('チームデータの取得に失敗しました');
       }
 
-      // 既にこの試合で打席が記録されている場合は、選手が入れ替わることを
-      // 確認してから反映する（打席データ自体は消えないが、記録済みの
-      // 打席が指す選手が変わるため、無言で進めない）
-      if (team.atBats.length > 0) {
+      if (team.players.length > 0 || team.atBats.length > 0) {
+        setPlayerMapping(
+          Object.fromEntries(
+            getTeamPlayers(team)
+              .filter((player) =>
+                teamSetting.players?.some((p) => p.id === player.id)
+              )
+              .map((player) => [player.id, player.id])
+          )
+        );
         setPendingTeamReplacement(teamSetting);
+        setOpenTeamSelectionDialog(false);
         return;
       }
 
-      onTeamUpdate(buildUpdatedTeam(teamSetting));
+      onTeamUpdate(linkTeamRoster(team, teamSetting, {}));
       handleCloseTeamSelectionDialog();
     } catch (error: any) {
       console.error('チームの選択に失敗しました:', error);
@@ -274,7 +270,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   // 確認ダイアログでチーム差し替えを実行
   const handleConfirmTeamReplacement = () => {
     if (!pendingTeamReplacement) return;
-    onTeamUpdate(buildUpdatedTeam(pendingTeamReplacement));
+    onTeamUpdate(linkTeamRoster(team, pendingTeamReplacement, playerMapping));
     setPendingTeamReplacement(null);
     handleCloseTeamSelectionDialog();
   };
@@ -282,6 +278,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   // 確認ダイアログをキャンセル（チーム選択ダイアログには戻る）
   const handleCancelTeamReplacement = () => {
     setPendingTeamReplacement(null);
+    setOpenTeamSelectionDialog(true);
   };
 
   return (
@@ -466,17 +463,42 @@ const TeamManager: React.FC<TeamManagerProps> = ({
       {/* 打席記録がある状態でのチーム差し替え確認ダイアログ */}
       <Dialog
         open={!!pendingTeamReplacement}
+        maxWidth="sm"
+        fullWidth
         onClose={handleCancelTeamReplacement}
       >
-        <DialogTitle>選手を入れ替えます</DialogTitle>
+        <DialogTitle>登録チームと選手を対応付ける</DialogTitle>
         <DialogContent>
-          <Typography>
-            この試合には既に記録された打席があります。「
-            {pendingTeamReplacement?.name}
-            」を選択すると選手が入れ替わりますが、記録済みの打席データ自体は
-            削除されません（入れ替え後の選手一覧とは一致しなくなる場合が
-            あります）。よろしいですか？
+          <Typography sx={{ mb: 2 }}>
+            「{pendingTeamReplacement?.name}
+            」へ紐付けます。各選手の対応先を確認してください。
+            同名・同背番号でも自動統合しません。未対応の選手と打席はそのまま残ります。
+            同じ対応先を選ぶと成績が統合されます。反映後、試合を保存してください。
           </Typography>
+          {getTeamPlayers(team).map((player) => (
+            <TextField
+              key={player.id}
+              select
+              fullWidth
+              margin="normal"
+              label={`${player.name} #${player.number} の対応先`}
+              helperText={`ID: ${player.id} / 打席: ${team.atBats.filter((ab) => ab.playerId === player.id).length}`}
+              value={playerMapping[player.id] || ''}
+              onChange={(event) =>
+                setPlayerMapping((previous) => ({
+                  ...previous,
+                  [player.id]: event.target.value,
+                }))
+              }
+            >
+              <MenuItem value="">別人・未対応として保持</MenuItem>
+              {pendingTeamReplacement?.players?.map((target) => (
+                <MenuItem key={target.id} value={target.id}>
+                  {target.name} #{target.number} ({target.id})
+                </MenuItem>
+              ))}
+            </TextField>
+          ))}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancelTeamReplacement}>キャンセル</Button>
@@ -485,7 +507,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
             color="primary"
             variant="contained"
           >
-            入れ替える
+            確認して反映
           </Button>
         </DialogActions>
       </Dialog>

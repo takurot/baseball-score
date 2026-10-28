@@ -3,6 +3,7 @@ import { db } from './config';
 import { Game, Team, AtBat, Player } from '../types';
 import { getCurrentUser } from './authService';
 import { getUserTeams } from './teamService';
+import { getTeamPlayers } from '../services/TeamRoster';
 import { BattingStats, ScoreCalculator } from '../services/ScoreCalculator';
 import { GameTypeFilter, matchesGameTypeFilter } from '../utils/gameType';
 
@@ -229,8 +230,8 @@ const aggregateBattingStats = (stats: BattingStats, atBats: AtBat[]) => {
 
 // 選手ごとの打撃成績を集計
 const aggregatePlayerBattingStats = (teamStats: TeamStats, team: Team) => {
-  // 選手ごとに集計する
-  team.players.forEach((player) => {
+  // Count each player ID once per saved roster, including zero-at-bat reserves.
+  getTeamPlayers(team).forEach((player) => {
     // 既存の選手の成績を探すか、新しく作成する
     let playerStats = teamStats.playerStats.find(
       (ps) => ps.playerId === player.id
@@ -242,7 +243,7 @@ const aggregatePlayerBattingStats = (teamStats: TeamStats, team: Team) => {
       teamStats.playerStats.push(playerStats);
     }
 
-    // 試合出場数をカウント
+    // Count saved roster registrations, not inferred appearances.
     playerStats.gameCount++;
 
     // この選手の打席を抽出
