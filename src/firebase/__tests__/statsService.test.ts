@@ -1,6 +1,10 @@
 import { getDocs } from 'firebase/firestore';
 import { getCurrentUser } from '../authService';
 import { getAllTeamStats } from '../statsService';
+import { getUserTeams } from '../teamService';
+import { Game, Team } from '../../types';
+
+jest.mock('../teamService', () => ({ getUserTeams: jest.fn() }));
 
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn(),
@@ -17,6 +21,11 @@ const mockedGetDocs = getDocs as jest.Mock;
 const mockedGetCurrentUser = getCurrentUser as jest.Mock;
 
 describe('getAllTeamStats', () => {
+  beforeEach(() => {
+    (getUserTeams as jest.Mock).mockResolvedValue(
+      ['home', 'away', 'team-a', 'team-b'].map((id) => ({ id }))
+    );
+  });
   test('正式な式でチームと選手の出塁率を集計する', async () => {
     mockedGetCurrentUser.mockReturnValue({ uid: 'user-1' });
     mockedGetDocs.mockResolvedValue({
@@ -153,5 +162,94 @@ describe('getAllTeamStats', () => {
     const teamAPractice = practiceStats.find((t) => t.teamId === 'team-a');
     expect(teamAPractice?.gameCount).toBe(2);
     expect(teamAPractice?.battingStats.hits).toBe(9); // 4 + 5
+  });
+});
+
+describe('registered team boundaries', () => {
+  const team = (id: string): Team => ({
+    id,
+    name: '同じ名前',
+    players: [],
+    atBats: [],
+  });
+  test.each(['all', 'official', 'practice'] as const)(
+    '%s: only registered sides count, with all opponent runs retained',
+    async (filter) => {
+      mockedGetCurrentUser.mockReturnValue({ uid: 'user-1' });
+      (getUserTeams as jest.Mock).mockResolvedValue([
+        { id: 'registered' },
+        { id: 'other' },
+      ]);
+      const games: Game[] = [];
+      for (const gameType of ['official', 'practice'] as const) {
+        for (const [home, away] of [
+          ['', ''],
+          ['random-uuid', ''],
+          ['registered', ''],
+          ['random-uuid', 'registered'],
+          ['registered', 'other'],
+        ]) {
+          games.push({
+            id: `${gameType}-${games.length}`,
+            date: '2026-10-28',
+            gameType,
+            currentInning: 1,
+            homeTeam: team(home),
+            awayTeam: team(away),
+            runEvents: [
+              {
+                id: 'r1',
+                inning: 1,
+                isTop: false,
+                runType: 'その他',
+                runCount: 3,
+                timestamp: 0,
+              },
+              {
+                id: 'r2',
+                inning: 1,
+                isTop: true,
+                runType: 'その他',
+                runCount: 1,
+                timestamp: 0,
+              },
+            ],
+          });
+        }
+      }
+      mockedGetDocs.mockResolvedValue({
+        docs: games.map((game) => ({ id: game.id, data: () => game })),
+      });
+      const result = await getAllTeamStats(filter);
+      const multiplier = filter === 'all' ? 2 : 1;
+      expect(result.map((s) => s.teamId).sort()).toEqual([
+        'other',
+        'registered',
+      ]);
+      expect(result.find((s) => s.teamId === 'registered')).toMatchObject({
+        gameCount: 3 * multiplier,
+        wins: 2 * multiplier,
+        losses: multiplier,
+        totalRuns: 7 * multiplier,
+        totalRunsAllowed: 5 * multiplier,
+      });
+      expect(result.find((s) => s.teamId === 'other')?.gameCount).toBe(
+        multiplier
+      );
+    }
+  );
+
+  test('no registrations means no aggregate rows', async () => {
+    mockedGetCurrentUser.mockReturnValue({ uid: 'user-1' });
+    mockedGetDocs.mockResolvedValue({
+      docs: [
+        {
+          id: 'g',
+          data: () => ({ homeTeam: team(''), awayTeam: team('uuid') }),
+        },
+      ],
+    });
+    (getUserTeams as jest.Mock).mockResolvedValue([]);
+    expect(await getAllTeamStats()).toEqual([]);
   });
 });

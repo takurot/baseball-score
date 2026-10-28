@@ -2,6 +2,7 @@ import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from './config';
 import { Game, Team, AtBat, Player } from '../types';
 import { getCurrentUser } from './authService';
+import { getUserTeams } from './teamService';
 import { BattingStats, ScoreCalculator } from '../services/ScoreCalculator';
 import { GameTypeFilter, matchesGameTypeFilter } from '../utils/gameType';
 
@@ -54,7 +55,13 @@ export const getAllTeamStats = async (
       orderBy('date', 'desc')
     );
 
-    const querySnapshot = await getDocs(q);
+    const [registeredTeams, querySnapshot] = await Promise.all([
+      getUserTeams(),
+      getDocs(q),
+    ]);
+    const registeredTeamIds = new Set(
+      registeredTeams.map((team) => team.id).filter(Boolean)
+    );
     const games = querySnapshot.docs.map((doc) => {
       const data = doc.data() as Game;
       return { ...data, id: doc.id };
@@ -70,10 +77,14 @@ export const getAllTeamStats = async (
     // 対象ゲームをループして各チームの成績を集計
     for (const game of filteredGames) {
       // ホームチームの処理
-      processTeamStats(teamStatsMap, game.homeTeam, game, false);
+      if (registeredTeamIds.has(game.homeTeam.id)) {
+        processTeamStats(teamStatsMap, game.homeTeam, game, false);
+      }
 
       // アウェイチームの処理
-      processTeamStats(teamStatsMap, game.awayTeam, game, true);
+      if (registeredTeamIds.has(game.awayTeam.id)) {
+        processTeamStats(teamStatsMap, game.awayTeam, game, true);
+      }
     }
 
     // マップから配列に変換して返却
