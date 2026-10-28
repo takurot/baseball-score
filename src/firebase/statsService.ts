@@ -2,6 +2,7 @@ import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from './config';
 import { Game, Team, AtBat, Player } from '../types';
 import { getCurrentUser } from './authService';
+import { getUserTeams } from './teamService';
 import { BattingStats, ScoreCalculator } from '../services/ScoreCalculator';
 import { GameTypeFilter, matchesGameTypeFilter } from '../utils/gameType';
 
@@ -47,6 +48,10 @@ export const getAllTeamStats = async (
       throw new Error('ログインが必要です');
     }
 
+    const registeredTeamIds = new Set(
+      (await getUserTeams()).map((team) => team.id).filter(Boolean)
+    );
+
     // ユーザーの全ゲームデータを取得
     const q = query(
       collection(db, GAMES_COLLECTION),
@@ -70,10 +75,14 @@ export const getAllTeamStats = async (
     // 対象ゲームをループして各チームの成績を集計
     for (const game of filteredGames) {
       // ホームチームの処理
-      processTeamStats(teamStatsMap, game.homeTeam, game, false);
+      if (registeredTeamIds.has(game.homeTeam.id)) {
+        processTeamStats(teamStatsMap, game.homeTeam, game, false);
+      }
 
       // アウェイチームの処理
-      processTeamStats(teamStatsMap, game.awayTeam, game, true);
+      if (registeredTeamIds.has(game.awayTeam.id)) {
+        processTeamStats(teamStatsMap, game.awayTeam, game, true);
+      }
     }
 
     // マップから配列に変換して返却
