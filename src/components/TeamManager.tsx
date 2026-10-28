@@ -482,6 +482,8 @@ const TeamManager: React.FC<TeamManagerProps> = ({
               fullWidth
               margin="normal"
               label={`${player.name} #${player.number} の対応先`}
+              SelectProps={{ displayEmpty: true }}
+              InputLabelProps={{ shrink: true }}
               helperText={`ID: ${player.id} / 打席: ${team.atBats.filter((ab) => ab.playerId === player.id).length}`}
               value={playerMapping[player.id] || ''}
               onChange={(event) =>

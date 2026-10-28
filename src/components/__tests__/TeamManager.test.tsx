@@ -125,6 +125,9 @@ describe('TeamManager - チーム選択導線の統合', () => {
     const dialog = screen.getByRole('dialog', {
       name: '登録チームと選手を対応付ける',
     });
+    expect(
+      within(dialog).getByText('別人・未対応として保持')
+    ).toBeInTheDocument();
     expect(await axe(dialog)).toHaveNoViolations();
 
     await user.click(screen.getByRole('button', { name: 'キャンセル' }));
