@@ -30,7 +30,11 @@ import { getUserTeams, getTeamById } from '../firebase/teamService';
 import { getNextBatterPlayerId } from '../services/BattingOrder';
 import { useAuth } from '../contexts/AuthContext';
 import { TeamRole, getDisplayTeamName } from '../utils/teamTabUtils';
-import { getTeamPlayers, linkTeamRoster } from '../services/TeamRoster';
+import {
+  getTeamPlayers,
+  hasDefaultLineup,
+  linkTeamRoster,
+} from '../services/TeamRoster';
 
 interface TeamManagerProps {
   team: Team;
@@ -240,7 +244,13 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         throw new Error('チームデータの取得に失敗しました');
       }
 
-      if (team.players.length > 0 || team.atBats.length > 0) {
+      const replaceDefaults =
+        hasDefaultLineup(team) &&
+        !availableTeams.some((registered) => registered.id === team.id);
+      if (
+        !replaceDefaults &&
+        (team.players.length > 0 || team.atBats.length > 0)
+      ) {
         setPlayerMapping(
           Object.fromEntries(
             getTeamPlayers(team)
@@ -255,7 +265,13 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         return;
       }
 
-      onTeamUpdate(linkTeamRoster(team, teamSetting, {}));
+      onTeamUpdate(
+        linkTeamRoster(
+          replaceDefaults ? { ...team, players: [] } : team,
+          teamSetting,
+          {}
+        )
+      );
       handleCloseTeamSelectionDialog();
     } catch (error: any) {
       console.error('チームの選択に失敗しました:', error);
@@ -473,7 +489,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
             「{pendingTeamReplacement?.name}
             」へ紐付けます。各選手の対応先を確認してください。
             同名・同背番号でも自動統合しません。未対応の選手と打席はそのまま残ります。
-            同じ対応先を選ぶと成績が統合されます。反映後、試合を保存してください。
+            同じ対応先を選ぶと成績が統合されます。出場状態を引き継ぎ、複数の打順は小さい方へまとめます。反映後に打順を確認し、試合を保存してください。
           </Typography>
           {getTeamPlayers(team).map((player) => (
             <TextField

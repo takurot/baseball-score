@@ -176,7 +176,9 @@ describe('TeamStatsList', () => {
     );
 
     expect(
-      await screen.findByText('該当する試合の記録はありません。')
+      await screen.findByText(
+        '登録チームに紐付いた該当区分の試合はありません。'
+      )
     ).toBeInTheDocument();
   }, 15000);
 });

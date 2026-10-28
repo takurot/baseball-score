@@ -4,8 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import TeamManager from '../TeamManager';
 import { getUserTeams, getTeamById } from '../../firebase/teamService';
+import { generateDefaultPlayers } from '../../utils/defaultPlayers';
 import { axe } from 'jest-axe';
 import { Team, TeamSetting } from '../../types';
+
+jest.mock('uuid', () => ({ v4: () => require('crypto').randomUUID() }));
 
 jest.mock('../../firebase/teamService', () => ({
   getUserTeams: jest.fn(),
@@ -98,6 +101,51 @@ describe('TeamManager - チーム選択導線の統合', () => {
     expect(onTeamUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ name: '保存済みチーム', atBats: [] })
     );
+  });
+
+  test('新規試合の仮選手9人は登録名簿へ置換し、通算名簿へ混入させない', async () => {
+    const user = userEvent.setup();
+    const { onTeamUpdate } = renderTeamManager(
+      makeTeam({ id: 'unregistered-uuid', players: generateDefaultPlayers() })
+    );
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    await user.click(await screen.findByText(savedTeam.name));
+    expect(onTeamUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: savedTeam.id,
+        players: [expect.objectContaining({ id: 'sp1' })],
+        atBats: [],
+      })
+    );
+    expect(
+      screen.queryByText('登録チームと選手を対応付ける')
+    ).not.toBeInTheDocument();
+  });
+
+  test('仮選手の名前が編集されていれば打席ゼロでも勝手に破棄しない', async () => {
+    const user = userEvent.setup();
+    const players = generateDefaultPlayers();
+    players[0].name = '編集済み';
+    const { onTeamUpdate } = renderTeamManager(makeTeam({ players }));
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    await user.click(await screen.findByText(savedTeam.name));
+    expect(
+      await screen.findByText('登録チームと選手を対応付ける')
+    ).toBeInTheDocument();
+    expect(onTeamUpdate).not.toHaveBeenCalled();
+  });
+
+  test('登録済み名簿は初期値と同名でも確認なしに置換しない', async () => {
+    const user = userEvent.setup();
+    const { onTeamUpdate } = renderTeamManager(
+      makeTeam({ id: savedTeam.id, players: generateDefaultPlayers() })
+    );
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    await user.click(await screen.findByText(savedTeam.name));
+    expect(
+      await screen.findByText('登録チームと選手を対応付ける')
+    ).toBeInTheDocument();
+    expect(onTeamUpdate).not.toHaveBeenCalled();
   });
 
   test('打席が記録済みの場合は確認ダイアログを挟み、キャンセルすると反映しない', async () => {

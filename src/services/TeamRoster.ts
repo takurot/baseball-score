@@ -1,4 +1,17 @@
 import { Player, Team, TeamSetting } from '../types';
+import { DEFAULT_POSITIONS } from '../utils/defaultPlayers';
+
+export const hasDefaultLineup = (team: Team): boolean =>
+  team.atBats.length === 0 &&
+  team.players.length === DEFAULT_POSITIONS.length &&
+  team.players.every(
+    (player, index) =>
+      player.name === `選手${index + 1}` &&
+      player.number === `${index + 1}` &&
+      player.position === DEFAULT_POSITIONS[index] &&
+      player.isActive &&
+      player.order === index + 1
+  );
 
 // Include historical references even when their roster entry has been removed.
 export const getTeamPlayers = (team: Team): Player[] => {
@@ -38,7 +51,20 @@ export const linkTeamRoster = (
           position: target.position,
         }
       : player;
-    if (!players.has(updated.id)) players.set(updated.id, updated);
+    const existing = players.get(updated.id);
+    players.set(
+      updated.id,
+      existing
+        ? {
+            ...existing,
+            isActive: existing.isActive || updated.isActive,
+            order:
+              existing.order > 0 && updated.order > 0
+                ? Math.min(existing.order, updated.order)
+                : existing.order || updated.order,
+          }
+        : updated
+    );
   }
   for (const player of Array.from(roster.values())) {
     if (!players.has(player.id)) {

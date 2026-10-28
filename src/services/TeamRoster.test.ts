@@ -96,3 +96,46 @@ test('unknown target ID is rejected rather than silently assigning records', () 
     linkTeamRoster(team, registered, { old: 'nonexistent' })
   ).toThrow();
 });
+
+test('merging a reserve before a starter preserves active status and batting order', () => {
+  const roster = {
+    ...team,
+    players: [
+      player('old'),
+      { ...player('separate'), isActive: true, order: 4 },
+    ],
+  };
+  const result = linkTeamRoster(roster, registered, {
+    old: 'canonical',
+    separate: 'canonical',
+  });
+  expect(result.players.find((p) => p.id === 'canonical')).toMatchObject({
+    isActive: true,
+    order: 4,
+  });
+  const reversed = linkTeamRoster(
+    { ...roster, players: [...roster.players].reverse() },
+    registered,
+    { old: 'canonical', separate: 'canonical' }
+  );
+  expect(reversed).toEqual(result);
+});
+
+test('explicitly merging two batting orders keeps the lower positive order', () => {
+  const result = linkTeamRoster(
+    {
+      ...team,
+      players: [
+        { ...player('old'), isActive: true, order: 4 },
+        { ...player('separate'), isActive: true, order: 2 },
+      ],
+    },
+    registered,
+    { old: 'canonical', separate: 'canonical' }
+  );
+  expect(result.players.find((p) => p.id === 'canonical')).toMatchObject({
+    isActive: true,
+    order: 2,
+  });
+  expect(result.atBats).toHaveLength(team.atBats.length);
+});
