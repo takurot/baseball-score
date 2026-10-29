@@ -303,3 +303,136 @@ describe('TeamManager - チーム選択導線の統合', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('TeamManager - 試合名簿からの選手削除', () => {
+  const originalMatchMedia = window.matchMedia;
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+  beforeEach(() => jest.clearAllMocks());
+  const player = (id: string, isActive: boolean) => ({
+    id,
+    name: '重複選手',
+    number: '12',
+    position: 'P',
+    order: 0,
+    isActive,
+  });
+  const atBat = {
+    id: 'ab-keep',
+    playerId: 'registered',
+    inning: 1,
+    isTop: true,
+    result: 'HR' as const,
+    rbi: 2,
+    isOut: false,
+  };
+
+  test.each([
+    [false, false],
+    [true, false],
+    [false, true],
+    [true, true],
+  ])(
+    '打席のない選手だけを確認して削除し、同名の登録選手・打席を保持する (active=%s, mobile=%s)',
+    async (active, mobile) => {
+      window.matchMedia = jest.fn().mockImplementation((query) => ({
+        matches: mobile,
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }));
+      const user = userEvent.setup();
+      const registered = player('registered', true);
+      const extra = player('extra', active);
+      const team = makeTeam({ players: [registered, extra], atBats: [atBat] });
+      const { onTeamUpdate } = renderTeamManager(team);
+      const target = screen.getAllByRole('button', {
+        name: '選手情報を編集',
+      })[1];
+      await user.click(target);
+      await user.click(
+        screen.getByRole('button', { name: 'この試合から削除' })
+      );
+      const dialog = await screen.findByRole('dialog', {
+        name: '選手をこの試合から削除',
+      });
+      expect(dialog).toHaveTextContent('重複選手');
+      expect(dialog).toHaveTextContent('12');
+      expect(dialog).toHaveTextContent('選手ID: extra');
+      expect(onTeamUpdate).not.toHaveBeenCalled();
+      expect(await axe(dialog)).toHaveNoViolations();
+      await user.click(
+        within(dialog).getByRole('button', { name: '削除する' })
+      );
+      expect(onTeamUpdate).toHaveBeenCalledTimes(1);
+      expect(onTeamUpdate).toHaveBeenCalledWith({
+        ...team,
+        players: [registered],
+      });
+      expect(team.players).toEqual([registered, extra]);
+      expect(mockedGetTeamById).not.toHaveBeenCalled();
+    }
+  );
+
+  test('削除のキャンセルでは名簿も打席も変更しない', async () => {
+    const user = userEvent.setup();
+    const { onTeamUpdate } = renderTeamManager(makeTeam());
+    await user.click(screen.getByRole('button', { name: '選手情報を編集' }));
+    await user.click(screen.getByRole('button', { name: 'この試合から削除' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '選手をこの試合から削除',
+    });
+    await user.click(
+      within(dialog).getByRole('button', { name: 'キャンセル' })
+    );
+    expect(onTeamUpdate).not.toHaveBeenCalled();
+    expect(
+      await screen.findByRole('dialog', { name: '選手情報を編集' })
+    ).toBeInTheDocument();
+  });
+
+  test('新しい選手の追加ダイアログには削除を表示しない', async () => {
+    const user = userEvent.setup();
+    renderTeamManager(makeTeam());
+    await user.click(screen.getByRole('button', { name: '選手を追加' }));
+    expect(
+      screen.getByRole('dialog', { name: '新しい選手を追加' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'この試合から削除' })
+    ).not.toBeInTheDocument();
+  });
+});
+
+test('打席のある選手は削除を止め、対応付けを案内する', async () => {
+  const user = userEvent.setup();
+  const team = makeTeam({
+    atBats: [
+      {
+        id: 'ab1',
+        playerId: 'p1',
+        inning: 1,
+        isTop: true,
+        result: 'HR',
+        rbi: 2,
+        isOut: false,
+      },
+    ],
+  });
+  const { onTeamUpdate } = renderTeamManager(team);
+  await user.click(screen.getByRole('button', { name: '選手情報を編集' }));
+  await user.click(screen.getByRole('button', { name: 'この試合から削除' }));
+  const dialog = screen.getByRole('dialog', { name: '選手をこの試合から削除' });
+  expect(within(dialog).getByRole('alert')).toHaveTextContent(
+    '打席記録が1件あるため削除できません'
+  );
+  expect(dialog).toHaveTextContent('登録選手へ対応付ける');
+  const remove = within(dialog).getByRole('button', { name: '削除する' });
+  expect(remove).toBeDisabled();
+  expect(onTeamUpdate).not.toHaveBeenCalled();
+});
