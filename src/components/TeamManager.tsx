@@ -52,6 +52,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   const { currentUser } = useAuth();
   const [openPlayerDialog, setOpenPlayerDialog] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [openDeletePlayerDialog, setOpenDeletePlayerDialog] = useState(false);
   const [playerName, setPlayerName] = useState('');
   const [playerNumber, setPlayerNumber] = useState('');
   const [playerPosition, setPlayerPosition] = useState('');
@@ -116,6 +117,25 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   // ダイアログを閉じる
   const handleCloseDialog = () => {
     setOpenPlayerDialog(false);
+  };
+
+  const recordedAtBats = team.atBats.filter(
+    (atBat) => atBat.playerId === editingPlayer?.id
+  ).length;
+
+  const handleCancelDeletePlayer = () => {
+    setOpenDeletePlayerDialog(false);
+    setOpenPlayerDialog(true);
+  };
+
+  const handleDeletePlayer = () => {
+    if (!editingPlayer || recordedAtBats > 0) return;
+    onTeamUpdate({
+      ...team,
+      players: team.players.filter((player) => player.id !== editingPlayer.id),
+    });
+    setOpenDeletePlayerDialog(false);
+    setEditingPlayer(null);
   };
 
   // 選手の追加または更新
@@ -389,9 +409,58 @@ const TeamManager: React.FC<TeamManagerProps> = ({
           />
         </DialogContent>
         <DialogActions>
+          {editingPlayer && (
+            <Button
+              color="error"
+              sx={{ mr: 'auto' }}
+              onClick={() => {
+                setOpenPlayerDialog(false);
+                setOpenDeletePlayerDialog(true);
+              }}
+            >
+              この試合から削除
+            </Button>
+          )}
           <Button onClick={handleCloseDialog}>キャンセル</Button>
           <Button onClick={handleSavePlayer} color="primary">
             保存
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openDeletePlayerDialog} onClose={handleCancelDeletePlayer}>
+        <DialogTitle>選手をこの試合から削除</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>
+            {editingPlayer?.name}（背番号 {editingPlayer?.number}）
+          </Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mb: 2, overflowWrap: 'anywhere' }}
+          >
+            選手ID: {editingPlayer?.id}
+          </Typography>
+          {recordedAtBats > 0 ? (
+            <Typography role="alert" color="error">
+              この選手には打席記録が{recordedAtBats}件あるため削除できません。
+              「チームを選択」から登録選手へ対応付けるか、打席履歴から記録を削除してください。
+            </Typography>
+          ) : (
+            <Typography>
+              この試合の名簿から削除します。登録チームの名簿や他の試合は変更しません。
+              試合を上書き保存すると通算成績に反映されます。
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDeletePlayer}>キャンセル</Button>
+          <Button
+            color="error"
+            disabled={recordedAtBats > 0}
+            onClick={handleDeletePlayer}
+          >
+            削除する
           </Button>
         </DialogActions>
       </Dialog>
