@@ -41,6 +41,7 @@ describe('gameType utils', () => {
 
   describe('getGameTypeLabel', () => {
     it('returns correct Japanese labels', () => {
+      expect(getGameTypeLabel('junior')).toBe('ジュニア戦');
       expect(getGameTypeLabel('official')).toBe('公式戦');
       expect(getGameTypeLabel('practice')).toBe('練習試合');
     });
@@ -48,6 +49,7 @@ describe('gameType utils', () => {
 
   describe('parseGameTypeFilter', () => {
     it('correctly parses valid game type filters and falls back to "all"', () => {
+      expect(parseGameTypeFilter('junior')).toBe('junior');
       expect(parseGameTypeFilter('official')).toBe('official');
       expect(parseGameTypeFilter('practice')).toBe('practice');
       expect(parseGameTypeFilter('all')).toBe('all');
@@ -57,12 +59,20 @@ describe('gameType utils', () => {
   });
 
   describe('matchesGameTypeFilter', () => {
+    const juniorGame: Partial<Game> = {
+      gameType: 'junior',
+      tournament: '大会',
+    };
     const officialGame: Partial<Game> = { gameType: 'official' };
     const practiceGame: Partial<Game> = { gameType: 'practice' };
     const legacyOfficial: Partial<Game> = { tournament: '選手権' };
     const legacyPractice: Partial<Game> = { tournament: '' };
 
     it('returns true for any game when filter is "all"', () => {
+      expect(matchesGameTypeFilter(juniorGame, 'all')).toBe(true);
+      expect(matchesGameTypeFilter(juniorGame, 'junior')).toBe(true);
+      expect(matchesGameTypeFilter(juniorGame, 'official')).toBe(false);
+      expect(matchesGameTypeFilter(legacyOfficial, 'junior')).toBe(false);
       expect(matchesGameTypeFilter(officialGame, 'all')).toBe(true);
       expect(matchesGameTypeFilter(practiceGame, 'all')).toBe(true);
       expect(matchesGameTypeFilter(legacyOfficial, 'all')).toBe(true);

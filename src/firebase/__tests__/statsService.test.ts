@@ -99,7 +99,7 @@ describe('getAllTeamStats', () => {
 
     const createDummyGame = (
       id: string,
-      gameType?: 'official' | 'practice',
+      gameType?: 'official' | 'practice' | 'junior',
       tournament?: string,
       hits = 1
     ) => ({
@@ -109,7 +109,13 @@ describe('getAllTeamStats', () => {
         currentInning: 1,
         gameType,
         tournament,
-        runEvents: [],
+        runEvents:
+          gameType === 'junior'
+            ? [
+                { id: 'r1', inning: 1, isTop: false, runCount: 3 },
+                { id: 'r2', inning: 1, isTop: true, runCount: 1 },
+              ]
+            : [],
         homeTeam: {
           id: 'team-a',
           name: 'チームA',
@@ -147,6 +153,7 @@ describe('getAllTeamStats', () => {
         createDummyGame('g1', 'official', undefined, 2), // 明示的 公式戦 (2安打)
         createDummyGame('g2', undefined, '市民大会', 3), // レガシー 公式戦 (3安打)
         createDummyGame('g3', 'practice', undefined, 4), // 明示的 練習試合 (4安打)
+        createDummyGame('g5', 'junior', 'ジュニア大会', 6),
         createDummyGame('g4', undefined, '', 5), // レガシー 練習試合 (5安打)
       ],
     });
@@ -154,8 +161,18 @@ describe('getAllTeamStats', () => {
     // 1. 全試合 ('all' または デフォルト)
     const allStats = await getAllTeamStats();
     const teamAAll = allStats.find((t) => t.teamId === 'team-a');
-    expect(teamAAll?.gameCount).toBe(4);
-    expect(teamAAll?.battingStats.hits).toBe(14); // 2 + 3 + 4 + 5
+    expect(teamAAll?.gameCount).toBe(5);
+    expect(teamAAll?.battingStats.hits).toBe(20); // 2 + 3 + 4 + 5 + 6
+
+    const juniorStats = await getAllTeamStats('junior');
+    const junior = juniorStats.find((t) => t.teamId === 'team-a');
+    expect(junior?.gameCount).toBe(1);
+    expect(junior?.wins).toBe(1);
+    expect(junior?.totalRuns).toBe(3);
+    expect(junior?.totalRunsAllowed).toBe(1);
+    expect(junior?.playerStats[0].gameCount).toBe(1);
+    expect(junior?.battingStats.hits).toBe(6);
+    expect(junior?.playerStats[0].hits).toBe(6);
 
     // 2. 公式戦のみ ('official')
     const officialStats = await getAllTeamStats('official');

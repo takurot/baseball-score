@@ -90,7 +90,7 @@ describe('useGameState', () => {
       awayTeam: { id: 'away', name: 'Away Team', players: [], atBats: [] },
       currentInning: 3,
       isTop: false,
-      gameType: 'official',
+      gameType: 'junior',
     };
 
     act(() => {
@@ -100,7 +100,7 @@ describe('useGameState', () => {
     expect(result.current.state.homeTeam.name).toBe('Home Team');
     expect(result.current.state.currentInning).toBe(3);
     expect(result.current.state.isTop).toBe(false);
-    expect(result.current.state.gameType).toBe('official');
+    expect(result.current.state.gameType).toBe('junior');
   });
 
   test('loadGame falls back to official when gameType is undefined but tournament exists', () => {

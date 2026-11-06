@@ -5,7 +5,7 @@ export type GameTypeFilter = 'all' | GameType;
 export const GAME_TYPE_PARAM = 'gameType';
 
 export const parseGameTypeFilter = (value: string | null): GameTypeFilter => {
-  if (value === 'official' || value === 'practice') {
+  if (value === 'official' || value === 'practice' || value === 'junior') {
     return value;
   }
   return 'all';
@@ -39,11 +39,12 @@ export const getEffectiveGameType = (game?: GameTypeSource): GameType => {
  * 試合区分の日本語表示ラベルを取得する。
  */
 export const getGameTypeLabel = (gameType: GameType): string => {
+  if (gameType === 'junior') return 'ジュニア戦';
   return gameType === 'official' ? '公式戦' : '練習試合';
 };
 
 /**
- * 試合が指定のフィルター条件（すべて / 公式戦 / 練習試合）に合致するか判定する。
+ * 試合が指定のフィルター条件（すべて / 公式戦 / 練習試合 / ジュニア戦）に合致するか判定する。
  */
 export const matchesGameTypeFilter = (
   game: GameTypeSource,
