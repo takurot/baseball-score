@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
+import { spawnSync } from 'child_process';
 
 type PackageLock = {
   packages?: Record<string, { version?: string }>;
@@ -71,6 +73,7 @@ describe('dependency overrides policy', () => {
     ['node_modules/postcss-selector-parser', '7.1.6'],
     ['node_modules/qs', '6.16.1'],
     ['node_modules/follow-redirects', '1.16.2'],
+    ['node_modules/sucrase', '3.35.1'],
     ['node_modules/launch-editor', '2.14.2'],
   ])('keeps %s at or above %s', (packagePath, minimumVersion) => {
     const packageLock = readPackageLock();
@@ -78,4 +81,34 @@ describe('dependency overrides policy', () => {
 
     expect(isGte(installedVersion, minimumVersion)).toBe(true);
   });
+});
+
+// Exercise Sucrase's project file discovery after replacing its glob dependency.
+test('sucrase compiles files selected by tsconfig', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sucrase-project-'));
+  try {
+    fs.mkdirSync(path.join(projectDir, 'src'));
+    fs.writeFileSync(
+      path.join(projectDir, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: { outDir: 'out' },
+        include: ['src/**/*.ts'],
+      })
+    );
+    fs.writeFileSync(
+      path.join(projectDir, 'src', 'example.ts'),
+      'export const answer: number = 42;'
+    );
+    const cli = require.resolve('sucrase/bin/sucrase');
+    const result = spawnSync(process.execPath, [cli, '-p', '.'], {
+      cwd: projectDir,
+      encoding: 'utf8',
+    });
+    expect(result.status).toBe(0);
+    expect(
+      fs.readFileSync(path.join(projectDir, 'out', 'src', 'example.js'), 'utf8')
+    ).toContain('answer');
+  } finally {
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
 });

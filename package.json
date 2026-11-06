@@ -98,11 +98,7 @@
     },
     "picomatch": "^4.0.4",
     "serialize-javascript": "^7.0.3",
-    "sucrase": {
-      "glob": {
-        "minimatch": "^9.0.7"
-      }
-    },
+    "sucrase": "^3.35.1",
     "filelist": {
       "minimatch": "^5.1.8"
     },
