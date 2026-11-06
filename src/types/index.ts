@@ -65,8 +65,8 @@ export interface Team {
   atBats: AtBat[];
 }
 
-// 試合区分（公式戦 / 練習試合）
-export type GameType = 'official' | 'practice';
+// 試合区分（公式戦 / 練習試合 / ジュニア戦）
+export type GameType = 'official' | 'practice' | 'junior';
 
 // 試合情報
 export interface Game {
@@ -80,7 +80,7 @@ export interface Game {
   userEmail?: string; // ユーザーのメールアドレス（オプショナル）
   venue?: string; // 球場・場所
   tournament?: string; // 大会名
-  gameType?: GameType; // 試合区分（公式戦 / 練習試合）
+  gameType?: GameType; // 試合区分（公式戦 / 練習試合 / ジュニア戦）
   isPublic?: boolean; // 公開状態
   runEvents?: RunEvent[]; // 打席以外での得点イベント
   outEvents?: OutEvent[]; // 打席以外でのアウトイベント

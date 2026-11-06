@@ -270,6 +270,7 @@ const TeamStatsList: React.FC = () => {
         onChange={handleGameTypeFilterChange}
         aria-label="試合区分フィルター"
         size="small"
+        sx={{ flexWrap: 'wrap', justifyContent: 'center' }}
       >
         <ToggleButton value="all" aria-label="すべて（統合）">
           すべて（統合）
@@ -279,6 +280,9 @@ const TeamStatsList: React.FC = () => {
         </ToggleButton>
         <ToggleButton value="practice" aria-label="練習試合">
           練習試合
+        </ToggleButton>
+        <ToggleButton value="junior" aria-label="ジュニア戦">
+          ジュニア戦
         </ToggleButton>
       </ToggleButtonGroup>
     </Box>

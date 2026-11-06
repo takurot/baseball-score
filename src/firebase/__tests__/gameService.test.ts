@@ -84,13 +84,20 @@ describe('saveGame (update path)', () => {
       data: () => ({ userId: 'user-1' }),
     });
 
-    await saveGame(makeGame());
+    await saveGame(makeGame({ gameType: 'junior' }));
 
     expect(mockedUpdateDoc).toHaveBeenCalledTimes(1);
     const payload = mockedUpdateDoc.mock.calls[0][1];
     expect(payload).not.toHaveProperty('id');
     expect(payload).not.toHaveProperty('createdAt');
     expect(payload.userId).toBe('user-1');
+    expect(payload.gameType).toBe('junior');
+    mockedGetDoc.mockResolvedValue({
+      exists: () => true,
+      id: 'game-1',
+      data: () => payload,
+    });
+    expect((await getGameById('game-1'))?.gameType).toBe('junior');
   });
 });
 
@@ -105,10 +112,11 @@ describe('saveGame (create path)', () => {
   });
 
   it('creates a new document without ownership lookup', async () => {
-    await saveGame(makeGame({ id: '' }));
+    await saveGame(makeGame({ id: '', gameType: 'junior' }));
 
     expect(mockedGetDoc).not.toHaveBeenCalled();
     expect(mockedAddDoc).toHaveBeenCalledTimes(1);
+    expect(mockedAddDoc.mock.calls[0][1].gameType).toBe('junior');
   });
 });
 

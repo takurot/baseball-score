@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import TeamStatsList from '../TeamStatsList';
@@ -144,6 +144,10 @@ describe('TeamStatsList', () => {
     expect(mockedGetAllTeamStats).toHaveBeenCalledWith('practice');
     expect(window.location.search).toContain('gameType=practice');
 
+    await user.click(screen.getByRole('button', { name: 'ジュニア戦' }));
+    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('junior');
+    expect(window.location.search).toContain('gameType=junior');
+
     // 「すべて（統合）」に切り替え
     const allButton = screen.getByRole('button', { name: 'すべて（統合）' });
     await user.click(allButton);
@@ -152,9 +156,9 @@ describe('TeamStatsList', () => {
     expect(window.location.search).not.toContain('gameType=');
   }, 15000);
 
-  test('URLクエリ ?gameType=official で初期表示した場合は公式戦フィルターが適用される', async () => {
+  test('URLクエリ ?gameType=junior で初期表示した場合はジュニア戦フィルターが適用される', async () => {
     mockedGetAllTeamStats.mockResolvedValue([allWins]);
-    window.history.replaceState({}, '', '/?view=teamStats&gameType=official');
+    window.history.replaceState({}, '', '/?view=teamStats&gameType=junior');
 
     render(
       <ThemeProvider theme={createTheme()}>
@@ -163,8 +167,29 @@ describe('TeamStatsList', () => {
     );
 
     await screen.findByText('全勝チーム');
-    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('official');
+    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('junior');
   }, 15000);
+
+  test('履歴移動でジュニア戦に戻り、空状態を表示する', async () => {
+    mockedGetAllTeamStats.mockResolvedValue([]);
+    window.history.replaceState({}, '', '/?view=teamStats');
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <TeamStatsList />
+      </ThemeProvider>
+    );
+    await screen.findByRole('button', { name: 'ジュニア戦' });
+    act(() => {
+      window.history.pushState({}, '', '/?view=teamStats&gameType=junior');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await waitFor(() =>
+      expect(mockedGetAllTeamStats).toHaveBeenCalledWith('junior')
+    );
+    expect(
+      await screen.findByText('ジュニア戦の記録はありません')
+    ).toBeInTheDocument();
+  });
 
   test('該当区分の試合が0件の場合に空状態のメッセージを表示する', async () => {
     mockedGetAllTeamStats.mockResolvedValue([]);
