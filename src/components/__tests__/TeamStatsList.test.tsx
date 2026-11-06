@@ -7,7 +7,6 @@ import { getAllTeamStats, TeamStats } from '../../firebase/statsService';
 
 jest.mock('../../firebase/statsService', () => ({
   getAllTeamStats: jest.fn(),
-  MIN_QUALIFYING_AT_BATS: 10,
 }));
 
 const mockedGetAllTeamStats = getAllTeamStats as jest.MockedFunction<
@@ -75,6 +74,7 @@ describe('TeamStatsList', () => {
       ...allWins,
       playerStats: [
         {
+          plateAppearances: 12,
           playerId: 'p1',
           playerName: '選手1',
           playerNumber: '1',
@@ -115,6 +115,68 @@ describe('TeamStatsList', () => {
       )
     ).toBeInTheDocument();
   }, 15000);
+
+  test('公式戦の規定打席は1で、切り替え後は10に戻る', async () => {
+    mockedGetAllTeamStats.mockResolvedValue([
+      {
+        ...allWins,
+        playerStats: [
+          {
+            ...allWins.battingStats,
+            plateAppearances: 0,
+            playerId: 'zero',
+            playerName: '打数ゼロ',
+            playerNumber: '1',
+            playerPosition: '',
+            gameCount: 1,
+          },
+          {
+            ...allWins.battingStats,
+            atBats: 0,
+            plateAppearances: 1,
+            playerId: 'one',
+            playerName: '打数イチ',
+            playerNumber: '2',
+            playerPosition: '',
+            gameCount: 1,
+          },
+        ],
+      },
+    ]);
+    window.history.replaceState({}, '', '/?view=teamStats&gameType=official');
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <TeamStatsList />
+      </ThemeProvider>
+    );
+    const user = userEvent.setup();
+    await screen.findByText('全勝チーム');
+    await user.click(screen.getByRole('tab', { name: '個人成績' }));
+    expect(
+      await screen.findByLabelText(
+        '規定打席（1打席以上）に到達した選手を上位表示しています。'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: '打席' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('打数イチ').closest('tr')).toHaveTextContent('1');
+    expect(screen.getByText('打数ゼロ').closest('tr')).toHaveStyle(
+      'background-color: inherit'
+    );
+    expect(screen.getByText('打数イチ').closest('tr')).toHaveStyle(
+      'background-color: rgba(232, 244, 253, 0.3)'
+    );
+    await user.click(screen.getByRole('button', { name: '練習試合' }));
+    expect(
+      await screen.findByLabelText(
+        '規定打数（10打数以上）に到達した選手を上位表示しています。'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText('打数ゼロ').closest('tr')).toHaveStyle(
+      'background-color: inherit'
+    );
+  });
 
   test('試合区分の切り替え（すべて・公式戦・練習試合）で再集計され、URLと同期する', async () => {
     mockedGetAllTeamStats.mockResolvedValue([allWins]);
@@ -228,6 +290,7 @@ test.each([false, true])(
         playerStats: [
           {
             ...allWins.battingStats,
+            plateAppearances: 0,
             playerId: 'reserve',
             playerName: '控え選手',
             playerNumber: '12',
@@ -249,6 +312,7 @@ test.each([false, true])(
     if (mobile) {
       await user.click(screen.getByRole('button', { name: /控え選手/ }));
       expect(screen.getByText('登録試合数: 2')).toBeInTheDocument();
+      expect(screen.getByText('打席: 0')).toBeInTheDocument();
     } else {
       expect(
         screen.getByRole('columnheader', { name: '登録試合数' })

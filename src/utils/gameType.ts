@@ -4,6 +4,17 @@ export type GameTypeFilter = 'all' | GameType;
 
 export const GAME_TYPE_PARAM = 'gameType';
 
+export const MIN_QUALIFYING_PLATE_APPEARANCES = 1;
+export const MIN_QUALIFYING_AT_BATS = 10;
+
+export const meetsQualification = (
+  filter: GameTypeFilter,
+  stats: { atBats: number; plateAppearances: number }
+): boolean =>
+  filter === 'official'
+    ? stats.plateAppearances >= MIN_QUALIFYING_PLATE_APPEARANCES
+    : stats.atBats >= MIN_QUALIFYING_AT_BATS;
+
 export const parseGameTypeFilter = (value: string | null): GameTypeFilter => {
   if (value === 'official' || value === 'practice' || value === 'junior') {
     return value;

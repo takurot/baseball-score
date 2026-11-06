@@ -5,7 +5,11 @@ import { getCurrentUser } from './authService';
 import { getUserTeams } from './teamService';
 import { getTeamPlayers } from '../services/TeamRoster';
 import { BattingStats, ScoreCalculator } from '../services/ScoreCalculator';
-import { GameTypeFilter, matchesGameTypeFilter } from '../utils/gameType';
+import {
+  GameTypeFilter,
+  meetsQualification,
+  matchesGameTypeFilter,
+} from '../utils/gameType';
 
 export type { GameTypeFilter };
 
@@ -30,14 +34,11 @@ export interface PlayerBattingStats extends BattingStats {
   playerNumber: string;
   playerPosition: string;
   gameCount: number;
+  plateAppearances: number;
 }
 
 // ゲームコレクションの定数
 const GAMES_COLLECTION = 'games';
-
-// 選手成績を上位表示する際の規定打数（この値未満は下位に回す）
-// TeamStatsList の表示（背景ハイライト・ツールチップ）と共有する
-export const MIN_QUALIFYING_AT_BATS = 10;
 
 // チームごとの通算成績を取得
 export const getAllTeamStats = async (
@@ -79,12 +80,24 @@ export const getAllTeamStats = async (
     for (const game of filteredGames) {
       // ホームチームの処理
       if (registeredTeamIds.has(game.homeTeam.id)) {
-        processTeamStats(teamStatsMap, game.homeTeam, game, false);
+        processTeamStats(
+          teamStatsMap,
+          game.homeTeam,
+          game,
+          false,
+          gameTypeFilter
+        );
       }
 
       // アウェイチームの処理
       if (registeredTeamIds.has(game.awayTeam.id)) {
-        processTeamStats(teamStatsMap, game.awayTeam, game, true);
+        processTeamStats(
+          teamStatsMap,
+          game.awayTeam,
+          game,
+          true,
+          gameTypeFilter
+        );
       }
     }
 
@@ -115,7 +128,8 @@ const processTeamStats = (
   statsMap: Map<string, TeamStats>,
   team: Team,
   game: Game,
-  isAwayTeam: boolean
+  isAwayTeam: boolean,
+  gameTypeFilter: GameTypeFilter
 ) => {
   // チームIDで既存の統計を探すか、新しい統計を作成
   if (!statsMap.has(team.id)) {
@@ -172,7 +186,7 @@ const processTeamStats = (
   aggregateBattingStats(teamStats.battingStats, team.atBats);
 
   // 選手ごとの打撃成績を集計
-  aggregatePlayerBattingStats(teamStats, team);
+  aggregatePlayerBattingStats(teamStats, team, gameTypeFilter);
 };
 
 // 空の通算成績オブジェクトを作成
@@ -229,7 +243,11 @@ const aggregateBattingStats = (stats: BattingStats, atBats: AtBat[]) => {
 };
 
 // 選手ごとの打撃成績を集計
-const aggregatePlayerBattingStats = (teamStats: TeamStats, team: Team) => {
+const aggregatePlayerBattingStats = (
+  teamStats: TeamStats,
+  team: Team,
+  gameTypeFilter: GameTypeFilter
+) => {
   // Count each player ID once per saved roster, including zero-at-bat reserves.
   getTeamPlayers(team).forEach((player) => {
     // 既存の選手の成績を探すか、新しく作成する
@@ -252,16 +270,17 @@ const aggregatePlayerBattingStats = (teamStats: TeamStats, team: Team) => {
     );
 
     aggregateBattingStats(playerStats, playerAtBats);
+    playerStats.plateAppearances += playerAtBats.length;
   });
 
-  // プレイヤー成績を打率の降順でソート
+  // 規定到達の有無と背番号でソート
   teamStats.playerStats.sort((a, b) => {
-    // 打数が規定数以上ある選手を優先
-    const aHasMinAtBats = a.atBats >= MIN_QUALIFYING_AT_BATS;
-    const bHasMinAtBats = b.atBats >= MIN_QUALIFYING_AT_BATS;
+    // 規定に到達した選手を優先
+    const aQualifies = meetsQualification(gameTypeFilter, a);
+    const bQualifies = meetsQualification(gameTypeFilter, b);
 
-    if (aHasMinAtBats && !bHasMinAtBats) return -1;
-    if (!aHasMinAtBats && bHasMinAtBats) return 1;
+    if (aQualifies && !bQualifies) return -1;
+    if (!aQualifies && bQualifies) return 1;
 
     // 背番号でソート（数値変換して比較）
     const aNumber = parseInt(a.playerNumber) || 0;
@@ -278,6 +297,7 @@ const createEmptyPlayerStats = (player: Player): PlayerBattingStats => {
     playerNumber: player.number,
     playerPosition: player.position,
     gameCount: 0,
+    plateAppearances: 0,
     atBats: 0,
     hits: 0,
     singles: 0,

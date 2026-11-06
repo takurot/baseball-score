@@ -1,4 +1,5 @@
 import {
+  meetsQualification,
   getEffectiveGameType,
   getGameTypeLabel,
   matchesGameTypeFilter,
@@ -93,4 +94,21 @@ describe('gameType utils', () => {
       expect(matchesGameTypeFilter(legacyPractice, 'practice')).toBe(true);
     });
   });
+});
+
+test('qualification uses plate appearances for official and at-bats for other filters', () => {
+  expect(
+    meetsQualification('official', { atBats: 0, plateAppearances: 1 })
+  ).toBe(true);
+  expect(
+    meetsQualification('official', { atBats: 0, plateAppearances: 0 })
+  ).toBe(false);
+  for (const filter of ['all', 'practice', 'junior'] as const) {
+    expect(
+      meetsQualification(filter, { atBats: 9, plateAppearances: 10 })
+    ).toBe(false);
+    expect(
+      meetsQualification(filter, { atBats: 10, plateAppearances: 10 })
+    ).toBe(true);
+  }
 });
