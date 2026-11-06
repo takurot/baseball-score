@@ -157,6 +157,10 @@ describe('TeamStatsList', () => {
         '規定打席（1打席以上）に到達した選手を上位表示しています。'
       )
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: '打席' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('打数イチ').closest('tr')).toHaveTextContent('1');
     expect(screen.getByText('打数ゼロ').closest('tr')).toHaveStyle(
       'background-color: inherit'
     );
@@ -308,6 +312,7 @@ test.each([false, true])(
     if (mobile) {
       await user.click(screen.getByRole('button', { name: /控え選手/ }));
       expect(screen.getByText('登録試合数: 2')).toBeInTheDocument();
+      expect(screen.getByText('打席: 0')).toBeInTheDocument();
     } else {
       expect(
         screen.getByRole('columnheader', { name: '登録試合数' })

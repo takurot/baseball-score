@@ -273,14 +273,14 @@ const aggregatePlayerBattingStats = (
     playerStats.plateAppearances += playerAtBats.length;
   });
 
-  // プレイヤー成績を打率の降順でソート
+  // 規定到達の有無と背番号でソート
   teamStats.playerStats.sort((a, b) => {
-    // 打数が規定数以上ある選手を優先
-    const aHasMinAtBats = meetsQualification(gameTypeFilter, a);
-    const bHasMinAtBats = meetsQualification(gameTypeFilter, b);
+    // 規定に到達した選手を優先
+    const aQualifies = meetsQualification(gameTypeFilter, a);
+    const bQualifies = meetsQualification(gameTypeFilter, b);
 
-    if (aHasMinAtBats && !bHasMinAtBats) return -1;
-    if (!aHasMinAtBats && bHasMinAtBats) return 1;
+    if (aQualifies && !bQualifies) return -1;
+    if (!aQualifies && bQualifies) return 1;
 
     // 背番号でソート（数値変換して比較）
     const aNumber = parseInt(a.playerNumber) || 0;

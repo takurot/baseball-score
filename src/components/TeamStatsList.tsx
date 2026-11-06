@@ -37,6 +37,8 @@ import {
 import {
   getGameTypeLabel,
   meetsQualification,
+  MIN_QUALIFYING_PLATE_APPEARANCES,
+  MIN_QUALIFYING_AT_BATS,
   GAME_TYPE_PARAM,
   parseGameTypeFilter,
 } from '../utils/gameType';
@@ -488,8 +490,8 @@ const TeamStatsList: React.FC = () => {
               <Tooltip
                 title={
                   gameTypeFilter === 'official'
-                    ? '規定打席（1打席以上）に到達した選手を上位表示しています。'
-                    : '規定打数（10打数以上）に到達した選手を上位表示しています。'
+                    ? `規定打席（${MIN_QUALIFYING_PLATE_APPEARANCES}打席以上）に到達した選手を上位表示しています。`
+                    : `規定打数（${MIN_QUALIFYING_AT_BATS}打数以上）に到達した選手を上位表示しています。`
                 }
               >
                 <IconButton size="small" sx={{ ml: 1 }}>
@@ -537,6 +539,9 @@ const TeamStatsList: React.FC = () => {
                             gap: 1,
                           }}
                         >
+                          <Typography variant="body2">
+                            打席: {player.plateAppearances}
+                          </Typography>
                           {PLAYER_MOBILE_ORDER.map((key) => (
                             <Typography variant="body2" key={key}>
                               {key === 'gameCount'
@@ -562,6 +567,7 @@ const TeamStatsList: React.FC = () => {
                         名前
                       </TableCell>
                       <TableCell align="center">登録試合数</TableCell>
+                      <TableCell align="center">打席</TableCell>
                       {DESKTOP_TABLE_ORDER.map((key) => (
                         <TableCell align="center" key={key}>
                           {STAT_FIELDS[key].shortLabel ??
@@ -574,7 +580,7 @@ const TeamStatsList: React.FC = () => {
                     {selectedTeam.playerStats.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={3 + DESKTOP_TABLE_ORDER.length}
+                          colSpan={4 + DESKTOP_TABLE_ORDER.length}
                           align="center"
                         >
                           選手の打撃成績はまだありません
@@ -599,6 +605,9 @@ const TeamStatsList: React.FC = () => {
                           </TableCell>
                           <TableCell align="center">
                             {player.gameCount}
+                          </TableCell>
+                          <TableCell align="center">
+                            {player.plateAppearances}
                           </TableCell>
                           {DESKTOP_TABLE_ORDER.map((key) => (
                             <TableCell
