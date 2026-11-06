@@ -33,10 +33,10 @@ import {
   getAllTeamStats,
   TeamStats,
   GameTypeFilter,
-  MIN_QUALIFYING_AT_BATS,
 } from '../firebase/statsService';
 import {
   getGameTypeLabel,
+  meetsQualification,
   GAME_TYPE_PARAM,
   parseGameTypeFilter,
 } from '../utils/gameType';
@@ -486,7 +486,11 @@ const TeamStatsList: React.FC = () => {
             >
               {selectedTeam.teamName}の選手成績
               <Tooltip
-                title={`規定打数（${MIN_QUALIFYING_AT_BATS}打数以上）に到達した選手を上位表示しています。`}
+                title={
+                  gameTypeFilter === 'official'
+                    ? '規定打席（1打席以上）に到達した選手を上位表示しています。'
+                    : '規定打数（10打数以上）に到達した選手を上位表示しています。'
+                }
               >
                 <IconButton size="small" sx={{ ml: 1 }}>
                   <InfoOutlinedIcon fontSize="small" />
@@ -581,10 +585,12 @@ const TeamStatsList: React.FC = () => {
                         <TableRow
                           key={player.playerId}
                           sx={{
-                            backgroundColor:
-                              player.atBats >= MIN_QUALIFYING_AT_BATS
-                                ? 'rgba(232, 244, 253, 0.3)'
-                                : 'inherit',
+                            backgroundColor: meetsQualification(
+                              gameTypeFilter,
+                              player
+                            )
+                              ? 'rgba(232, 244, 253, 0.3)'
+                              : 'inherit',
                           }}
                         >
                           <TableCell>{player.playerNumber}</TableCell>

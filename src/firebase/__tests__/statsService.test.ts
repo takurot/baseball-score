@@ -32,6 +32,59 @@ describe('getAllTeamStats', () => {
       ['home', 'away', 'team-a', 'team-b'].map((id) => ({ id }))
     );
   });
+  test('公式戦は四球を含む1打席以上を優先、他区分は10打数以上を優先する', async () => {
+    mockedGetCurrentUser.mockReturnValue({ uid: 'user-1' });
+    const players = [
+      { id: 'zero', name: 'ゼロ', number: '0', position: '', isActive: true },
+      { id: 'low', name: '少ない', number: '1', position: '', isActive: true },
+      { id: 'high', name: '多い', number: '2', position: '', isActive: true },
+    ];
+    mockedGetDocs.mockResolvedValue({
+      docs: ['official', 'practice', 'junior'].map((gameType) => ({
+        id: gameType,
+        data: () => ({
+          gameType,
+          homeTeam: {
+            id: 'home',
+            name: 'ホーム',
+            players,
+            atBats: [
+              {
+                id: `${gameType}-low`,
+                playerId: 'low',
+                result: 'BB',
+                inning: 1,
+                rbi: 0,
+                isOut: false,
+                isTop: false,
+              },
+              ...Array.from({ length: 10 }, (_, i) => ({
+                id: `${gameType}-${i}`,
+                playerId: 'high',
+                result: 'IH',
+                inning: 1,
+                rbi: 0,
+                isOut: false,
+                isTop: false,
+              })),
+            ],
+          },
+          awayTeam: { id: '', name: '相手', players: [], atBats: [] },
+          runEvents: [],
+        }),
+      })),
+    });
+    for (const filter of ['official', 'practice', 'junior', 'all'] as const) {
+      const stats = await getAllTeamStats(filter);
+      const ids = stats[0].playerStats.map((p) => p.playerId);
+      expect(ids).toEqual(
+        filter === 'official'
+          ? ['low', 'high', 'zero']
+          : ['high', 'zero', 'low']
+      );
+    }
+  });
+
   test('正式な式でチームと選手の出塁率を集計する', async () => {
     mockedGetCurrentUser.mockReturnValue({ uid: 'user-1' });
     mockedGetDocs.mockResolvedValue({

@@ -4,6 +4,12 @@ export type GameTypeFilter = 'all' | GameType;
 
 export const GAME_TYPE_PARAM = 'gameType';
 
+export const meetsQualification = (
+  filter: GameTypeFilter,
+  stats: { atBats: number; plateAppearances: number }
+): boolean =>
+  filter === 'official' ? stats.plateAppearances >= 1 : stats.atBats >= 10;
+
 export const parseGameTypeFilter = (value: string | null): GameTypeFilter => {
   if (value === 'official' || value === 'practice' || value === 'junior') {
     return value;
