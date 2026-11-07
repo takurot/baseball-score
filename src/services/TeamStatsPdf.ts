@@ -46,7 +46,9 @@ export async function createTeamStatsPdf(
   if (sections.length !== 3) throw new Error('3区分の成績が必要です');
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
-  const font = await pdf.embedFont(new Uint8Array(fontBytes), { subset: true });
+  const font = await pdf.embedFont(new Uint8Array(fontBytes), {
+    subset: false,
+  });
   const supported = new Set(font.getCharacterSet());
   const wrap = (text: string, width: number, size = 8): string[] => {
     const lines: string[] = [];

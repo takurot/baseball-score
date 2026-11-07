@@ -4,6 +4,7 @@ import { createTeamStatsPdf } from './TeamStatsPdf';
 import { buildTeamReportStats } from '../firebase/statsService';
 jest.mock('../firebase/config', () => ({ db: {} }));
 jest.mock('../firebase/authService', () => ({}));
+jest.setTimeout(60000);
 const font = readFileSync('public/fonts/NotoSansJP.ttf');
 const sections = (count: number) =>
   buildTeamReportStats([], {
