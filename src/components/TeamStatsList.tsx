@@ -1,3 +1,4 @@
+import TeamStatsPdfExport from './TeamStatsPdfExport';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
@@ -316,6 +317,7 @@ const TeamStatsList: React.FC = () => {
           チーム通算成績
         </Typography>
         {renderFilterControls()}
+        <TeamStatsPdfExport />
         <Paper sx={{ p: 3, textAlign: 'center' }}>
           <Typography variant="h6" component="h2">
             {gameTypeFilter === 'all'
@@ -341,6 +343,7 @@ const TeamStatsList: React.FC = () => {
         チーム通算成績
       </Typography>
       {renderFilterControls()}
+      <TeamStatsPdfExport />
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
         <Tabs

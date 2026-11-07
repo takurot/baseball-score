@@ -1,6 +1,6 @@
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from './config';
-import { Game, Team, AtBat, Player } from '../types';
+import { Game, Team, AtBat, Player, TeamSetting } from '../types';
 import { getCurrentUser } from './authService';
 import { getUserTeams } from './teamService';
 import { getTeamPlayers } from '../services/TeamRoster';
@@ -40,6 +40,35 @@ export interface PlayerBattingStats extends BattingStats {
 // ゲームコレクションの定数
 const GAMES_COLLECTION = 'games';
 
+export const getTeamReportInput = async (
+  userId: string,
+  teamId: string
+): Promise<{ games: Game[]; team: TeamSetting }> => {
+  if (getCurrentUser()?.uid !== userId) {
+    throw new Error('ログイン状態が変更されました');
+  }
+  const q = query(
+    collection(db, GAMES_COLLECTION),
+    where('userId', '==', userId),
+    orderBy('date', 'desc')
+  );
+  const [teams, snapshot] = await Promise.all([getUserTeams(), getDocs(q)]);
+  if (getCurrentUser()?.uid !== userId) {
+    throw new Error('ログイン状態が変更されました');
+  }
+  const team = teams.find(
+    (item) => item.id === teamId && item.userId === userId
+  );
+  if (!team) throw new Error('対象の登録チームが見つかりません');
+  return {
+    team,
+    games: snapshot.docs.map((doc) => ({
+      ...(doc.data() as Game),
+      id: doc.id,
+    })),
+  };
+};
+
 // チームごとの通算成績を取得
 export const getAllTeamStats = async (
   gameTypeFilter: GameTypeFilter = 'all'
@@ -61,52 +90,82 @@ export const getAllTeamStats = async (
       getUserTeams(),
       getDocs(q),
     ]);
-    const registeredTeamIds = new Set(
-      registeredTeams.map((team) => team.id).filter(Boolean)
-    );
     const games = querySnapshot.docs.map((doc) => {
       const data = doc.data() as Game;
       return { ...data, id: doc.id };
     });
-
-    const filteredGames = games.filter((game) =>
-      matchesGameTypeFilter(game, gameTypeFilter)
+    return aggregateTeamStats(
+      games,
+      registeredTeams.map((team) => team.id),
+      gameTypeFilter
     );
-
-    // チームIDをキーとした成績集計マップ
-    const teamStatsMap: Map<string, TeamStats> = new Map();
-
-    // 対象ゲームをループして各チームの成績を集計
-    for (const game of filteredGames) {
-      // ホームチームの処理
-      if (registeredTeamIds.has(game.homeTeam.id)) {
-        processTeamStats(
-          teamStatsMap,
-          game.homeTeam,
-          game,
-          false,
-          gameTypeFilter
-        );
-      }
-
-      // アウェイチームの処理
-      if (registeredTeamIds.has(game.awayTeam.id)) {
-        processTeamStats(
-          teamStatsMap,
-          game.awayTeam,
-          game,
-          true,
-          gameTypeFilter
-        );
-      }
-    }
-
-    // マップから配列に変換して返却
-    return Array.from(teamStatsMap.values()).sort((a, b) => b.wins - a.wins);
   } catch (error) {
     console.error('Error getting team stats:', error);
     throw error;
   }
+};
+
+// Aggregate from the same fetched data for the screen and reports.
+export const aggregateTeamStats = (
+  games: Game[],
+  registeredTeamIds: string[],
+  gameTypeFilter: GameTypeFilter = 'all'
+): TeamStats[] => {
+  const ids = new Set(registeredTeamIds.filter(Boolean));
+  const teamStatsMap: Map<string, TeamStats> = new Map();
+
+  for (const game of games.filter((item) =>
+    matchesGameTypeFilter(item, gameTypeFilter)
+  )) {
+    if (ids.has(game.homeTeam.id)) {
+      processTeamStats(
+        teamStatsMap,
+        game.homeTeam,
+        game,
+        false,
+        gameTypeFilter
+      );
+    }
+    if (ids.has(game.awayTeam.id)) {
+      processTeamStats(teamStatsMap, game.awayTeam, game, true, gameTypeFilter);
+    }
+  }
+
+  return Array.from(teamStatsMap.values()).sort((a, b) => b.wins - a.wins);
+};
+
+export const buildTeamReportStats = (
+  games: Game[],
+  team: TeamSetting
+): TeamStats[] => {
+  const ids = new Set<string>();
+  for (const player of team.players) {
+    if (!player.id || !player.id.trim() || ids.has(player.id)) {
+      throw new Error('選手IDを一意に扱えません。登録名簿を確認してください');
+    }
+    ids.add(player.id);
+  }
+
+  return (['official', 'practice', 'junior'] as const).map((type) => {
+    const stats =
+      aggregateTeamStats(games, [team.id], type)[0] ||
+      createEmptyTeamStats(team.id, team.name);
+    stats.teamName = team.name;
+    const recordedIds = new Set(
+      stats.playerStats.map((player) => player.playerId)
+    );
+    const missing = team.players
+      .filter((player) => !recordedIds.has(player.id))
+      .map((player) =>
+        createEmptyPlayerStats({ ...player, isActive: false, order: 0 })
+      )
+      .sort(
+        (a, b) =>
+          (parseInt(a.playerNumber) || 0) - (parseInt(b.playerNumber) || 0)
+      );
+    stats.playerStats.push(...missing);
+    return stats;
+  });
 };
 
 // 試合の勝敗を判定

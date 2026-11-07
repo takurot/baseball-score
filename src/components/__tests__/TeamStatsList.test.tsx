@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import TeamStatsList from '../TeamStatsList';
 import { getAllTeamStats, TeamStats } from '../../firebase/statsService';
+jest.mock('../TeamStatsPdfExport', () => () => null);
 
 jest.mock('../../firebase/statsService', () => ({
   getAllTeamStats: jest.fn(),
