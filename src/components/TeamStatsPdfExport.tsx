@@ -117,7 +117,9 @@ export default function TeamStatsPdfExport() {
   };
   return (
     <>
-      <Button onClick={show}>PDF出力</Button>
+      <Button variant="contained" onClick={show}>
+        PDF出力
+      </Button>
       <Dialog
         open={open}
         onClose={() => {
