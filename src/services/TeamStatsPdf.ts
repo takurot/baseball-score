@@ -80,6 +80,10 @@ export async function createTeamStatsPdf(
     const text = (value: string, size = 8) => {
       const lines = wrap(value, 790, size);
       for (const line of lines) {
+        if (y < 35)
+          throw new Error(
+            '見出しがページに収まりません。チーム名の長さを確認してください'
+          );
         page.drawText(line, { x: 24, y, font, size });
         y -= size + 4;
       }
