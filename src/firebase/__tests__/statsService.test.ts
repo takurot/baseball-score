@@ -1,6 +1,11 @@
 import { getDocs, getDoc, updateDoc } from 'firebase/firestore';
 import { getCurrentUser } from '../authService';
-import { getAllTeamStats } from '../statsService';
+import {
+  aggregateTeamStats,
+  buildTeamReportStats,
+  getTeamReportInput,
+  getAllTeamStats,
+} from '../statsService';
 import { getUserTeams } from '../teamService';
 import { Game, Team, TeamSetting } from '../../types';
 import { linkTeamRoster } from '../../services/TeamRoster';
@@ -25,6 +30,112 @@ jest.mock('../authService', () => ({ getCurrentUser: jest.fn() }));
 
 const mockedGetDocs = getDocs as jest.Mock;
 const mockedGetCurrentUser = getCurrentUser as jest.Mock;
+
+test('report fetches the owner-scoped inputs once and rejects account changes', async () => {
+  const user = { uid: 'user-1' };
+  mockedGetCurrentUser.mockReturnValue(user);
+  (getUserTeams as jest.Mock).mockResolvedValue([
+    { id: 'home', name: 'ホーム', userId: user.uid, players: [] },
+  ]);
+  mockedGetDocs.mockResolvedValue({ docs: [] });
+  mockedGetDocs.mockClear();
+  (getUserTeams as jest.Mock).mockClear();
+  expect(await getTeamReportInput(user.uid, 'home')).toMatchObject({
+    team: { id: 'home' },
+    games: [],
+  });
+  expect(getUserTeams).toHaveBeenCalledTimes(1);
+  expect(mockedGetDocs).toHaveBeenCalledTimes(1);
+  mockedGetCurrentUser.mockReturnValueOnce(user).mockReturnValue(null);
+  await expect(getTeamReportInput(user.uid, 'home')).rejects.toThrow();
+  mockedGetCurrentUser.mockReturnValue(user);
+  (getUserTeams as jest.Mock).mockResolvedValue([
+    { id: 'home', name: '他人のチーム', userId: 'other', players: [] },
+  ]);
+  await expect(getTeamReportInput(user.uid, 'home')).rejects.toThrow();
+  mockedGetDocs.mockRejectedValueOnce(new Error('取得失敗'));
+  await expect(getTeamReportInput(user.uid, 'home')).rejects.toThrow(
+    '取得失敗'
+  );
+});
+
+test('aggregates a fixed set of games independently for each game type', () => {
+  const makeGame = (id: string, gameType: Game['gameType']): Game => ({
+    id,
+    date: '2026-01-01',
+    gameType,
+    currentInning: 1,
+    homeTeam: { id: 'home', name: 'ホーム', players: [], atBats: [] },
+    awayTeam: { id: 'unregistered', name: '相手', players: [], atBats: [] },
+  });
+  const games = [makeGame('one', 'official'), makeGame('two', 'junior')];
+  const original = JSON.stringify(games);
+
+  expect(aggregateTeamStats(games, ['home'], 'official')[0].gameCount).toBe(1);
+  expect(aggregateTeamStats(games, ['home'], 'practice')).toEqual([]);
+  expect(aggregateTeamStats(games, ['home'], 'junior')[0].gameCount).toBe(1);
+  expect(aggregateTeamStats(games, [], 'all')).toEqual([]);
+  expect(JSON.stringify(games)).toBe(original);
+});
+
+test('report retains historical identities and appends unrecorded roster players', () => {
+  const roster = {
+    id: 'home',
+    name: '現在のチーム名',
+    userId: 'user-1',
+    players: [
+      { id: 'old', name: '現在の名前', number: '8', position: '' },
+      { id: 'new', name: '未登場', number: '2', position: '' },
+    ],
+  };
+  const game = {
+    id: 'one',
+    date: '2026-01-01',
+    gameType: 'official',
+    currentInning: 1,
+    homeTeam: {
+      id: 'home',
+      name: '過去のチーム名',
+      players: [
+        {
+          id: 'old',
+          name: '過去の名前',
+          number: '9',
+          position: '',
+          isActive: true,
+          order: 1,
+        },
+      ],
+      atBats: [],
+    },
+    awayTeam: { id: 'other', name: '相手', players: [], atBats: [] },
+  } as Game;
+  const report = buildTeamReportStats([game], roster);
+  expect(report.map((section) => section.gameCount)).toEqual([1, 0, 0]);
+  expect(report[0].teamName).toBe('現在のチーム名');
+  expect(
+    report[0].playerStats.map((player) => [player.playerName, player.gameCount])
+  ).toEqual([
+    ['過去の名前', 1],
+    ['未登場', 0],
+  ]);
+  expect(report[1].playerStats.map((player) => player.playerName)).toEqual([
+    '未登場',
+    '現在の名前',
+  ]);
+  expect(() =>
+    buildTeamReportStats([], {
+      ...roster,
+      players: [...roster.players, roster.players[0]],
+    })
+  ).toThrow();
+  expect(() =>
+    buildTeamReportStats([], {
+      ...roster,
+      players: [{ ...roster.players[0], id: ' ' }],
+    })
+  ).toThrow();
+});
 
 describe('getAllTeamStats', () => {
   beforeEach(() => {
