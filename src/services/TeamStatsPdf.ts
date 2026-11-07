@@ -92,6 +92,10 @@ export async function createTeamStatsPdf(
       const lines = cells.map((cell, i) => wrap(cell, widths[i] - 6));
       const height = Math.max(...lines.map((l) => l.length)) * 11 + 8;
       if (draw) {
+        if (y - height < 35)
+          throw new Error(
+            '表がページに収まりません。チーム名や項目の長さを確認してください'
+          );
         let x = 24;
         lines.forEach((cell, i) => {
           page.drawRectangle({

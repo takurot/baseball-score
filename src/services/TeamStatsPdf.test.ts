@@ -55,3 +55,12 @@ test('rejects unsupported glyphs and cancellation instead of returning a partial
     )
   ).rejects.toThrow('中止');
 });
+test('rejects table headers below the printable area for long team names', async () => {
+  const data = sections(0);
+  data.forEach((section) => {
+    section.teamName = 'あ'.repeat(1800);
+  });
+  await expect(
+    createTeamStatsPdf(data, font.buffer as ArrayBuffer, new Date(), () => {})
+  ).rejects.toThrow('ページ');
+});

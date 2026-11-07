@@ -26,6 +26,7 @@ export default function TeamStatsPdfExport() {
   const [selected, setSelected] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [message, setMessage] = useState('');
   const generation = useRef(0);
   const locked = useRef(false);
@@ -40,6 +41,7 @@ export default function TeamStatsPdfExport() {
     const owner = getCurrentUser()?.uid;
     setOpen(true);
     setLoading(true);
+    setLoadFailed(false);
     setMessage('');
     setTeams([]);
     setSelected('');
@@ -48,8 +50,10 @@ export default function TeamStatsPdfExport() {
       if (generation.current !== id || getCurrentUser()?.uid !== owner) return;
       setTeams(list);
     } catch {
-      if (generation.current === id)
+      if (generation.current === id) {
+        setLoadFailed(true);
         setMessage('登録チームを取得できませんでした');
+      }
     } finally {
       if (generation.current === id) setLoading(false);
     }
@@ -136,7 +140,7 @@ export default function TeamStatsPdfExport() {
           )}
           {loading ? (
             <CircularProgress aria-label="登録チームを取得中" />
-          ) : !teams.length ? (
+          ) : loadFailed ? null : !teams.length ? (
             <Alert severity="info">
               登録チームがありません。チーム・選手管理から登録してください。
             </Alert>

@@ -29,3 +29,11 @@ test('distinguishes same-name teams by their IDs', async () => {
   expect(await screen.findByText('同名（ID: first）')).toBeVisible();
   expect(screen.getByText('同名（ID: second）')).toBeVisible();
 });
+test('does not present retrieval failure as an empty registration list', async () => {
+  (getUserTeams as jest.Mock).mockRejectedValue(new Error('network'));
+  render(<TeamStatsPdfExport />);
+  fireEvent.click(screen.getByText('PDF出力'));
+  await screen.findByText('登録チームを取得できませんでした');
+  expect(screen.queryByText(/登録チームがありません/)).not.toBeInTheDocument();
+  expect(screen.getByText('生成してダウンロード')).toBeDisabled();
+});
