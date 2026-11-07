@@ -1,10 +1,10 @@
-jest.mock('../TeamStatsPdfExport', () => () => null);
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { axe } from '../../test/axe';
 import TeamStatsList from '../TeamStatsList';
 import { getAllTeamStats, TeamStats } from '../../firebase/statsService';
+jest.mock('../TeamStatsPdfExport', () => () => null);
 
 jest.mock('../../firebase/statsService', () => ({
   getAllTeamStats: jest.fn(),
