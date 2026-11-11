@@ -4,10 +4,10 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { axe } from '../../test/axe';
 import TeamStatsList from '../TeamStatsList';
 import { getAllTeamStats, TeamStats } from '../../firebase/statsService';
+jest.mock('../TeamStatsPdfExport', () => () => null);
 
 jest.mock('../../firebase/statsService', () => ({
   getAllTeamStats: jest.fn(),
-  MIN_QUALIFYING_AT_BATS: 10,
 }));
 
 const mockedGetAllTeamStats = getAllTeamStats as jest.MockedFunction<
@@ -70,7 +70,7 @@ describe('TeamStatsList accessibility', () => {
       </ThemeProvider>
     );
 
-    await screen.findByText('該当する試合の記録はありません。');
+    await screen.findByText('登録チームに紐付いた該当区分の試合はありません。');
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   }, 15000);

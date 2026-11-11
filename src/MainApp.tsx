@@ -1577,6 +1577,11 @@ const MainApp: React.FC<{
                 control={<Radio />}
                 label="練習試合"
               />
+              <FormControlLabel
+                value="junior"
+                control={<Radio />}
+                label="ジュニア戦"
+              />
             </RadioGroup>
           </FormControl>
           <TextField

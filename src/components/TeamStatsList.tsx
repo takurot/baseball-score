@@ -1,3 +1,4 @@
+import TeamStatsPdfExport from './TeamStatsPdfExport';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
@@ -33,10 +34,12 @@ import {
   getAllTeamStats,
   TeamStats,
   GameTypeFilter,
-  MIN_QUALIFYING_AT_BATS,
 } from '../firebase/statsService';
 import {
   getGameTypeLabel,
+  meetsQualification,
+  MIN_QUALIFYING_PLATE_APPEARANCES,
+  MIN_QUALIFYING_AT_BATS,
   GAME_TYPE_PARAM,
   parseGameTypeFilter,
 } from '../utils/gameType';
@@ -270,6 +273,7 @@ const TeamStatsList: React.FC = () => {
         onChange={handleGameTypeFilterChange}
         aria-label="試合区分フィルター"
         size="small"
+        sx={{ flexWrap: 'wrap', justifyContent: 'center' }}
       >
         <ToggleButton value="all" aria-label="すべて（統合）">
           すべて（統合）
@@ -279,6 +283,9 @@ const TeamStatsList: React.FC = () => {
         </ToggleButton>
         <ToggleButton value="practice" aria-label="練習試合">
           練習試合
+        </ToggleButton>
+        <ToggleButton value="junior" aria-label="ジュニア戦">
+          ジュニア戦
         </ToggleButton>
       </ToggleButtonGroup>
     </Box>
@@ -310,6 +317,7 @@ const TeamStatsList: React.FC = () => {
           チーム通算成績
         </Typography>
         {renderFilterControls()}
+        <TeamStatsPdfExport />
         <Paper sx={{ p: 3, textAlign: 'center' }}>
           <Typography variant="h6" component="h2">
             {gameTypeFilter === 'all'
@@ -317,11 +325,11 @@ const TeamStatsList: React.FC = () => {
               : `${getGameTypeLabel(gameTypeFilter)}の記録はありません`}
           </Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-            該当する試合の記録はありません。
+            登録チームに紐付いた該当区分の試合はありません。
           </Typography>
           {gameTypeFilter === 'all' && (
             <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
-              試合データを登録すると、チームごとの通算成績が表示されます。
+              試合で登録チームを選択して保存すると通算成績に反映されます。未登録の対戦相手は一覧に表示しません。
             </Typography>
           )}
         </Paper>
@@ -335,6 +343,7 @@ const TeamStatsList: React.FC = () => {
         チーム通算成績
       </Typography>
       {renderFilterControls()}
+      <TeamStatsPdfExport />
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
         <Tabs
@@ -482,7 +491,11 @@ const TeamStatsList: React.FC = () => {
             >
               {selectedTeam.teamName}の選手成績
               <Tooltip
-                title={`規定打数（${MIN_QUALIFYING_AT_BATS}打数以上）に到達した選手を上位表示しています。`}
+                title={
+                  gameTypeFilter === 'official'
+                    ? `規定打席（${MIN_QUALIFYING_PLATE_APPEARANCES}打席以上）に到達した選手を上位表示しています。`
+                    : `規定打数（${MIN_QUALIFYING_AT_BATS}打数以上）に到達した選手を上位表示しています。`
+                }
               >
                 <IconButton size="small" sx={{ ml: 1 }}>
                   <InfoOutlinedIcon fontSize="small" />
@@ -490,6 +503,9 @@ const TeamStatsList: React.FC = () => {
               </Tooltip>
             </Typography>
 
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              登録試合数は保存された試合の名簿または打席に含まれる回数です。打席ゼロの控えも表示します。守備・代走を含む実際の出場数は表しません。
+            </Typography>
             {isMobile ? (
               // モバイル向け表示 - アコーディオン形式
               <Box>
@@ -526,10 +542,15 @@ const TeamStatsList: React.FC = () => {
                             gap: 1,
                           }}
                         >
+                          <Typography variant="body2">
+                            打席: {player.plateAppearances}
+                          </Typography>
                           {PLAYER_MOBILE_ORDER.map((key) => (
                             <Typography variant="body2" key={key}>
-                              {STAT_FIELDS[key].label}:{' '}
-                              {formatStatValue(key, player[key])}
+                              {key === 'gameCount'
+                                ? '登録試合数'
+                                : STAT_FIELDS[key].label}
+                              : {formatStatValue(key, player[key])}
                             </Typography>
                           ))}
                         </Box>
@@ -548,7 +569,8 @@ const TeamStatsList: React.FC = () => {
                       <TableCell sx={{ minWidth: '140px', width: '140px' }}>
                         名前
                       </TableCell>
-                      <TableCell align="center">試合</TableCell>
+                      <TableCell align="center">登録試合数</TableCell>
+                      <TableCell align="center">打席</TableCell>
                       {DESKTOP_TABLE_ORDER.map((key) => (
                         <TableCell align="center" key={key}>
                           {STAT_FIELDS[key].shortLabel ??
@@ -561,7 +583,7 @@ const TeamStatsList: React.FC = () => {
                     {selectedTeam.playerStats.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={3 + DESKTOP_TABLE_ORDER.length}
+                          colSpan={4 + DESKTOP_TABLE_ORDER.length}
                           align="center"
                         >
                           選手の打撃成績はまだありません
@@ -572,10 +594,12 @@ const TeamStatsList: React.FC = () => {
                         <TableRow
                           key={player.playerId}
                           sx={{
-                            backgroundColor:
-                              player.atBats >= MIN_QUALIFYING_AT_BATS
-                                ? 'rgba(232, 244, 253, 0.3)'
-                                : 'inherit',
+                            backgroundColor: meetsQualification(
+                              gameTypeFilter,
+                              player
+                            )
+                              ? 'rgba(232, 244, 253, 0.3)'
+                              : 'inherit',
                           }}
                         >
                           <TableCell>{player.playerNumber}</TableCell>
@@ -584,6 +608,9 @@ const TeamStatsList: React.FC = () => {
                           </TableCell>
                           <TableCell align="center">
                             {player.gameCount}
+                          </TableCell>
+                          <TableCell align="center">
+                            {player.plateAppearances}
                           </TableCell>
                           {DESKTOP_TABLE_ORDER.map((key) => (
                             <TableCell

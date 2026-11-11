@@ -527,9 +527,10 @@ describe('MainApp - URL駆動の画面遷移', () => {
     expect(practiceRadio).toBeChecked();
     expect(officialRadio).not.toBeChecked();
 
-    // 公式戦に切り替え
-    await user.click(officialRadio);
-    expect(officialRadio).toBeChecked();
+    // ジュニア戦に切り替え
+    const juniorRadio = screen.getByRole('radio', { name: 'ジュニア戦' });
+    await user.click(juniorRadio);
+    expect(juniorRadio).toBeChecked();
 
     // 大会名を入力
     const tournamentInput = screen.getByLabelText('大会名');
@@ -538,9 +539,9 @@ describe('MainApp - URL駆動の画面遷移', () => {
     // 設定ボタンを押す
     await user.click(screen.getByRole('button', { name: '設定' }));
 
-    // ヘッダーが [公式戦] 都大会 に更新される
+    // ヘッダーが [ジュニア戦] 都大会 に更新される
     expect(
-      await screen.findByRole('button', { name: '[公式戦] 都大会' })
+      await screen.findByRole('button', { name: '[ジュニア戦] 都大会' })
     ).toBeInTheDocument();
 
     // 保存ダイアログを開く
@@ -548,7 +549,7 @@ describe('MainApp - URL駆動の画面遷移', () => {
     expect(
       screen.getByRole('heading', { name: '試合データを保存' })
     ).toBeInTheDocument();
-    expect(screen.getByText('区分: 公式戦')).toBeInTheDocument();
+    expect(screen.getByText('区分: ジュニア戦')).toBeInTheDocument();
   }, 15000);
 });
 
