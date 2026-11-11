@@ -13,6 +13,13 @@ test('the declared Node range respects the Firebase SDK requirement', () => {
   ).toBe(true);
 });
 
+test('nvm selects an exact supported Node version', () => {
+  const manifest = require('../../../package.json');
+  const version = fs.readFileSync(path.join(repoRoot, '.nvmrc'), 'utf8').trim();
+  expect(semver.valid(version)).not.toBeNull();
+  expect(semver.satisfies(version, manifest.engines.node)).toBe(true);
+});
+
 test('all workflow Node selectors support the declared minimum', () => {
   const manifest = require('../../../package.json');
   const supported = manifest.engines?.node;
