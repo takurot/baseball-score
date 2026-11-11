@@ -25,6 +25,9 @@ updates:
           - '@mui/*'
           - '@emotion/*'
     ignore:
+      # CRA's eslint-config-react-app supports ESLint 8; revisit in #309.
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-major']
       # react-scripts は peer として TypeScript ^4 までしか宣言していないため
       # メジャーアップデートは react-scripts 移行後に検討（現行は ^5.9.3 を使用中）
       - dependency-name: 'typescript'
