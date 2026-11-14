@@ -294,6 +294,9 @@ const HelpDialog: React.FC<HelpDialogProps> = ({
           <Typography paragraph>
             登録したチームと選手は、試合データ入力時に選択できるようになります。
           </Typography>
+          <Typography paragraph>
+            試合画面では選手を新規追加できません。試合画面の「チームを選択」ダイアログの「チームを登録」から登録画面へ進み、登録後に「試合画面に戻る」で試合へ戻って、もう一度「チームを選択」から登録したチームを選んでください。
+          </Typography>
         </TabPanel>
 
         <TabPanel value={tabValue} index={isSharedMode ? 3 : 2}>
