@@ -313,7 +313,7 @@ test.each([false, true])(
     await user.click(screen.getByRole('tab', { name: '個人成績' }));
     expect(screen.getByText(/打席ゼロの控えも表示します/)).toBeInTheDocument();
     if (mobile) {
-      await user.click(screen.getByRole('button', { name: /控え選手/ }));
+      await user.click(screen.getByRole('button', { name: /控え選手.*打率/ }));
       expect(screen.getByText('登録試合数: 2')).toBeInTheDocument();
       expect(screen.getByText('打席: 0')).toBeInTheDocument();
     } else {
