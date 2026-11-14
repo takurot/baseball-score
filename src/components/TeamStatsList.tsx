@@ -37,6 +37,7 @@ import {
   GameTypeFilter,
 } from '../firebase/statsService';
 import { Game } from '../types';
+import { formatRate } from '../services/BattingTrendChart';
 import BattingTrendDialog, {
   subjectName,
   TrendSubject,
@@ -161,13 +162,8 @@ const PLAYER_MOBILE_ORDER: StatKey[] = [
   'ops',
 ];
 
-// 打率などをフォーマット
-const formatBattingAvg = (value: number): string => {
-  return value.toFixed(3).replace(/^0+/, '');
-};
-
 const formatStatValue = (key: StatKey, value: number): string =>
-  STAT_FIELDS[key].isRate ? formatBattingAvg(value) : String(value);
+  STAT_FIELDS[key].isRate ? formatRate(value) : String(value);
 
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) return error.message;
@@ -456,9 +452,7 @@ const TeamStatsList: React.FC = () => {
                   <TableCell align="center">{stats.draws}</TableCell>
                   <TableCell align="center">
                     {stats.wins + stats.losses > 0
-                      ? formatBattingAvg(
-                          stats.wins / (stats.wins + stats.losses)
-                        )
+                      ? formatRate(stats.wins / (stats.wins + stats.losses))
                       : '.000'}
                   </TableCell>
                   <TableCell align="center">{stats.totalRuns}</TableCell>
@@ -604,7 +598,7 @@ const TeamStatsList: React.FC = () => {
                               variant="body2"
                               sx={{ ml: 2, fontWeight: 'bold' }}
                             >
-                              打率 {formatBattingAvg(player.battingAvg)}
+                              打率 {formatRate(player.battingAvg)}
                             </Typography>
                           </Box>
                         </AccordionSummary>
