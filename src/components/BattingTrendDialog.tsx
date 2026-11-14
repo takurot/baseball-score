@@ -192,7 +192,7 @@ function TrendChart({ points, selected, onSelect, compact }: TrendChartProps) {
             stroke="#757575"
             strokeDasharray="2 2"
           />
-          {[...TREND_SERIES].reverse().map((series) => {
+          {TREND_SERIES.map((series) => {
             const plotted = projectSeries(
               points,
               series.metric,

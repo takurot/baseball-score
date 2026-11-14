@@ -12,20 +12,21 @@ export interface TrendSeries {
 
 // Colors validated as a set for color-vision deficiency and 3:1 contrast on white;
 // dash and marker shape keep the series apart without relying on color.
+// Renderers draw in this order so a dashed line stays visible over an equal solid one.
 export const TREND_SERIES: readonly TrendSeries[] = [
   {
     metric: 'battingAvg',
     label: '打率',
     color: '#2a78d6',
     dash: [],
-    marker: 'M -4 0 A 4 4 0 1 0 4 0 A 4 4 0 1 0 -4 0 Z',
+    marker: 'M -4.5 0 A 4.5 4.5 0 1 0 4.5 0 A 4.5 4.5 0 1 0 -4.5 0 Z',
   },
   {
     metric: 'obp',
     label: '出塁率',
     color: '#d95926',
-    dash: [6, 3],
-    marker: 'M -3.5 -3.5 L 3.5 -3.5 L 3.5 3.5 L -3.5 3.5 Z',
+    dash: [6, 4],
+    marker: 'M -3.25 -3.25 L 3.25 -3.25 L 3.25 3.25 L -3.25 3.25 Z',
   },
   {
     metric: 'slg',
