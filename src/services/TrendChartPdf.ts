@@ -1,7 +1,7 @@
 import { PDFDocument, PDFFont, PDFPage, rgb } from 'pdf-lib';
 import type { TeamStats } from '../firebase/statsService';
 import { Game, GameType, TrendPoint } from '../types';
-import { buildBattingTrend } from './BattingStatsTrend';
+import { buildBattingTrend, TrendTarget } from './BattingStatsTrend';
 import {
   TREND_SERIES,
   axisLabel,
@@ -201,24 +201,12 @@ export async function drawTrendPages(
   label: string
 ): Promise<void> {
   const { pdf, font, wrap, checkActive } = ctx;
-  const figure = (subject: string, points: TrendPoint[]): Figure => ({
-    caption: `${subject}｜${label}｜対象期間: ${formatTrendPeriod(points)}`,
-    points,
-  });
-  const figures = [
-    figure(
-      `チーム: ${stats.teamName}`,
-      buildBattingTrend(games, gameType, { teamId: stats.teamId })
-    ),
-    ...stats.playerStats.map((player) =>
-      figure(
-        playerCaption(player),
-        buildBattingTrend(games, gameType, {
-          teamId: stats.teamId,
-          playerId: player.playerId,
-        })
-      )
-    ),
+  const subjects: { name: string; target: TrendTarget }[] = [
+    { name: `チーム: ${stats.teamName}`, target: { teamId: stats.teamId } },
+    ...stats.playerStats.map((player) => ({
+      name: playerCaption(player),
+      target: { teamId: stats.teamId, playerId: player.playerId },
+    })),
   ];
 
   const header: [string, number][] = [
@@ -257,8 +245,13 @@ export async function drawTrendPages(
     return page;
   };
 
-  for (const item of figures) {
+  for (const subject of subjects) {
     checkActive();
+    const points = buildBattingTrend(games, gameType, subject.target);
+    const item: Figure = {
+      caption: `${subject.name}｜${label}｜対象期間: ${formatTrendPeriod(points)}`,
+      points,
+    };
     const captionLines = wrap(item.caption, WIDTH - PAD * 2, 10);
     const needed =
       PAD * 2 +
