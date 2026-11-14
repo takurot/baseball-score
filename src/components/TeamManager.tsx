@@ -24,7 +24,6 @@ import EditIcon from '@mui/icons-material/Edit';
 import SportsBaseballIcon from '@mui/icons-material/SportsBaseball';
 import GroupsIcon from '@mui/icons-material/Groups';
 import { Team, Player, TeamSetting } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 import PlayerList from './PlayerList';
 import { getUserTeams, getTeamById } from '../firebase/teamService';
 import { getNextBatterPlayerId } from '../services/BattingOrder';
@@ -41,13 +40,19 @@ interface TeamManagerProps {
   role: TeamRole | 'away' | 'home';
   onTeamUpdate: (updatedTeam: Team) => void;
   onRegisterAtBat?: (player: Player) => void;
+  onRegisterTeam?: () => void;
 }
+
+// TeamList が保存完了前の新規チームに付ける仮IDの接頭辞
+const UNSAVED_TEAM_ID_PREFIX = 'temp-';
+const isUnsavedTeamId = (id: string) => id.startsWith(UNSAVED_TEAM_ID_PREFIX);
 
 const TeamManager: React.FC<TeamManagerProps> = ({
   team,
   role,
   onTeamUpdate,
   onRegisterAtBat,
+  onRegisterTeam,
 }) => {
   const { currentUser } = useAuth();
   const [openPlayerDialog, setOpenPlayerDialog] = useState(false);
@@ -91,16 +96,6 @@ const TeamManager: React.FC<TeamManagerProps> = ({
     setTeamSelectionError(null);
   }, []);
 
-  // 選手追加ダイアログを開く
-  const handleOpenAddPlayerDialog = () => {
-    setEditingPlayer(null);
-    setPlayerName('');
-    setPlayerNumber('');
-    setPlayerPosition('');
-    setPlayerOrder('');
-    setOpenPlayerDialog(true);
-  };
-
   // 選手編集ダイアログを開く
   const handleEditPlayer = (playerId: string) => {
     const player = team.players.find((p) => p.id === playerId);
@@ -138,8 +133,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({
     setEditingPlayer(null);
   };
 
-  // 選手の追加または更新
+  // 既存選手の更新
   const handleSavePlayer = () => {
+    if (!editingPlayer) return;
     if (!playerName || !playerNumber || !playerPosition || !playerOrder) {
       return; // 必須フィールドが入力されていない場合は何もしない
     }
@@ -149,32 +145,18 @@ const TeamManager: React.FC<TeamManagerProps> = ({
       return; // 打順が数値でない場合は何もしない
     }
 
-    if (editingPlayer) {
-      // 既存の選手を更新
-      const updatedPlayers = team.players.map((p) =>
-        p.id === editingPlayer.id
-          ? {
-              ...p,
-              name: playerName,
-              number: playerNumber,
-              position: playerPosition,
-              order,
-            }
-          : p
-      );
-      onTeamUpdate({ ...team, players: updatedPlayers });
-    } else {
-      // 新しい選手を追加
-      const newPlayer: Player = {
-        id: uuidv4(),
-        name: playerName,
-        number: playerNumber,
-        position: playerPosition,
-        isActive: true,
-        order,
-      };
-      onTeamUpdate({ ...team, players: [...team.players, newPlayer] });
-    }
+    const updatedPlayers = team.players.map((p) =>
+      p.id === editingPlayer.id
+        ? {
+            ...p,
+            name: playerName,
+            number: playerNumber,
+            position: playerPosition,
+            order,
+          }
+        : p
+    );
+    onTeamUpdate({ ...team, players: updatedPlayers });
 
     handleCloseDialog();
   };
@@ -226,7 +208,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({
       setLoadingTeams(true);
       setTeamSelectionError(null);
       const teams = await getUserTeams();
-      setAvailableTeams(teams || []);
+      setAvailableTeams(
+        (teams || []).filter((registered) => !isUnsavedTeamId(registered.id))
+      );
       setOpenTeamSelectionDialog(true);
     } catch (error: any) {
       console.error('チームの読み込みに失敗しました:', error);
@@ -253,7 +237,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
 
   // 選択したチームでデータを更新
   const handleSelectTeam = async (teamSettingId: string) => {
-    if (!teamSettingId) return;
+    if (!teamSettingId || isUnsavedTeamId(teamSettingId)) return;
 
     try {
       setLoadingTeams(true);
@@ -317,6 +301,15 @@ const TeamManager: React.FC<TeamManagerProps> = ({
     setOpenTeamSelectionDialog(true);
   };
 
+  // 取得成功時のみ登録へ進める（読み込み中・失敗・未ログインでは出さない）
+  const canRegisterTeam =
+    !!onRegisterTeam && !loadingTeams && !teamSelectionError;
+
+  const handleRegisterTeam = () => {
+    handleCloseTeamSelectionDialog();
+    onRegisterTeam?.();
+  };
+
   return (
     <Box>
       <Paper sx={{ p: 2, mb: 3 }}>
@@ -345,16 +338,12 @@ const TeamManager: React.FC<TeamManagerProps> = ({
               >
                 チームを選択
               </Button>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleOpenAddPlayerDialog}
-              >
-                選手を追加
-              </Button>
             </Box>
           </Grid>
         </Grid>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          選手の新規登録は「チーム・選手管理」から行い、登録後にチームを選び直してください。
+        </Typography>
       </Paper>
 
       <PlayerList
@@ -366,11 +355,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         nextBatterPlayerId={getNextBatterPlayerId(team)}
       />
 
-      {/* 選手追加/編集ダイアログ */}
+      {/* 選手編集ダイアログ */}
       <Dialog open={openPlayerDialog} onClose={handleCloseDialog}>
-        <DialogTitle>
-          {editingPlayer ? '選手情報を編集' : '新しい選手を追加'}
-        </DialogTitle>
+        <DialogTitle>選手情報を編集</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -409,18 +396,16 @@ const TeamManager: React.FC<TeamManagerProps> = ({
           />
         </DialogContent>
         <DialogActions>
-          {editingPlayer && (
-            <Button
-              color="error"
-              sx={{ mr: 'auto' }}
-              onClick={() => {
-                setOpenPlayerDialog(false);
-                setOpenDeletePlayerDialog(true);
-              }}
-            >
-              この試合から削除
-            </Button>
-          )}
+          <Button
+            color="error"
+            sx={{ mr: 'auto' }}
+            onClick={() => {
+              setOpenPlayerDialog(false);
+              setOpenDeletePlayerDialog(true);
+            }}
+          >
+            この試合から削除
+          </Button>
           <Button onClick={handleCloseDialog}>キャンセル</Button>
           <Button onClick={handleSavePlayer} color="primary">
             保存
@@ -518,7 +503,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
             </Box>
           ) : availableTeams.length === 0 ? (
             <Typography sx={{ p: 2 }}>
-              登録済みのチームがありません。メニューの「チーム・選手管理」からチームを登録してください。
+              登録済みのチームがありません。「チームを登録」からチームを登録してください。
             </Typography>
           ) : (
             <List>
@@ -541,6 +526,15 @@ const TeamManager: React.FC<TeamManagerProps> = ({
           )}
         </DialogContent>
         <DialogActions>
+          {canRegisterTeam && (
+            <Button
+              sx={{ mr: 'auto' }}
+              startIcon={<AddIcon />}
+              onClick={handleRegisterTeam}
+            >
+              チームを登録
+            </Button>
+          )}
           <Button onClick={handleCloseTeamSelectionDialog}>キャンセル</Button>
         </DialogActions>
       </Dialog>
