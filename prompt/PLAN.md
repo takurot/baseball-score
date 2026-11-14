@@ -122,7 +122,7 @@ Currently, users must register players one by one when creating a team. Since ba
 
 ### Statistics Dashboard
 
-- **Individual Stats**: Batting average, OPS, OBP displayed with charts (recharts)
+- **Individual Stats**: Cumulative AVG, OBP, SLG, and OPS trend charts per team and player (done in #368 as an SVG modal and PDF pages, without a chart library)
 - **Team Stats**: Win/loss history, scoring trends
 - **Achievement Badges**: Notifications for "First Home Run", "Shutout Win", etc.
 
