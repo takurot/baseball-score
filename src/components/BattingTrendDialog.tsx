@@ -22,6 +22,7 @@ import { GameTypeFilter, getGameTypeLabel } from '../utils/gameType';
 import { buildBattingTrend } from '../services/BattingStatsTrend';
 import {
   TREND_SERIES,
+  TrendSeries,
   axisLabel,
   axisLabelIndices,
   buildTrendScale,
@@ -73,8 +74,7 @@ const describePoint = (point: TrendPoint): string => {
   ).join('、')}`;
 };
 
-function SeriesSwatch({ index }: { index: number }) {
-  const series = TREND_SERIES[index];
+function SeriesSwatch({ series }: { series: TrendSeries }) {
   return (
     <svg width={28} height={12} viewBox="0 0 28 12" aria-hidden="true">
       <line
@@ -320,13 +320,13 @@ function TrendBody({
             mb: 1,
           }}
         >
-          {TREND_SERIES.map((series, index) => (
+          {TREND_SERIES.map((series) => (
             <Box
               component="li"
               key={series.metric}
               sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
             >
-              <SeriesSwatch index={index} />
+              <SeriesSwatch series={series} />
               <Typography variant="body2" component="span">
                 {series.label}
               </Typography>

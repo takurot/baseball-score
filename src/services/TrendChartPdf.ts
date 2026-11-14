@@ -39,6 +39,7 @@ const LEGEND_ROW = 14;
 const TICK_LABEL_WIDTH = 30;
 const X_LABEL_ROW = 16;
 const MIN_PLOT_HEIGHT = 100;
+const MESSAGE_HEIGHT = 40;
 const AXIS_LABEL_SLOT = 48;
 const INK = rgb(0.2, 0.2, 0.2);
 const GRID = rgb(0.85, 0.85, 0.85);
@@ -60,14 +61,13 @@ const playerCaption = (player: TeamStats['playerStats'][number]) =>
     : player.playerName;
 
 function drawFigure(
-  ctx: TrendPdfContext,
+  font: PDFFont,
   page: PDFPage,
   figure: Figure,
   captionLines: string[],
   top: number,
   height: number
 ) {
-  const { font } = ctx;
   const text = (value: string, x: number, y: number, size = 8) =>
     page.drawText(value, { x, y, size, font, color: INK });
 
@@ -265,7 +265,7 @@ export async function drawTrendPages(
       captionLines.length * CAPTION_LINE +
       (item.points.some((point) => point.rates)
         ? LEGEND_ROW + MIN_PLOT_HEIGHT + X_LABEL_ROW
-        : 40);
+        : MESSAGE_HEIGHT);
     if (needed > fullHeight) {
       throw new Error(
         'グラフの見出しがページに収まりません。チーム名・選手名の長さを確認してください'
@@ -273,14 +273,14 @@ export async function drawTrendPages(
     }
     const top = TOP - headerHeight - 4;
     if (needed > halfHeight) {
-      drawFigure(ctx, await startPage(), item, captionLines, top, fullHeight);
+      drawFigure(font, await startPage(), item, captionLines, top, fullHeight);
       freeSlots = 0;
       continue;
     }
     const target: PDFPage = freeSlots ? page! : await startPage();
     const slot = 2 - freeSlots;
     drawFigure(
-      ctx,
+      font,
       target,
       item,
       captionLines,

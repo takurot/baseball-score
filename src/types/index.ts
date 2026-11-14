@@ -127,7 +127,7 @@ export interface OutEvent {
   timestamp: any; // Firestore timestamp
 }
 
-// 打撃成績推移グラフの4指標
+// The four rates plotted on a batting trend chart.
 export type TrendMetric = 'battingAvg' | 'obp' | 'slg' | 'ops';
 
 export type TrendRates = Record<TrendMetric, number>;
