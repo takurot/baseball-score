@@ -10,11 +10,13 @@ import { getUserTeams } from './firebase/teamService';
 let mockUuidCounter = 0;
 jest.mock('uuid', () => ({ v4: () => `test-uuid-${mockUuidCounter++}` }));
 
+// 安定した参照を返す（毎回新しい currentUser だと TeamList の再読み込みが繰り返される）
+const mockAuth = {
+  currentUser: { uid: 'test-user', email: 'test@example.com' },
+  isLoading: false,
+};
 jest.mock('./contexts/AuthContext', () => ({
-  useAuth: () => ({
-    currentUser: { uid: 'test-user', email: 'test@example.com' },
-    isLoading: false,
-  }),
+  useAuth: () => mockAuth,
 }));
 
 jest.mock('./firebase/gameService', () => ({
@@ -658,6 +660,7 @@ describe('MainApp - 試合画面からのチーム登録導線', () => {
   test('導線で一度開いた後に管理画面を開き直しても作成フォームは再表示されない', async () => {
     const user = userEvent.setup();
     renderMainApp();
+    await findPlayerRow('選手1');
     await user.click(screen.getByRole('button', { name: 'チームを選択' }));
     await user.click(
       await screen.findByRole('button', { name: 'チームを登録' })
@@ -667,6 +670,9 @@ describe('MainApp - 試合画面からのチーム登録導線', () => {
     });
     await user.click(
       within(createDialog).getByRole('button', { name: 'キャンセル' })
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     );
     await user.click(screen.getByRole('button', { name: '試合画面に戻る' }));
     await openMenu(user);
