@@ -5,15 +5,18 @@ import userEvent from '@testing-library/user-event';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import MainApp from './MainApp';
 import { saveGame, saveGameAsNew } from './firebase/gameService';
+import { getUserTeams } from './firebase/teamService';
 
 let mockUuidCounter = 0;
 jest.mock('uuid', () => ({ v4: () => `test-uuid-${mockUuidCounter++}` }));
 
+// 安定した参照を返す（毎回新しい currentUser だと TeamList の再読み込みが繰り返される）
+const mockAuth = {
+  currentUser: { uid: 'test-user', email: 'test@example.com' },
+  isLoading: false,
+};
 jest.mock('./contexts/AuthContext', () => ({
-  useAuth: () => ({
-    currentUser: { uid: 'test-user', email: 'test@example.com' },
-    isLoading: false,
-  }),
+  useAuth: () => mockAuth,
 }));
 
 jest.mock('./firebase/gameService', () => ({
@@ -580,4 +583,106 @@ describe('MainApp - チーム選択タブの表示と先攻・後攻の切り替
     const awayTabAfterReset = screen.getByRole('tab', { name: '先攻' });
     expect(awayTabAfterReset).toHaveAttribute('aria-selected', 'true');
   });
+});
+
+describe('MainApp - 試合画面からのチーム登録導線', () => {
+  beforeEach(() => {
+    (getUserTeams as jest.Mock).mockResolvedValue([]);
+    window.history.replaceState({}, '', '/');
+  });
+
+  test('「選手を追加」は先攻・後攻とも表示されない', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+    await findPlayerRow('選手1');
+    expect(
+      screen.queryByRole('button', { name: '選手を追加' })
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '後攻' }));
+    expect(
+      screen.queryByRole('button', { name: '選手を追加' })
+    ).not.toBeInTheDocument();
+  }, 15000);
+
+  test('チーム選択から登録フォームへ移動し、試合状態を保ったまま戻れる', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+
+    await user.click(screen.getByRole('tab', { name: '後攻' }));
+    await registerAndSubmitAtBat(user, '選手1');
+    await screen.findByRole('button', { name: '編集' });
+
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'チームを登録' })
+    );
+
+    expect(window.location.search).toContain('view=teamManagement');
+    const createDialog = await screen.findByRole('dialog', {
+      name: '新しいチームを作成',
+    });
+    expect(
+      screen.getByText(/「試合画面に戻る」で試合へ戻り/)
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(createDialog).getByRole('button', { name: 'キャンセル' })
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    );
+    await user.click(screen.getByRole('button', { name: '試合画面に戻る' }));
+
+    expect(window.location.search).not.toContain('view=');
+    expect(screen.getByRole('tab', { name: '後攻' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(
+      await screen.findByRole('button', { name: '編集' })
+    ).toBeInTheDocument();
+  }, 30000);
+
+  test('通常のメニューからの管理画面表示では作成フォームを開かず、案内も出さない', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+    await openMenu(user);
+    await user.click(await screen.findByText('チーム・選手管理'));
+    await screen.findByRole(
+      'button',
+      { name: '新しいチームを作成' },
+      { timeout: 5000 }
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText(/「試合画面に戻る」で試合へ戻り/)).toBeNull();
+  }, 15000);
+
+  test('導線で一度開いた後に管理画面を開き直しても作成フォームは再表示されない', async () => {
+    const user = userEvent.setup();
+    renderMainApp();
+    await findPlayerRow('選手1');
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'チームを登録' })
+    );
+    const createDialog = await screen.findByRole('dialog', {
+      name: '新しいチームを作成',
+    });
+    await user.click(
+      within(createDialog).getByRole('button', { name: 'キャンセル' })
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    );
+    await user.click(screen.getByRole('button', { name: '試合画面に戻る' }));
+    await openMenu(user);
+    await user.click(await screen.findByText('チーム・選手管理'));
+    await screen.findByRole(
+      'button',
+      { name: '新しいチームを作成' },
+      { timeout: 5000 }
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText(/「試合画面に戻る」で試合へ戻り/)).toBeNull();
+  }, 15000);
 });

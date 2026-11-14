@@ -201,6 +201,25 @@ const MainApp: React.FC<{
     [currentView]
   );
 
+  // 試合画面の「チームを登録」から管理画面へ入った場合のみ有効にする
+  const [registrationEntry, setRegistrationEntry] = useState<
+    'openForm' | 'guidance' | null
+  >(null);
+
+  useEffect(() => {
+    if (currentView !== 'teamManagement') setRegistrationEntry(null);
+  }, [currentView]);
+
+  const handleRegisterTeamFromGame = useCallback(() => {
+    setRegistrationEntry('openForm');
+    navigateToView('teamManagement');
+  }, [navigateToView]);
+
+  const handleCreateDialogOpened = useCallback(
+    () => setRegistrationEntry('guidance'),
+    []
+  );
+
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       const stateView = (event.state as { view?: AppView } | null)?.view;
@@ -1189,7 +1208,11 @@ const MainApp: React.FC<{
       <Container sx={{ pt: 2 }}>
         {currentView === 'teamManagement' && !isSharedMode ? (
           <Suspense fallback={viewFallback}>
-            <TeamList />
+            <TeamList
+              openCreateOnMount={registrationEntry === 'openForm'}
+              onCreateDialogOpened={handleCreateDialogOpened}
+              showReturnGuidance={registrationEntry !== null}
+            />
           </Suspense>
         ) : currentView === 'teamStats' && !isSharedMode ? (
           <Suspense fallback={viewFallback}>
@@ -1360,6 +1383,7 @@ const MainApp: React.FC<{
                         role={tabIndex === 0 ? 'away' : 'home'}
                         onTeamUpdate={handleTeamUpdate}
                         onRegisterAtBat={handleRegisterAtBat}
+                        onRegisterTeam={handleRegisterTeamFromGame}
                       />
                     </Suspense>
                   </SectionCard>
