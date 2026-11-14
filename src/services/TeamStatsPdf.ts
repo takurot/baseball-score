@@ -1,7 +1,9 @@
 import { PDFDocument, PDFFont, PDFPage, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import type { TeamStats } from '../firebase/statsService';
+import type { Game } from '../types';
 import { meetsQualification } from '../utils/gameType';
+import { drawTrendPages } from './TrendChartPdf';
 
 const labels = ['公式戦', '練習試合', 'ジュニア戦'];
 const types = ['official', 'practice', 'junior'] as const;
@@ -39,6 +41,7 @@ const values = (s: TeamStats['battingStats']) =>
 
 export async function createTeamStatsPdf(
   sections: TeamStats[],
+  games: readonly Game[],
   fontBytes: ArrayBuffer,
   issuedAt: Date,
   checkActive: () => void
@@ -198,6 +201,13 @@ export async function createTeamStatsPdf(
       table(cells, widths);
     }
     await new Promise((resolve) => setTimeout(resolve, 0));
+    await drawTrendPages(
+      { pdf, font, wrap, checkActive },
+      stats,
+      games,
+      types[index],
+      labels[index]
+    );
   }
   pdf.getPages().forEach((page, i, pages) =>
     page.drawText(`${i + 1} / ${pages.length}`, {
