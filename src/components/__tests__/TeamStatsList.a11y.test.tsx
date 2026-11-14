@@ -3,16 +3,18 @@ import { render, screen } from '@testing-library/react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { axe } from '../../test/axe';
 import TeamStatsList from '../TeamStatsList';
-import { getAllTeamStats, TeamStats } from '../../firebase/statsService';
+import { getTeamStatsSnapshot, TeamStats } from '../../firebase/statsService';
 jest.mock('../TeamStatsPdfExport', () => () => null);
 
 jest.mock('../../firebase/statsService', () => ({
-  getAllTeamStats: jest.fn(),
+  getTeamStatsSnapshot: jest.fn(),
 }));
 
-const mockedGetAllTeamStats = getAllTeamStats as jest.MockedFunction<
-  typeof getAllTeamStats
+const mockedGetTeamStatsSnapshot = getTeamStatsSnapshot as jest.MockedFunction<
+  typeof getTeamStatsSnapshot
 >;
+const resolveStats = (teamStats: TeamStats[]) =>
+  mockedGetTeamStatsSnapshot.mockResolvedValue({ games: [], teamStats });
 
 const mockTeamStats: TeamStats = {
   teamId: 'team-1',
@@ -48,7 +50,7 @@ describe('TeamStatsList accessibility', () => {
   });
 
   test('has no axe violations with populated stats and toggle buttons', async () => {
-    mockedGetAllTeamStats.mockResolvedValue([mockTeamStats]);
+    resolveStats([mockTeamStats]);
 
     const { container } = render(
       <ThemeProvider theme={createTheme()}>
@@ -62,7 +64,7 @@ describe('TeamStatsList accessibility', () => {
   }, 15000);
 
   test('has no axe violations in empty state', async () => {
-    mockedGetAllTeamStats.mockResolvedValue([]);
+    resolveStats([]);
 
     const { container } = render(
       <ThemeProvider theme={createTheme()}>

@@ -127,6 +127,26 @@ export interface OutEvent {
   timestamp: any; // Firestore timestamp
 }
 
+// The four rates plotted on a batting trend chart.
+export type TrendMetric = 'battingAvg' | 'obp' | 'slg' | 'ops';
+
+export type TrendRates = Record<TrendMetric, number>;
+
+// One game on the trend's horizontal axis, in date-then-game-ID order.
+export interface TrendGame {
+  id: string;
+  date: string;
+  // The date, suffixed with " (n)" when several games share that date.
+  label: string;
+  opponentName: string;
+}
+
+// Rates from counts summed through this game; null before the first plate appearance.
+export interface TrendPoint {
+  game: TrendGame;
+  rates: TrendRates | null;
+}
+
 // 保存用の選手情報
 export interface PlayerSetting {
   id: string;

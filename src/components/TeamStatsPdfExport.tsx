@@ -88,6 +88,7 @@ export default function TeamStatsPdfExport() {
       check();
       const bytes = await module.createTeamStatsPdf(
         sections,
+        input.games,
         font,
         new Date(),
         check
@@ -134,6 +135,9 @@ export default function TeamStatsPdfExport() {
         <DialogContent>
           <p>
             公式戦・練習試合・ジュニア戦を順に出力します。選手数や氏名の長さにより続きページを追加します。
+          </p>
+          <p>
+            各区分の成績表の後に、チームと全選手の打撃成績推移グラフ（打率・出塁率・長打率・OPSの累積値）を掲載します。選手数や試合数に応じてページ数と作成時間が増えます。
           </p>
           {message && (
             <Alert severity="info" role="status">

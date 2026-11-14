@@ -3,16 +3,18 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import TeamStatsList from '../TeamStatsList';
-import { getAllTeamStats, TeamStats } from '../../firebase/statsService';
+import { getTeamStatsSnapshot, TeamStats } from '../../firebase/statsService';
 jest.mock('../TeamStatsPdfExport', () => () => null);
 
 jest.mock('../../firebase/statsService', () => ({
-  getAllTeamStats: jest.fn(),
+  getTeamStatsSnapshot: jest.fn(),
 }));
 
-const mockedGetAllTeamStats = getAllTeamStats as jest.MockedFunction<
-  typeof getAllTeamStats
+const mockedGetTeamStatsSnapshot = getTeamStatsSnapshot as jest.MockedFunction<
+  typeof getTeamStatsSnapshot
 >;
+const resolveStats = (teamStats: TeamStats[]) =>
+  mockedGetTeamStatsSnapshot.mockResolvedValue({ games: [], teamStats });
 
 const allWins: TeamStats = {
   teamId: 'team-1',
@@ -44,7 +46,7 @@ const allWins: TeamStats = {
 
 describe('TeamStatsList', () => {
   test('全勝チームの勝率を1.000と表示する', async () => {
-    mockedGetAllTeamStats.mockResolvedValue([allWins]);
+    resolveStats([allWins]);
 
     render(
       <ThemeProvider theme={createTheme()}>
@@ -57,7 +59,7 @@ describe('TeamStatsList', () => {
   });
 
   test('Error インスタンスでない例外でも意味のあるメッセージを表示する', async () => {
-    mockedGetAllTeamStats.mockRejectedValue('network down');
+    mockedGetTeamStatsSnapshot.mockRejectedValue('network down');
 
     render(
       <ThemeProvider theme={createTheme()}>
@@ -98,7 +100,7 @@ describe('TeamStatsList', () => {
         },
       ],
     };
-    mockedGetAllTeamStats.mockResolvedValue([teamWithPlayers]);
+    resolveStats([teamWithPlayers]);
 
     render(
       <ThemeProvider theme={createTheme()}>
@@ -118,7 +120,7 @@ describe('TeamStatsList', () => {
   }, 15000);
 
   test('公式戦の規定打席は1で、切り替え後は10に戻る', async () => {
-    mockedGetAllTeamStats.mockResolvedValue([
+    resolveStats([
       {
         ...allWins,
         playerStats: [
@@ -180,7 +182,7 @@ describe('TeamStatsList', () => {
   });
 
   test('試合区分の切り替え（すべて・公式戦・練習試合）で再集計され、URLと同期する', async () => {
-    mockedGetAllTeamStats.mockResolvedValue([allWins]);
+    resolveStats([allWins]);
     window.history.replaceState({}, '', '/?view=teamStats');
 
     render(
@@ -191,36 +193,36 @@ describe('TeamStatsList', () => {
 
     const user = userEvent.setup();
     await screen.findByText('全勝チーム');
-    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('all');
+    expect(mockedGetTeamStatsSnapshot).toHaveBeenCalledWith('all');
 
     // 「公式戦」に切り替え
     const officialButton = screen.getByRole('button', { name: '公式戦' });
     await user.click(officialButton);
 
-    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('official');
+    expect(mockedGetTeamStatsSnapshot).toHaveBeenCalledWith('official');
     expect(window.location.search).toContain('gameType=official');
 
     // 「練習試合」に切り替え
     const practiceButton = screen.getByRole('button', { name: '練習試合' });
     await user.click(practiceButton);
 
-    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('practice');
+    expect(mockedGetTeamStatsSnapshot).toHaveBeenCalledWith('practice');
     expect(window.location.search).toContain('gameType=practice');
 
     await user.click(screen.getByRole('button', { name: 'ジュニア戦' }));
-    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('junior');
+    expect(mockedGetTeamStatsSnapshot).toHaveBeenCalledWith('junior');
     expect(window.location.search).toContain('gameType=junior');
 
     // 「すべて（統合）」に切り替え
     const allButton = screen.getByRole('button', { name: 'すべて（統合）' });
     await user.click(allButton);
 
-    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('all');
+    expect(mockedGetTeamStatsSnapshot).toHaveBeenCalledWith('all');
     expect(window.location.search).not.toContain('gameType=');
   }, 15000);
 
   test('URLクエリ ?gameType=junior で初期表示した場合はジュニア戦フィルターが適用される', async () => {
-    mockedGetAllTeamStats.mockResolvedValue([allWins]);
+    resolveStats([allWins]);
     window.history.replaceState({}, '', '/?view=teamStats&gameType=junior');
 
     render(
@@ -230,11 +232,11 @@ describe('TeamStatsList', () => {
     );
 
     await screen.findByText('全勝チーム');
-    expect(mockedGetAllTeamStats).toHaveBeenCalledWith('junior');
+    expect(mockedGetTeamStatsSnapshot).toHaveBeenCalledWith('junior');
   }, 15000);
 
   test('履歴移動でジュニア戦に戻り、空状態を表示する', async () => {
-    mockedGetAllTeamStats.mockResolvedValue([]);
+    resolveStats([]);
     window.history.replaceState({}, '', '/?view=teamStats');
     render(
       <ThemeProvider theme={createTheme()}>
@@ -247,7 +249,7 @@ describe('TeamStatsList', () => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
     await waitFor(() =>
-      expect(mockedGetAllTeamStats).toHaveBeenCalledWith('junior')
+      expect(mockedGetTeamStatsSnapshot).toHaveBeenCalledWith('junior')
     );
     expect(
       await screen.findByText('ジュニア戦の記録はありません')
@@ -255,7 +257,7 @@ describe('TeamStatsList', () => {
   });
 
   test('該当区分の試合が0件の場合に空状態のメッセージを表示する', async () => {
-    mockedGetAllTeamStats.mockResolvedValue([]);
+    resolveStats([]);
 
     render(
       <ThemeProvider theme={createTheme()}>
@@ -285,7 +287,7 @@ test.each([false, true])(
       removeEventListener: jest.fn(),
       dispatchEvent: jest.fn(),
     }));
-    mockedGetAllTeamStats.mockResolvedValue([
+    resolveStats([
       {
         ...allWins,
         playerStats: [
@@ -311,7 +313,7 @@ test.each([false, true])(
     await user.click(screen.getByRole('tab', { name: '個人成績' }));
     expect(screen.getByText(/打席ゼロの控えも表示します/)).toBeInTheDocument();
     if (mobile) {
-      await user.click(screen.getByRole('button', { name: /控え選手/ }));
+      await user.click(screen.getByRole('button', { name: /控え選手.*打率/ }));
       expect(screen.getByText('登録試合数: 2')).toBeInTheDocument();
       expect(screen.getByText('打席: 0')).toBeInTheDocument();
     } else {
