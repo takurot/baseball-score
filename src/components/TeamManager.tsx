@@ -28,6 +28,7 @@ import PlayerList from './PlayerList';
 import { getUserTeams, getTeamById } from '../firebase/teamService';
 import { getNextBatterPlayerId } from '../services/BattingOrder';
 import { useAuth } from '../contexts/AuthContext';
+import { isUnsavedTeamId } from '../utils/teamId';
 import { TeamRole, getDisplayTeamName } from '../utils/teamTabUtils';
 import {
   getTeamPlayers,
@@ -42,10 +43,6 @@ interface TeamManagerProps {
   onRegisterAtBat?: (player: Player) => void;
   onRegisterTeam?: () => void;
 }
-
-// TeamList が保存完了前の新規チームに付ける仮IDの接頭辞
-const UNSAVED_TEAM_ID_PREFIX = 'temp-';
-const isUnsavedTeamId = (id: string) => id.startsWith(UNSAVED_TEAM_ID_PREFIX);
 
 const TeamManager: React.FC<TeamManagerProps> = ({
   team,
@@ -71,6 +68,8 @@ const TeamManager: React.FC<TeamManagerProps> = ({
   const [openTeamSelectionDialog, setOpenTeamSelectionDialog] = useState(false);
   const [availableTeams, setAvailableTeams] = useState<TeamSetting[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
+  // 取得が成功した場合のみ true（「再試行」でエラー表示だけ消えた状態と区別する）
+  const [teamsFetched, setTeamsFetched] = useState(false);
   const [teamSelectionError, setTeamSelectionError] = useState<string | null>(
     null
   );
@@ -94,6 +93,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
     setOpenTeamSelectionDialog(false);
     setLoadingTeams(false);
     setTeamSelectionError(null);
+    setTeamsFetched(false);
   }, []);
 
   // 選手編集ダイアログを開く
@@ -207,10 +207,12 @@ const TeamManager: React.FC<TeamManagerProps> = ({
     try {
       setLoadingTeams(true);
       setTeamSelectionError(null);
+      setTeamsFetched(false);
       const teams = await getUserTeams();
       setAvailableTeams(
         (teams || []).filter((registered) => !isUnsavedTeamId(registered.id))
       );
+      setTeamsFetched(true);
       setOpenTeamSelectionDialog(true);
     } catch (error: any) {
       console.error('チームの読み込みに失敗しました:', error);
@@ -303,7 +305,11 @@ const TeamManager: React.FC<TeamManagerProps> = ({
 
   // 取得成功時のみ登録へ進める（読み込み中・失敗・未ログインでは出さない）
   const canRegisterTeam =
-    !!onRegisterTeam && !loadingTeams && !teamSelectionError;
+    !!onRegisterTeam &&
+    !!currentUser &&
+    teamsFetched &&
+    !loadingTeams &&
+    !teamSelectionError;
 
   const handleRegisterTeam = () => {
     handleCloseTeamSelectionDialog();

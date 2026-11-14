@@ -41,6 +41,7 @@ import {
 } from '../firebase/teamService';
 import { useAuth } from '../contexts/AuthContext';
 import { generateDefaultPlayers } from '../utils/defaultPlayers';
+import { UNSAVED_TEAM_ID_PREFIX } from '../utils/teamId';
 
 interface TeamListProps {
   openCreateOnMount?: boolean;
@@ -205,7 +206,7 @@ const TeamList: React.FC<TeamListProps> = ({
       );
     } else {
       // 新規チーム作成（楽観的更新）
-      const tempTeamId = 'temp-' + crypto.randomUUID();
+      const tempTeamId = UNSAVED_TEAM_ID_PREFIX + crypto.randomUUID();
       const defaultPlayers = generateDefaultPlayers().map(
         ({ id, name, number, position }) => ({ id, name, number, position })
       );

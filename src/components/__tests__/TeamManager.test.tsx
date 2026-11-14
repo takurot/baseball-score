@@ -484,6 +484,20 @@ describe('TeamManager - チーム選択からの登録導線', () => {
     ).not.toBeInTheDocument();
   });
 
+  test('取得失敗後に「再試行」でエラー表示を消しても「チームを登録」を出さない', async () => {
+    mockedGetUserTeams.mockRejectedValue(new Error('network'));
+    const user = userEvent.setup();
+    renderTeamManager(makeTeam());
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '登録済みのチームから選択',
+    });
+    await user.click(within(dialog).getByRole('button', { name: '再試行' }));
+    expect(
+      within(dialog).queryByRole('button', { name: 'チームを登録' })
+    ).not.toBeInTheDocument();
+  });
+
   test('未ログインではログイン案内のみで「チームを登録」を出さない', async () => {
     mockCurrentUser = null;
     const user = userEvent.setup();
