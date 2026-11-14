@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Box,
@@ -357,9 +357,9 @@ export default function BattingTrendDialog({
   const theme = useTheme();
   const compact = useMediaQuery(theme.breakpoints.down('sm'));
   // Keep the last subject so the content stays visible while the dialog closes.
-  const shown = useRef(subject);
-  if (subject) shown.current = subject;
-  const current = shown.current;
+  const [shown, setShown] = useState(subject);
+  if (subject && subject !== shown) setShown(subject);
+  const current = subject ?? shown;
 
   const result = useMemo<TrendResult | null>(() => {
     if (!current) return null;
