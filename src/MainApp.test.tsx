@@ -29,7 +29,9 @@ jest.mock('./firebase/teamService', () => ({
 }));
 
 jest.mock('./firebase/statsService', () => ({
-  getAllTeamStats: jest.fn().mockResolvedValue([]),
+  getTeamStatsSnapshot: jest
+    .fn()
+    .mockResolvedValue({ games: [], teamStats: [] }),
   getPlayerStats: jest.fn().mockResolvedValue([]),
 }));
 

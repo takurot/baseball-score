@@ -4,7 +4,7 @@ import {
   aggregateTeamStats,
   buildTeamReportStats,
   getTeamReportInput,
-  getAllTeamStats,
+  getTeamStatsSnapshot,
 } from '../statsService';
 import { getUserTeams } from '../teamService';
 import { Game, Team, TeamSetting } from '../../types';
@@ -30,6 +30,34 @@ jest.mock('../authService', () => ({ getCurrentUser: jest.fn() }));
 
 const mockedGetDocs = getDocs as jest.Mock;
 const mockedGetCurrentUser = getCurrentUser as jest.Mock;
+const fetchTeamStats = async (
+  filter?: Parameters<typeof getTeamStatsSnapshot>[0]
+) => (await getTeamStatsSnapshot(filter)).teamStats;
+
+test('snapshot returns the fetched games with stats aggregated from that same fetch', async () => {
+  mockedGetCurrentUser.mockReturnValue({ uid: 'user-1' });
+  (getUserTeams as jest.Mock).mockResolvedValue([{ id: 'home' }]);
+  const stored = {
+    date: '2026-04-01',
+    gameType: 'official',
+    currentInning: 1,
+    homeTeam: { id: 'home', name: 'ホーム', players: [], atBats: [] },
+    awayTeam: { id: 'away', name: '相手', players: [], atBats: [] },
+  };
+  mockedGetDocs.mockClear();
+  mockedGetDocs.mockResolvedValue({
+    docs: [{ id: 'g1', data: () => stored }],
+  });
+  const snapshot = await getTeamStatsSnapshot('official');
+  expect(snapshot.games).toEqual([{ ...stored, id: 'g1' }]);
+  expect(snapshot.teamStats).toEqual(
+    aggregateTeamStats(snapshot.games, ['home'], 'official')
+  );
+  expect(snapshot.teamStats[0].gameCount).toBe(1);
+  expect(mockedGetDocs).toHaveBeenCalledTimes(1);
+  mockedGetCurrentUser.mockReturnValue(null);
+  await expect(getTeamStatsSnapshot()).rejects.toThrow('ログインが必要です');
+});
 
 test('report fetches the owner-scoped inputs once and rejects account changes', async () => {
   const user = { uid: 'user-1' };
@@ -137,7 +165,7 @@ test('report retains historical identities and appends unrecorded roster players
   ).toThrow();
 });
 
-describe('getAllTeamStats', () => {
+describe('getTeamStatsSnapshot', () => {
   beforeEach(() => {
     (getUserTeams as jest.Mock).mockResolvedValue(
       ['home', 'away', 'team-a', 'team-b'].map((id) => ({ id }))
@@ -186,7 +214,7 @@ describe('getAllTeamStats', () => {
       })),
     });
     for (const filter of ['official', 'practice', 'junior', 'all'] as const) {
-      const stats = await getAllTeamStats(filter);
+      const stats = await fetchTeamStats(filter);
       const ids = stats[0].playerStats.map((p) => p.playerId);
       expect(ids).toEqual(
         filter === 'official'
@@ -251,7 +279,7 @@ describe('getAllTeamStats', () => {
       ],
     });
 
-    const stats = await getAllTeamStats();
+    const stats = await fetchTeamStats();
     const homeStats = stats.find((team) => team.teamId === 'home');
 
     expect(homeStats?.battingStats.obp).toBe(1);
@@ -323,12 +351,12 @@ describe('getAllTeamStats', () => {
     });
 
     // 1. 全試合 ('all' または デフォルト)
-    const allStats = await getAllTeamStats();
+    const allStats = await fetchTeamStats();
     const teamAAll = allStats.find((t) => t.teamId === 'team-a');
     expect(teamAAll?.gameCount).toBe(5);
     expect(teamAAll?.battingStats.hits).toBe(20); // 2 + 3 + 4 + 5 + 6
 
-    const juniorStats = await getAllTeamStats('junior');
+    const juniorStats = await fetchTeamStats('junior');
     const junior = juniorStats.find((t) => t.teamId === 'team-a');
     expect(junior?.gameCount).toBe(1);
     expect(junior?.wins).toBe(1);
@@ -339,13 +367,13 @@ describe('getAllTeamStats', () => {
     expect(junior?.playerStats[0].hits).toBe(6);
 
     // 2. 公式戦のみ ('official')
-    const officialStats = await getAllTeamStats('official');
+    const officialStats = await fetchTeamStats('official');
     const teamAOfficial = officialStats.find((t) => t.teamId === 'team-a');
     expect(teamAOfficial?.gameCount).toBe(2);
     expect(teamAOfficial?.battingStats.hits).toBe(5); // 2 + 3
 
     // 3. 練習試合のみ ('practice')
-    const practiceStats = await getAllTeamStats('practice');
+    const practiceStats = await fetchTeamStats('practice');
     const teamAPractice = practiceStats.find((t) => t.teamId === 'team-a');
     expect(teamAPractice?.gameCount).toBe(2);
     expect(teamAPractice?.battingStats.hits).toBe(9); // 4 + 5
@@ -407,7 +435,7 @@ describe('registered team boundaries', () => {
       mockedGetDocs.mockResolvedValue({
         docs: games.map((game) => ({ id: game.id, data: () => game })),
       });
-      const result = await getAllTeamStats(filter);
+      const result = await fetchTeamStats(filter);
       const multiplier = filter === 'all' ? 2 : 1;
       expect(result.map((s) => s.teamId).sort()).toEqual([
         'other',
@@ -437,7 +465,7 @@ describe('registered team boundaries', () => {
       ],
     });
     (getUserTeams as jest.Mock).mockResolvedValue([]);
-    expect(await getAllTeamStats()).toEqual([]);
+    expect(await fetchTeamStats()).toEqual([]);
   });
 });
 
@@ -529,7 +557,7 @@ describe('player identity and saved-game repair', () => {
           data: () => game,
         })),
       }));
-      const before = (await getAllTeamStats(filter))[0];
+      const before = (await fetchTeamStats(filter))[0];
       const count = filter === 'all' ? 4 : 2;
       expect(
         before.playerStats.find((p) => p.playerId === 'canonical')
@@ -567,7 +595,7 @@ describe('player identity and saved-game repair', () => {
         expect(stored.get(id)?.runEvents).toEqual(game.runEvents);
         expect(stored.get(id)?.outEvents).toEqual(game.outEvents);
       }
-      const after = (await getAllTeamStats(filter))[0];
+      const after = (await fetchTeamStats(filter))[0];
       expect({ ...after, playerStats: [] }).toEqual({
         ...before,
         playerStats: [],
@@ -580,7 +608,7 @@ describe('player identity and saved-game repair', () => {
       expect(
         after.playerStats.find((p) => p.playerId === 'canonical')
       ).toMatchObject({ hits: count, gameCount: count });
-      expect(await getAllTeamStats(filter)).toEqual([after]);
+      expect(await fetchTeamStats(filter)).toEqual([after]);
     }
   );
 });

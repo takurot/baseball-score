@@ -31,7 +31,7 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import {
-  getAllTeamStats,
+  getTeamStatsSnapshot,
   TeamStats,
   GameTypeFilter,
 } from '../firebase/statsService';
@@ -205,7 +205,7 @@ const TeamStatsList: React.FC = () => {
           setLoading(true);
         }
         setError(null);
-        const stats = await getAllTeamStats(gameTypeFilter);
+        const { teamStats: stats } = await getTeamStatsSnapshot(gameTypeFilter);
         if (cancelled) return;
 
         isInitialMountRef.current = false;
