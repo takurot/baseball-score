@@ -259,7 +259,12 @@ function TrendTable({
 }) {
   return (
     <TableContainer sx={{ maxHeight: 320, mt: 2 }}>
-      <Table size="small" stickyHeader aria-label="試合ごとの累積値">
+      <Table
+        size="small"
+        stickyHeader
+        aria-label="試合ごとの累積値"
+        sx={{ '& th, & td': { whiteSpace: 'nowrap' } }}
+      >
         <TableHead>
           <TableRow>
             <TableCell>試合（試合日）</TableCell>
