@@ -773,16 +773,13 @@ const MainApp: React.FC<{
         message = '新しい試合データとして保存しました';
 
         // アナリティクスイベントを送信
-        sendAnalyticsEvent('game_save_new', {
-          gameId,
-        });
+        // 試合IDは共有URLのアクセスキーと同じなので、計測には送らない
+        sendAnalyticsEvent('game_save_new');
       } else {
         // 既存の試合データを更新または新規に保存
         gameId = await saveGame(gameToSave);
         gameActions.setGameId(gameId);
-        sendAnalyticsEvent(id ? 'game_save_update' : 'game_save_new', {
-          gameId,
-        });
+        sendAnalyticsEvent(id ? 'game_save_update' : 'game_save_new');
         message = '試合データを保存しました';
       }
 
@@ -827,9 +824,7 @@ const MainApp: React.FC<{
         navigateToView('game');
 
         // アナリティクスイベント：試合データ読み込み
-        sendAnalyticsEvent('game_load', {
-          gameId,
-        });
+        sendAnalyticsEvent('game_load');
       }
     } catch (error: any) {
       console.error('Error loading game:', error);

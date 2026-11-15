@@ -44,8 +44,9 @@ describe('PrivacyPolicyDialog', () => {
     ).toBeInTheDocument();
     expect(dialog).toHaveTextContent('Google アナリティクス');
     expect(dialog).toHaveTextContent(
-      'チーム名・選手名・試合のタイトル・球場・大会名・メールアドレスは送信しません'
+      'チーム名・選手名・試合のタイトル・球場・大会名・メールアドレス・試合IDは送信しません'
     );
+    expect(dialog).toHaveTextContent('クエリの部分を除いて送信します');
     expect(dialog).toHaveTextContent('Cookie');
     expect(dialog).toHaveTextContent('ブロック');
   });
