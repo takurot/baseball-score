@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import GameList from '../GameList';
@@ -42,6 +42,10 @@ const renderGameList = () =>
       <GameList onSelectGame={jest.fn()} />
     </ThemeProvider>
   );
+
+// 公開スイッチをONにすると、選手の個人情報が公開される旨の確認が表示される
+const confirmPublish = async (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(await screen.findByRole('button', { name: '公開する' }));
 
 describe('GameList', () => {
   beforeEach(() => {
@@ -98,7 +102,9 @@ describe('GameList', () => {
 
     const switches = await screen.findAllByRole('checkbox');
     await user.click(switches[0]);
+    await confirmPublish(user);
     await user.click(switches[1]);
+    await confirmPublish(user);
     resolvers.get('game-2')?.();
     await waitFor(() => expect(switches[1]).toBeChecked());
     resolvers.get('game-1')?.();
@@ -117,6 +123,7 @@ describe('GameList', () => {
     renderGameList();
 
     await user.click(await screen.findByRole('checkbox'));
+    await confirmPublish(user);
 
     expect(
       await screen.findByText('公開設定の更新に失敗しました。')
@@ -160,5 +167,87 @@ describe('GameList', () => {
 
     const practiceChips = await screen.findAllByText('練習試合');
     expect(practiceChips).toHaveLength(2);
+  });
+});
+
+describe('GameList - 公開時の注意喚起', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedUpdateGamePublicStatus.mockResolvedValue(undefined);
+  });
+
+  test('公開ONにすると、選手の個人情報が公開される旨を確認し、同意するまで公開しない', async () => {
+    mockedGetAllGames.mockResolvedValue([makeGame('game-1')]);
+    const user = userEvent.setup();
+    renderGameList();
+
+    await user.click(await screen.findByRole('checkbox'));
+
+    const dialog = await screen.findByRole('dialog', {
+      name: '試合を公開する前の確認',
+    });
+    expect(dialog).toHaveTextContent('選手');
+    expect(dialog).toHaveTextContent('個人情報');
+    expect(dialog).toHaveTextContent('URLを知っている');
+    expect(dialog).toHaveTextContent('いつでも非公開に戻せます');
+    expect(mockedUpdateGamePublicStatus).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: '公開する' }));
+    await waitFor(() =>
+      expect(mockedUpdateGamePublicStatus).toHaveBeenCalledWith('game-1', true)
+    );
+    // 背面は、ダイアログが閉じ終わるまで aria-hidden
+    await waitFor(() => expect(screen.getByRole('checkbox')).toBeChecked());
+  });
+
+  test('キャンセルすると公開せず、スイッチもOFFのまま', async () => {
+    mockedGetAllGames.mockResolvedValue([makeGame('game-1')]);
+    const user = userEvent.setup();
+    renderGameList();
+
+    await user.click(await screen.findByRole('checkbox'));
+    await user.click(await screen.findByRole('button', { name: 'キャンセル' }));
+
+    expect(mockedUpdateGamePublicStatus).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByRole('checkbox')).not.toBeChecked());
+  });
+
+  test('非公開に戻すときは確認なしですぐに反映する', async () => {
+    mockedGetAllGames.mockResolvedValue([
+      makeGame('game-1', { isPublic: true }),
+    ]);
+    const user = userEvent.setup();
+    renderGameList();
+
+    await user.click(await screen.findByRole('checkbox'));
+
+    await waitFor(() =>
+      expect(mockedUpdateGamePublicStatus).toHaveBeenCalledWith('game-1', false)
+    );
+    expect(
+      screen.queryByRole('dialog', { name: '試合を公開する前の確認' })
+    ).not.toBeInTheDocument();
+  });
+
+  test('共有URLダイアログにも、公開範囲の注意文とポリシーへのリンクを表示する', async () => {
+    mockedGetAllGames.mockResolvedValue([
+      makeGame('game-1', { isPublic: true }),
+    ]);
+    const user = userEvent.setup();
+    renderGameList();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'copy share link' })
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: '共有URL' });
+    expect(dialog).toHaveTextContent('選手の氏名・背番号・打席記録');
+    expect(dialog).toHaveTextContent('URLを知っている');
+    await user.click(
+      within(dialog).getByRole('button', { name: 'プライバシーポリシー' })
+    );
+    expect(
+      await screen.findByRole('dialog', { name: 'プライバシーポリシー' })
+    ).toBeInTheDocument();
   });
 });

@@ -17,6 +17,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import PersonIcon from '@mui/icons-material/Person';
 import { useAuth } from '../contexts/AuthContext';
+import PrivacyPolicyDialog from './PrivacyPolicyDialog';
 import { getAuthErrorMessage } from '../utils/authErrorMessage';
 
 // タブパネルのProps
@@ -58,6 +59,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
+  const [policyOpen, setPolicyOpen] = useState(false);
 
   // フォーム入力
   const [email, setEmail] = useState('');
@@ -458,7 +460,20 @@ const Login: React.FC = () => {
           ※ iPhone/Safari 等で Google
           ログイン・登録ができない場合は、メールアドレスでのご利用をおすすめします。
         </Typography>
+        <Box sx={{ textAlign: 'center', mt: 1 }}>
+          <Link
+            component="button"
+            variant="caption"
+            onClick={() => setPolicyOpen(true)}
+          >
+            プライバシーポリシー
+          </Link>
+        </Box>
       </Box>
+      <PrivacyPolicyDialog
+        open={policyOpen}
+        onClose={() => setPolicyOpen(false)}
+      />
     </Paper>
   );
 };
