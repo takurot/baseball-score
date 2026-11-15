@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import {
   Paper,
   Table,
@@ -143,6 +143,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
   isTop,
   outEvents = [],
 }): JSX.Element => {
+  const headingId = useId();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -277,7 +278,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
         sx={{ backgroundColor: 'action.hover' }}
       >
         <TableCell />
-        <TableCell>
+        <TableCell component="th" scope="row">
           <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
             その他のアウト
           </Typography>
@@ -589,8 +590,9 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
   // デスクトップ向けのテーブル表示
   const renderDesktopView = (): React.ReactNode => {
     return (
-      <TableContainer>
-        <Table size="small">
+      // 横にスクロールする領域は、キーボードで到達でき、名前の付いた region として読まれるようにする
+      <TableContainer role="region" aria-labelledby={headingId} tabIndex={0}>
+        <Table size="small" aria-labelledby={headingId}>
           <TableHead>
             <TableRow>
               <TableCell>打順</TableCell>
@@ -617,7 +619,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
                   <TableCell>
                     {player.order === 0 ? '-' : player.order}
                   </TableCell>
-                  <TableCell>
+                  <TableCell component="th" scope="row">
                     <Typography
                       variant="body2"
                       sx={{ fontWeight: player.isActive ? 'bold' : 'normal' }}
@@ -660,7 +662,7 @@ const AtBatSummaryTable: React.FC<AtBatSummaryTableProps> = ({
 
   return (
     <Paper sx={{ p: 2, mb: 3, overflowX: 'auto' }}>
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h6" gutterBottom id={headingId}>
         {team.name}の打席結果一覧
       </Typography>
 
