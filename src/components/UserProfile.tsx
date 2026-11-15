@@ -13,12 +13,14 @@ import {
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import PrivacyPolicyDialog from './PrivacyPolicyDialog';
+import DeleteAccountDialog from './DeleteAccountDialog';
 
 const UserProfile: React.FC = () => {
   const { currentUser, logOut } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [loading, setLoading] = useState(false);
   const [policyOpen, setPolicyOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const open = Boolean(anchorEl);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -118,6 +120,14 @@ const UserProfile: React.FC = () => {
         >
           プライバシーポリシー
         </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            setDeleteOpen(true);
+          }}
+        >
+          アカウントを削除
+        </MenuItem>
         <MenuItem onClick={handleLogout} disabled={loading}>
           {loading ? (
             <>
@@ -132,6 +142,10 @@ const UserProfile: React.FC = () => {
       <PrivacyPolicyDialog
         open={policyOpen}
         onClose={() => setPolicyOpen(false)}
+      />
+      <DeleteAccountDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
       />
     </Box>
   );

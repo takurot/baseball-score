@@ -50,6 +50,17 @@ describe('PrivacyPolicyDialog', () => {
     expect(dialog).toHaveTextContent('ブロック');
   });
 
+  test('自分のデータを削除する方法と、消える範囲を説明する', () => {
+    render(<PrivacyPolicyDialog open onClose={jest.fn()} />);
+    const dialog = screen.getByRole('dialog', { name: 'プライバシーポリシー' });
+    expect(
+      screen.getByRole('heading', { name: '6. データの削除' })
+    ).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('ユーザーメニューの「アカウントを削除」');
+    expect(dialog).toHaveTextContent('取り消せません');
+    expect(dialog).toHaveTextContent('共有リンク');
+  });
+
   test('閉じるボタンで onClose を呼ぶ', async () => {
     const onClose = jest.fn();
     render(<PrivacyPolicyDialog open onClose={onClose} />);
