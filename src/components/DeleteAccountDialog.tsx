@@ -54,7 +54,8 @@ const DeleteAccountDialog: React.FC<DeleteAccountDialogProps> = ({
     onClose();
   };
 
-  if (!currentUser) return null;
+  // 閉じている間は再認証の要否などを計算しない
+  if (!open || !currentUser) return null;
 
   // 直近のログインが古いときだけ再認証を求める
   const reauth = needsReauthentication(currentUser);

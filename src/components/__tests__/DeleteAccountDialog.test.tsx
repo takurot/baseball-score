@@ -108,6 +108,13 @@ describe('DeleteAccountDialog', () => {
     expect(deleteButton()).toBeDisabled();
   });
 
+  it('renders nothing while closed, without inspecting the user', () => {
+    (useAuth as jest.Mock).mockReturnValue({ currentUser: { uid: 'u1' } });
+    render(<DeleteAccountDialog open={false} onClose={jest.fn()} />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(needsReauthentication).not.toHaveBeenCalled();
+  });
+
   it('can be cancelled without deleting anything', async () => {
     const { user, onClose } = setup();
     await user.click(screen.getByRole('button', { name: 'キャンセル' }));

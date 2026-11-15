@@ -38,14 +38,14 @@ export class ReauthRequiredError extends Error {
 }
 
 export const needsReauthentication = (user: User): boolean => {
-  const lastSignIn = Date.parse(user.metadata.lastSignInTime ?? '');
+  const lastSignIn = Date.parse(user.metadata?.lastSignInTime ?? '');
   return (
     Number.isNaN(lastSignIn) || Date.now() - lastSignIn > RECENT_LOGIN_WINDOW_MS
   );
 };
 
 export const getReauthMethod = (user: User): ReauthMethod => {
-  const providers = user.providerData.map((info) => info.providerId);
+  const providers = (user.providerData ?? []).map((info) => info.providerId);
   if (providers.includes('google.com')) return 'google';
   if (providers.includes('password')) return 'password';
   return 'unknown';
