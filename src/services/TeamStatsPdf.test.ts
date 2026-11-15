@@ -174,14 +174,23 @@ test('places team then player charts after each section, in table order, with sh
   ]);
 
   const official = contents.slice(2, 4);
-  const period = '対象期間: 2026-04-01〜2026-04-08（2試合）';
+  const period = (unit: string) =>
+    `対象期間: 2026-04-01〜2026-04-08（${unit}2試合）`;
+  // [plate appearances, at-bats, games with a plate appearance] per player, in table order
+  const volumes = [
+    [2, 2, 2],
+    [1, 1, 1],
+    [0, 0, 0],
+  ];
   const captions = [
-    `チーム: 日本語チーム｜公式戦｜${period}`,
-    ...report[0].playerStats.map((p) =>
-      p.playerNumber
-        ? `背番号${p.playerNumber} ${p.playerName}｜公式戦｜${period}`
-        : `${p.playerName}｜公式戦｜${period}`
-    ),
+    `チーム: 日本語チーム｜公式戦｜${period('')}｜累積3打席/3打数`,
+    ...report[0].playerStats.map((p, i) => {
+      const [pa, atBats, played] = volumes[i];
+      const name = p.playerNumber
+        ? `背番号${p.playerNumber} ${p.playerName}`
+        : p.playerName;
+      return `${name}｜公式戦｜${period('チーム対象')}｜累積${pa}打席/${atBats}打数｜打席あり${played}試合`;
+    }),
   ];
   expect(report[0].playerStats.map((p) => p.playerName)).toEqual([
     '長打者',
@@ -192,9 +201,28 @@ test('places team then player charts after each section, in table order, with sh
     expect(drawn(official[Math.floor(figure / 2)], caption)).toBe(true)
   );
   expect(drawn(official[1], '打席記録なし')).toBe(true);
+  // the legend carries each metric's final cumulative value next to the chart
+  const finalRates = buildBattingTrend(games, 'official', { teamId: 't' })[1]
+    .rates!;
+  const rowY = (text: string) =>
+    Array.from(
+      official[0].matchAll(
+        new RegExp(`1 0 0 1 [\\d.]+ ([\\d.]+) TM\\s*<${encode(text)}> TJ`, 'g')
+      )
+    ).map((m) => m[1]);
   for (const series of TREND_SERIES) {
-    expect(drawn(official[0], series.label)).toBe(true);
+    const labelRows = rowY(series.label);
+    // two figures share the page; the team's legend is drawn first
+    expect(labelRows).toHaveLength(2);
+    // the value sits on the legend row itself, not only on an axis tick
+    expect(rowY(formatRate(finalRates[series.metric]))).toContain(labelRows[0]);
   }
+  expect(
+    drawn(
+      official[0],
+      '凡例の数値は最終試合時点の累積値です。下段の●はその試合で打席が追加された試合、○は打席がなく前の値を維持した試合（初打席前を含む）です。'
+    )
+  ).toBe(true);
   const teamTicks = buildTrendScale(
     buildBattingTrend(games, 'official', { teamId: 't' })
   ).ticks.map(formatRate);
@@ -764,6 +792,52 @@ describe('game ledger and scope note', () => {
   });
 });
 
+// The stream is upper-cased, so a fill colour reads as RG; dots are the 0.6-wide circles.
+const dotsOn = (chart: string) =>
+  Array.from(
+    chart.matchAll(
+      /^(0\.2 0\.2 0\.2|1 1 1) RG\n0\.2 0\.2 0\.2 RG\n0\.6 W\n\[\] 0 D\nQ\n([\d.]+) [\d.]+ M/gm
+    )
+  ).map((m) => ({ filled: m[1] !== '1 1 1', x: Number(m[2]) }));
+
+test('marks each game under the chart as filled when it added plate appearances and hollow when the value is only carried forward', async () => {
+  const team = roster(1);
+  const games = [
+    game('g1', '2026-04-01', 'official', team, [ab('0', 'SO')]),
+    game('g2', '2026-04-08', 'official', team, []),
+    game('g3', '2026-04-15', 'official', team, [ab('0', 'IH')]),
+  ];
+  const contents = await pageContents(
+    await createTeamStatsPdf(
+      buildTeamReportStats(games, team),
+      games,
+      fontBytes(),
+      new Date(),
+      () => {}
+    )
+  );
+  const chart = contents.find((c) => drawn(c, chartHeader('公式戦')))!;
+  const dots = dotsOn(chart);
+  // team figure then the player's figure, each: filled, hollow (no turn in g2), filled
+  expect(dots.map((dot) => dot.filled)).toEqual([
+    true,
+    false,
+    true,
+    true,
+    false,
+    true,
+  ]);
+  // left to right in game order within each figure, at the same x in both figures
+  for (const figure of [dots.slice(0, 3), dots.slice(3)]) {
+    expect(figure[0].x).toBeLessThan(figure[1].x);
+    expect(figure[1].x).toBeLessThan(figure[2].x);
+  }
+  expect(dots.slice(0, 3).map((dot) => dot.x)).toEqual(
+    dots.slice(3).map((dot) => dot.x)
+  );
+  expect(drawn(chart, '打席')).toBe(true);
+});
+
 test('says that a rate with a zero denominator is printed as .000', async () => {
   const contents = await pageContents(
     await createTeamStatsPdf(sections(1), [], fontBytes(), new Date(), () => {})
@@ -772,6 +846,83 @@ test('says that a rate with a zero denominator is printed as .000', async () => 
     drawn(
       contents[0],
       '登録試合数は保存名簿または打席に含まれる試合数です。実際の出場数ではありません。打数0で打席のある選手の打率・長打率は、分母0のため.000と表示します。'
+    )
+  ).toBe(true);
+});
+
+test('marks a late first plate appearance and a one-game figure', async () => {
+  const team = roster(2);
+  const games = [
+    game('g1', '2026-04-01', 'official', team, [ab('0', 'SO')]),
+    game('g2', '2026-04-08', 'official', team, [ab('0', 'SO'), ab('1', 'IH')]),
+  ];
+  const contents = await pageContents(
+    await createTeamStatsPdf(
+      buildTeamReportStats(games, team),
+      games,
+      fontBytes(),
+      new Date(),
+      () => {}
+    )
+  );
+  const charts = contents.filter((c) => drawn(c, chartHeader('公式戦')));
+  const all = charts.flatMap(dotsOn);
+  // team: filled, filled; player 0: filled, filled; player 1 (first turn in g2): hollow, filled
+  expect(all.map((dot) => dot.filled)).toEqual([
+    true,
+    true,
+    true,
+    true,
+    false,
+    true,
+  ]);
+
+  const single = [game('s1', '2026-04-01', 'official', team, [ab('0', 'HR')])];
+  const one = await pageContents(
+    await createTeamStatsPdf(
+      buildTeamReportStats(single, team),
+      single,
+      fontBytes(),
+      new Date(),
+      () => {}
+    )
+  );
+  const chart = one.find((c) => drawn(c, chartHeader('公式戦')))!;
+  expect(dotsOn(chart)).toHaveLength(2);
+  expect(
+    chart.includes(
+      `<${encode('背番号0 選手0｜公式戦｜対象期間: 2026-04-01（チーム対象1試合）｜累積1打席/1打数｜打席あり1試合')}>`
+    )
+  ).toBe(true);
+});
+
+test('leaves out the dots, and says so, when the games would crowd them together', async () => {
+  const team = roster(1);
+  const games = Array.from({ length: 170 }, (_, i) =>
+    game(
+      `g${String(i).padStart(3, '0')}`,
+      `${2024 + Math.floor(i / 56)}-${String(1 + Math.floor((i % 56) / 28)).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
+      'official',
+      team,
+      [ab('0', 'SO')]
+    )
+  );
+  const contents = await pageContents(
+    await createTeamStatsPdf(
+      buildTeamReportStats(games, team),
+      games,
+      fontBytes(),
+      new Date(),
+      () => {}
+    )
+  );
+  const chart = contents.find((c) => drawn(c, chartHeader('公式戦')))!;
+  expect(dotsOn(chart)).toHaveLength(0);
+  expect(drawn(chart, '打席')).toBe(false);
+  expect(
+    drawn(
+      chart,
+      '試合数が多い図では、点が重なるため下段の●/○を省略しています。'
     )
   ).toBe(true);
 });

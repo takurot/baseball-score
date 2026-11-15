@@ -133,10 +133,14 @@ export const axisLabel = (game: TrendGame): string => {
   return `${Number(month)}/${Number(day)}${game.label.slice(game.date.length)}`;
 };
 
-export const formatTrendPeriod = (points: readonly TrendPoint[]): string => {
+// `gamesPrefix` qualifies whose games the count is, e.g. "チーム対象".
+export const formatTrendPeriod = (
+  points: readonly TrendPoint[],
+  gamesPrefix = ''
+): string => {
   if (!points.length) return '試合なし';
   const first = points[0].game.date;
   const last = points[points.length - 1].game.date;
   const range = first === last ? first : `${first}〜${last}`;
-  return `${range}（${points.length}試合）`;
+  return `${range}（${gamesPrefix}${points.length}試合）`;
 };
