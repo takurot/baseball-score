@@ -247,7 +247,7 @@ export async function createTeamStatsPdf(
       if (!continued && options.charts === 'none')
         text('グラフは出力していません（表のみ）。');
       text(
-        '登録試合数は保存名簿または打席に含まれる試合数です。実際の出場数ではありません。'
+        '登録試合数は保存名簿または打席に含まれる試合数です。実際の出場数ではありません。打数0で打席のある選手の打率・長打率は、分母0のため.000と表示します。'
       );
       text(
         index === 0

@@ -389,6 +389,16 @@ describe('playerRowCells', () => {
   });
 });
 
+// y of every run of exactly `text` on a page, highest first
+const rowYs = (content: string, text: string): number[] =>
+  Array.from(
+    content.matchAll(
+      new RegExp(`1 0 0 1 [\\d.]+ ([\\d.]+) TM\\s*<${encode(text)}> TJ`, 'g')
+    )
+  )
+    .map((m) => Number(m[1]))
+    .sort((a, b) => b - a);
+
 describe('table layout', () => {
   const practiceTablePage = async (
     atBatCounts: number[],
@@ -460,8 +470,16 @@ describe('table layout', () => {
 
   test('draws a group divider only where qualified rows give way to unqualified ones', async () => {
     const divider = '0.35 0.35 0.35 RG';
-    expect(await practiceTablePage([1, 10])).toContain(divider);
+    const page = await practiceTablePage([1, 10]);
+    // exactly one divider, on the top edge of the first unqualified row (player 0, below player 1)
+    expect(page.split(divider)).toHaveLength(2);
+    const y = Number(
+      /([\d.]+) ([\d.]+) M/.exec(page.slice(page.indexOf(divider)))![2]
+    );
+    expect(y).toBeCloseTo(rowYs(page, '選手0')[0] + 10);
+    expect(y).toBeLessThan(rowYs(page, '選手1')[0]);
     expect(await practiceTablePage([1, 2])).not.toContain(divider);
+    expect(await practiceTablePage([10, 11])).not.toContain(divider);
   });
 
   test('draws every row of a 15-player roster with long names and two-digit counts', async () => {
@@ -488,10 +506,41 @@ describe('table layout', () => {
     const contents = await pageContents(bytes);
     // createTeamStatsPdf throws if a cell cannot fit, so reaching here means no clipping;
     // also require that every player's row (and its 12 at-bats) really was drawn.
+    // the official section lists the same players with dashes, so look at the practice pages only
+    const practice = contents.filter(
+      (c) =>
+        drawn(c, '日本語チーム｜練習試合') ||
+        drawn(c, '日本語チーム｜練習試合｜続き')
+    );
     for (let i = 0; i < 15; i++) {
-      expect(contents.some((c) => drawn(c, name(i)))).toBe(true);
+      const page = practice.find((c) => drawn(c, name(i)));
+      expect(page).toBeDefined();
+      // the 12 at-bats sit on the player's own row (player 12's number is also "12", so skip it)
+      if (i === 12) continue;
+      expect(rowYs(page!, '12')).toContain(rowYs(page!, name(i))[0]);
     }
-    expect(contents.filter((c) => drawn(c, '12')).length).toBeGreaterThan(0);
+  });
+
+  test('stacks a name that wraps over several lines and moves the next row down by that height', async () => {
+    const wrapped = 'あ'.repeat(15);
+    const team = roster(3, (i) => (i === 1 ? wrapped.repeat(3) : `選手${i}`));
+    const page = (
+      await pageContents(
+        await createTeamStatsPdf(
+          buildTeamReportStats([], team),
+          [],
+          fontBytes(),
+          new Date(),
+          () => {}
+        )
+      )
+    ).find((c) => drawn(c, '日本語チーム｜練習試合'))!;
+    const lines = rowYs(page, wrapped);
+    expect(lines).toHaveLength(3);
+    expect(lines[0] - lines[1]).toBeCloseTo(11);
+    expect(lines[1] - lines[2]).toBeCloseTo(11);
+    // row height = 3 lines x 11 + 8
+    expect(lines[0] - rowYs(page, '選手2')[0]).toBeCloseTo(3 * 11 + 8);
   });
 
   test('repeats the shaded heading row on continuation pages', async () => {
@@ -748,6 +797,14 @@ describe('game ledger and scope note', () => {
   });
 });
 
+// The stream is upper-cased, so a fill colour reads as RG; dots are the 0.6-wide circles.
+const dotsOn = (chart: string) =>
+  Array.from(
+    chart.matchAll(
+      /^(0\.2 0\.2 0\.2|1 1 1) RG\n0\.2 0\.2 0\.2 RG\n0\.6 W\n\[\] 0 D\nQ\n([\d.]+) [\d.]+ M/gm
+    )
+  ).map((m) => ({ filled: m[1] !== '1 1 1', x: Number(m[2]) }));
+
 test('marks each game under the chart as filled when it added plate appearances and hollow when the value is only carried forward', async () => {
   const team = roster(1);
   const games = [
@@ -765,12 +822,7 @@ test('marks each game under the chart as filled when it added plate appearances 
     )
   );
   const chart = contents.find((c) => drawn(c, chartHeader('公式戦')))!;
-  // The stream is upper-cased, so a fill colour reads as RG; dots are the 0.6-wide circles.
-  const dots = Array.from(
-    chart.matchAll(
-      /^(0\.2 0\.2 0\.2|1 1 1) RG\n0\.2 0\.2 0\.2 RG\n0\.6 W\n\[\] 0 D\nQ\n([\d.]+) [\d.]+ M/gm
-    )
-  ).map((m) => ({ filled: m[1] !== '1 1 1', x: Number(m[2]) }));
+  const dots = dotsOn(chart);
   // team figure then the player's figure, each: filled, hollow (no turn in g2), filled
   expect(dots.map((dot) => dot.filled)).toEqual([
     true,
@@ -970,4 +1022,93 @@ describe('output options', () => {
     expect(drawn(page, '規定到達: 10打数以上')).toBe(true);
     expect(drawn(page, '規定未到達')).toBe(true);
   });
+});
+
+test('says that a rate with a zero denominator is printed as .000', async () => {
+  const contents = await pageContents(
+    await createTeamStatsPdf(sections(1), [], fontBytes(), new Date(), () => {})
+  );
+  expect(
+    drawn(
+      contents[0],
+      '登録試合数は保存名簿または打席に含まれる試合数です。実際の出場数ではありません。打数0で打席のある選手の打率・長打率は、分母0のため.000と表示します。'
+    )
+  ).toBe(true);
+});
+
+test('marks a late first plate appearance and a one-game figure', async () => {
+  const team = roster(2);
+  const games = [
+    game('g1', '2026-04-01', 'official', team, [ab('0', 'SO')]),
+    game('g2', '2026-04-08', 'official', team, [ab('0', 'SO'), ab('1', 'IH')]),
+  ];
+  const contents = await pageContents(
+    await createTeamStatsPdf(
+      buildTeamReportStats(games, team),
+      games,
+      fontBytes(),
+      new Date(),
+      () => {}
+    )
+  );
+  const charts = contents.filter((c) => drawn(c, chartHeader('公式戦')));
+  const all = charts.flatMap(dotsOn);
+  // team: filled, filled; player 0: filled, filled; player 1 (first turn in g2): hollow, filled
+  expect(all.map((dot) => dot.filled)).toEqual([
+    true,
+    true,
+    true,
+    true,
+    false,
+    true,
+  ]);
+
+  const single = [game('s1', '2026-04-01', 'official', team, [ab('0', 'HR')])];
+  const one = await pageContents(
+    await createTeamStatsPdf(
+      buildTeamReportStats(single, team),
+      single,
+      fontBytes(),
+      new Date(),
+      () => {}
+    )
+  );
+  const chart = one.find((c) => drawn(c, chartHeader('公式戦')))!;
+  expect(dotsOn(chart)).toHaveLength(2);
+  expect(
+    chart.includes(
+      `<${encode('背番号0 選手0｜公式戦｜対象期間: 2026-04-01（チーム対象1試合）｜累積1打席/1打数｜打席あり1試合')}>`
+    )
+  ).toBe(true);
+});
+
+test('leaves out the dots, and says so, when the games would crowd them together', async () => {
+  const team = roster(1);
+  const games = Array.from({ length: 170 }, (_, i) =>
+    game(
+      `g${String(i).padStart(3, '0')}`,
+      `${2024 + Math.floor(i / 56)}-${String(1 + Math.floor((i % 56) / 28)).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
+      'official',
+      team,
+      [ab('0', 'SO')]
+    )
+  );
+  const contents = await pageContents(
+    await createTeamStatsPdf(
+      buildTeamReportStats(games, team),
+      games,
+      fontBytes(),
+      new Date(),
+      () => {}
+    )
+  );
+  const chart = contents.find((c) => drawn(c, chartHeader('公式戦')))!;
+  expect(dotsOn(chart)).toHaveLength(0);
+  expect(drawn(chart, '打席')).toBe(false);
+  expect(
+    drawn(
+      chart,
+      '試合数が多い図では、点が重なるため下段の●/○を省略しています。'
+    )
+  ).toBe(true);
 });
