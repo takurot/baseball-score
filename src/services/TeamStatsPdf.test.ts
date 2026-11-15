@@ -666,5 +666,51 @@ describe('game ledger and scope note', () => {
       const id = `g${String(i).padStart(2, '0')}`;
       expect(pages.filter((c) => drawn(c, id))).toHaveLength(1);
     }
+    // the first page carries the plain title, every later page is marked as a continuation
+    expect(drawn(pages[0], ledgerHeader('公式戦'))).toBe(true);
+    for (const page of pages.slice(1)) {
+      expect(drawn(page, `${ledgerHeader('公式戦')}｜続き`)).toBe(true);
+    }
+    // rows keep the chart order (date, then id) across the page break
+    const order = pages
+      .flatMap((page) =>
+        Array.from({ length: 60 }, (_, i) => `g${String(i).padStart(2, '0')}`)
+          .filter((id) => drawn(page, id))
+          .map((id) => ({ id, y: yOf(page, id)[0] }))
+          .sort((a, b) => b.y - a.y)
+          .map((row) => row.id)
+      )
+      .map((id) => Number(id.slice(1)));
+    const expected = Array.from({ length: 60 }, (_, i) => i).sort(
+      (a, b) => (a % 28) - (b % 28) || a - b
+    );
+    expect(order).toEqual(expected);
+  });
+
+  test('scores an away game from our side, including run events', async () => {
+    const base = game('away-game', '2026-06-01', 'official', team, [
+      ab('0', 'SO'),
+    ]);
+    const away: Game = {
+      ...base,
+      homeTeam: { ...base.awayTeam, name: '先攻でない相手', atBats: [] },
+      awayTeam: base.homeTeam,
+      runEvents: [
+        ...[5, 1].map((runCount, i) => ({
+          id: `re-${i}`,
+          inning: 1,
+          isTop: i === 0,
+          runType: 'その他' as const,
+          runCount,
+          timestamp: null,
+        })),
+      ],
+    };
+    const contents = await build([away]);
+    const ledger = contents.find((c) => drawn(c, ledgerHeader('公式戦')))!;
+    // our side is the away team: top-inning run event (5) vs bottom (1) -> win 5-1
+    expect(drawn(ledger, '5-1')).toBe(true);
+    expect(drawn(ledger, '勝')).toBe(true);
+    expect(drawn(ledger, '先攻でない相手')).toBe(true);
   });
 });
