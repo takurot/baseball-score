@@ -37,7 +37,7 @@ const headings = [
   'OPS',
 ];
 const HEADER_FILL = rgb(0.88, 0.88, 0.88);
-const STRIPE_FILL = rgb(0.96, 0.96, 0.96);
+const STRIPE_FILL = rgb(0.93, 0.93, 0.93);
 const DIVIDER = rgb(0.35, 0.35, 0.35);
 const RATE_START = 8;
 const values = (s: TeamStats['battingStats']) =>

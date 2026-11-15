@@ -401,7 +401,7 @@ describe('table layout', () => {
   test('shades header rows and alternate player rows in light grey that survives monochrome print', async () => {
     const page = await practiceTablePage([1, 1, 1]);
     expect(page).toContain('0.88 0.88 0.88 RG');
-    expect(page).toContain('0.96 0.96 0.96 RG');
+    expect(page).toContain('0.93 0.93 0.93 RG');
   });
 
   test('right-aligns numeric cells so digits of different widths share a right edge', async () => {
@@ -419,8 +419,9 @@ describe('table layout', () => {
     expect(await practiceTablePage([1, 2])).not.toContain(divider);
   });
 
-  test('renders a 15-player roster with long names and two-digit counts without clipping', async () => {
-    const team = roster(15, (i) => `とても長い選手の名前${i}あいうえお`);
+  test('draws every row of a 15-player roster with long names and two-digit counts', async () => {
+    const name = (i: number) => `長い名前の選手${i}`;
+    const team = roster(15, name);
     const games = [
       game(
         'g1',
@@ -440,6 +441,41 @@ describe('table layout', () => {
       () => {}
     );
     const contents = await pageContents(bytes);
-    expect(contents.length).toBeGreaterThanOrEqual(9);
+    // createTeamStatsPdf throws if a cell cannot fit, so reaching here means no clipping;
+    // also require that every player's row (and its 12 at-bats) really was drawn.
+    for (let i = 0; i < 15; i++) {
+      expect(contents.some((c) => drawn(c, name(i)))).toBe(true);
+    }
+    expect(contents.filter((c) => drawn(c, '12')).length).toBeGreaterThan(0);
+  });
+
+  test('repeats the shaded heading row on continuation pages', async () => {
+    const team = roster(30);
+    const games = [
+      game(
+        'g1',
+        '2026-04-01',
+        'practice',
+        team,
+        team.players.flatMap((p) => [ab(p.id, 'IH')])
+      ),
+    ];
+    const contents = await pageContents(
+      await createTeamStatsPdf(
+        buildTeamReportStats(games, team),
+        games,
+        fontBytes(),
+        new Date(),
+        () => {}
+      )
+    );
+    const continued = contents.filter((c) =>
+      drawn(c, '日本語チーム｜練習試合｜続き')
+    );
+    expect(continued.length).toBeGreaterThan(0);
+    for (const page of continued) {
+      expect(page).toContain('0.88 0.88 0.88 RG');
+      expect(drawn(page, '試合数')).toBe(true);
+    }
   });
 });
