@@ -39,6 +39,28 @@ service cloud.firestore {
         && data.isPublic is bool;
     }
 
+    // 更新で変更・追加できるキー。旧データが持つ現在の型にないフィールドは、触れない限り残せる。
+    // userEmail は削除のためだけに含める（keepsImmutableFields が新しい値の設定を禁止する）。
+    function gameUpdateKeys() {
+      return gameCreateKeys().concat(['userEmail']);
+    }
+
+    // 更新後の主要フィールドの型（存在しない旧データは既定値で通す）
+    function validGameTypes() {
+      let data = request.resource.data;
+      return data.get('date', '') is string
+        && data.get('currentInning', 0) is number
+        && data.get('homeTeam', {}) is map
+        && data.get('awayTeam', {}) is map
+        && data.get('isPublic', false) is bool;
+    }
+
+    function validTeamTypes() {
+      let data = request.resource.data;
+      return data.get('name', '') is string
+        && data.get('players', []) is list;
+    }
+
     function validNewTeam() {
       let data = request.resource.data;
       return data.keys().hasOnly(['name', 'players', 'userId', 'createdAt', 'updatedAt'])
@@ -56,11 +78,13 @@ service cloud.firestore {
       // 自分のデータだけ読み取り・削除できる
       allow read, delete: if isOwner();
 
-      // 更新: 所有者のみ。不変フィールドを固定し、isPublic は真偽値のみ。
-      // 旧データは現在の型に無いフィールドを持ち得るため、キーの制限は新規作成時のみ行う。
+      // 更新: 所有者のみ。不変フィールドを固定し、変更できるキーと主要フィールドの型を
+      // 新規作成時と同じ基準で検証する（作成後の更新で検証を迂回されないため）。
+      // 旧データが持つ現在の型にないフィールドは、触れない限りそのまま残せる。
       allow update: if isOwner()
         && keepsImmutableFields()
-        && request.resource.data.get('isPublic', false) is bool;
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(gameUpdateKeys())
+        && validGameTypes();
 
       // 新規作成時はユーザーIDが自分のものであり、内容が正しい型である必要がある
       allow create: if isSignedIn()
@@ -73,7 +97,11 @@ service cloud.firestore {
       // 自分のデータだけ読み取り・削除できる
       allow read, delete: if isOwner();
 
-      allow update: if isOwner() && keepsImmutableFields();
+      allow update: if isOwner()
+        && keepsImmutableFields()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['name', 'players', 'userId', 'userEmail', 'createdAt', 'updatedAt'])
+        && validTeamTypes();
 
       // 新規作成時はユーザーIDが自分のものであり、内容が正しい型である必要がある
       allow create: if isSignedIn()

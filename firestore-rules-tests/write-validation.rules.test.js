@@ -156,6 +156,65 @@ describe('games: update', () => {
   });
 });
 
+describe('games: update cannot bypass the create checks', () => {
+  const g1 = () => doc(asUser('alice'), 'games/g1');
+
+  test('rejects wrongly typed core fields', async () => {
+    await assertFails(updateDoc(g1(), { homeTeam: 'x' }));
+    await assertFails(updateDoc(g1(), { date: 20260401 }));
+    await assertFails(updateDoc(g1(), { currentInning: 'one' }));
+  });
+
+  test('rejects keys the app never writes', async () => {
+    await assertFails(updateDoc(g1(), { anyKey: 'victim@example.com' }));
+  });
+
+  test('accepts the full payload saveGame sends when updating', async () => {
+    // buildGameToSave without id/createdAt, plus userEmail removal
+    await assertSucceeds(
+      updateDoc(g1(), {
+        date: '2026-04-02',
+        currentInning: 3,
+        homeTeam: team('home'),
+        awayTeam: team('away'),
+        isTop: false,
+        venue: '球場',
+        tournament: '大会',
+        gameType: 'official',
+        runEvents: [],
+        outEvents: [],
+        lastUpdated: '2026-04-02T00:00:00.000Z',
+        userId: 'alice',
+        isPublic: false,
+        userEmail: deleteField(),
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  test('accepts the same payload on a legacy document that has no createdAt', async () => {
+    await env.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'games/legacy'), {
+        userId: 'alice',
+        date: '2025-01-01',
+        currentInning: 1,
+        homeTeam: team('home'),
+        awayTeam: team('away'),
+        oldField: 'from an older app version',
+      });
+    });
+    await assertSucceeds(
+      updateDoc(doc(asUser('alice'), 'games/legacy'), {
+        date: '2025-01-02',
+        userId: 'alice',
+        isPublic: false,
+        userEmail: deleteField(),
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+});
+
 describe('teams: create and update', () => {
   const t1 = (uid = 'alice') => doc(asUser(uid), 'teams/t1');
 
@@ -195,5 +254,24 @@ describe('teams: create and update', () => {
 
   test('forbids another user from updating', async () => {
     await assertFails(updateDoc(t1('bob'), { name: 'x' }));
+  });
+
+  test('rejects keys the app never writes and wrong types on update', async () => {
+    await assertFails(updateDoc(t1(), { anyKey: 'x' }));
+    await assertFails(updateDoc(t1(), { name: 123 }));
+    await assertFails(updateDoc(t1(), { players: 'none' }));
+  });
+
+  test('accepts what updateTeam and the player transactions send', async () => {
+    await assertSucceeds(
+      updateDoc(t1(), {
+        name: '新しい名前',
+        players: [{ id: 'p2', name: '鈴木', number: '2', position: '捕' }],
+        updatedAt: serverTimestamp(),
+      })
+    );
+    await assertSucceeds(
+      updateDoc(t1(), { players: [], updatedAt: serverTimestamp() })
+    );
   });
 });
