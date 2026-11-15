@@ -479,3 +479,15 @@ describe('table layout', () => {
     }
   });
 });
+
+test('says that a rate with a zero denominator is printed as .000', async () => {
+  const contents = await pageContents(
+    await createTeamStatsPdf(sections(1), [], fontBytes(), new Date(), () => {})
+  );
+  expect(
+    drawn(
+      contents[0],
+      '登録試合数は保存名簿または打席に含まれる試合数です。実際の出場数ではありません。打数0で打席のある選手の打率・長打率は、分母0のため.000と表示します。'
+    )
+  ).toBe(true);
+});
