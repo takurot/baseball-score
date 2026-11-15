@@ -22,6 +22,13 @@ export interface TrendPdfContext {
   checkActive: () => void;
 }
 
+export interface TrendScope {
+  // Draw each player's figure after the team's.
+  players: boolean;
+  // Skip the players who never had a plate appearance.
+  omitEmpty: boolean;
+}
+
 interface Figure {
   caption: string;
   points: TrendPoint[];
@@ -247,16 +254,30 @@ export async function drawTrendPages(
   stats: TeamStats,
   games: readonly Game[],
   gameType: GameType,
-  label: string
+  label: string,
+  scope: TrendScope = { players: true, omitEmpty: false }
 ): Promise<void> {
   const { pdf, font, wrap, checkActive } = ctx;
   const subjects: { name: string; target: TrendTarget }[] = [
     { name: `チーム: ${stats.teamName}`, target: { teamId: stats.teamId } },
-    ...stats.playerStats.map((player) => ({
+    ...(scope.players ? stats.playerStats : []).map((player) => ({
       name: playerCaption(player),
       target: { teamId: stats.teamId, playerId: player.playerId },
     })),
   ];
+  // Players without a plate appearance only get an empty frame; leave it out on request.
+  const trends = subjects.map((subject) => {
+    checkActive();
+    return {
+      subject,
+      points: buildBattingTrend(games, gameType, subject.target),
+    };
+  });
+  const shown = trends.filter(
+    ({ points }, i) =>
+      i === 0 || !scope.omitEmpty || points.some((point) => point.rates)
+  );
+  const omitted = trends.length - shown.length;
 
   const header: [string, number][] = [
     [`${stats.teamName}｜${label}｜打撃成績の推移`, 12],
@@ -273,6 +294,16 @@ export async function drawTrendPages(
       8,
     ],
   ];
+  if (!scope.players)
+    header.push([
+      '選手別グラフは出力していません。成績表には全選手を掲載しています。',
+      8,
+    ]);
+  if (omitted)
+    header.push([
+      `打席記録のない選手${omitted}名のグラフ枠は省略しています。成績表には全選手を掲載しています。`,
+      8,
+    ]);
   // Every figure has one point per game of the team, so one count tells whether any is crowded.
   const teamGames = buildBattingTrend(games, gameType, {
     teamId: stats.teamId,
@@ -307,9 +338,8 @@ export async function drawTrendPages(
     return page;
   };
 
-  for (const subject of subjects) {
+  for (const { subject, points } of shown) {
     checkActive();
-    const points = buildBattingTrend(games, gameType, subject.target);
     const item: Figure = {
       caption: trendCaption(subject, label, points),
       points,

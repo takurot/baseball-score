@@ -16,6 +16,11 @@ import {
   PlayerBattingStats,
 } from '../firebase/statsService';
 import { buildBattingTrend } from './BattingStatsTrend';
+import {
+  DETAILED_PDF_OPTIONS,
+  filterGamesByPeriod,
+  TeamStatsPdfOptions,
+} from './TeamStatsPdfOptions';
 import { buildTrendScale, formatRate, TREND_SERIES } from './BattingTrendChart';
 import { AtBat, Game, GameType, HitResult, TeamSetting } from '../types';
 jest.mock('../firebase/config', () => ({ db: {} }));
@@ -836,6 +841,187 @@ test('marks each game under the chart as filled when it added plate appearances 
     dots.slice(3).map((dot) => dot.x)
   );
   expect(drawn(chart, '打席')).toBe(true);
+});
+
+describe('output options', () => {
+  const team = roster(3);
+  const games = [
+    game('g1', '2026-04-01', 'official', team, [ab('0', 'HR')]),
+    game('g2', '2026-05-10', 'official', team, [ab('0', 'SO'), ab('1', 'IH')]),
+    game('g3', '2026-05-20', 'practice', team, [ab('0', 'IH')]),
+  ];
+  const build = async (
+    options: Partial<TeamStatsPdfOptions> = {},
+    source: readonly Game[] = games
+  ) => {
+    const merged = { ...DETAILED_PDF_OPTIONS, ...options };
+    const used = filterGamesByPeriod(source, merged.period);
+    return pageContents(
+      await createTeamStatsPdf(
+        buildTeamReportStats([...used], team),
+        used,
+        fontBytes(),
+        new Date('2026-11-14T16:30:00Z'),
+        () => {},
+        merged
+      )
+    );
+  };
+  const has = (contents: string[], text: string) =>
+    contents.some((c) => drawn(c, text));
+
+  test('keeps the detailed report when no options are given', async () => {
+    const contents = await pageContents(
+      await createTeamStatsPdf(
+        buildTeamReportStats(games, team),
+        games,
+        fontBytes(),
+        new Date(),
+        () => {}
+      )
+    );
+    for (const label of ['公式戦', '練習試合', 'ジュニア戦']) {
+      expect(has(contents, chartHeader(label))).toBe(true);
+    }
+    expect(
+      has(
+        contents,
+        '背番号2 選手2｜公式戦｜対象期間: 2026-04-01〜2026-05-10（チーム対象2試合）｜累積0打席/0打数｜打席あり0試合'
+      )
+    ).toBe(true);
+  });
+
+  test('outputs only the chosen types', async () => {
+    const contents = await build({ types: ['practice'] });
+    expect(has(contents, '日本語チーム｜練習試合')).toBe(true);
+    expect(has(contents, '日本語チーム｜公式戦')).toBe(false);
+    expect(has(contents, '日本語チーム｜ジュニア戦')).toBe(false);
+    expect(contents.filter(isChartPage).length).toBeGreaterThan(0);
+  });
+
+  test('prints every player in the tables and no chart page when tables only', async () => {
+    const contents = await build({ charts: 'none' });
+    expect(contents.some(isChartPage)).toBe(false);
+    const official = contents.find((c) => drawn(c, '日本語チーム｜公式戦'))!;
+    for (const name of ['選手0', '選手1', '選手2']) {
+      expect(drawn(official, name)).toBe(true);
+    }
+    expect(drawn(official, 'グラフは出力していません（表のみ）。')).toBe(true);
+    for (const label of ['公式戦', '練習試合', 'ジュニア戦']) {
+      expect(has(contents, `日本語チーム｜${label}`)).toBe(true);
+    }
+  });
+
+  test('draws only the team figure and says the players are left out', async () => {
+    const contents = await build({ charts: 'team', types: ['official'] });
+    const charts = contents.filter(isChartPage);
+    expect(charts).toHaveLength(1);
+    expect(
+      drawn(
+        charts[0],
+        'チーム: 日本語チーム｜公式戦｜対象期間: 2026-04-01〜2026-05-10（2試合）｜累積3打席/3打数'
+      )
+    ).toBe(true);
+    expect(
+      has(
+        charts,
+        '背番号0 選手0｜公式戦｜対象期間: 2026-04-01〜2026-05-10（チーム対象2試合）｜累積2打席/2打数｜打席あり2試合'
+      )
+    ).toBe(false);
+    expect(
+      drawn(
+        charts[0],
+        '選手別グラフは出力していません。成績表には全選手を掲載しています。'
+      )
+    ).toBe(true);
+  });
+
+  test('omits only the frames of players without a plate appearance and says how many', async () => {
+    const full = await build({ types: ['official'] });
+    const caption2 =
+      '背番号2 選手2｜公式戦｜対象期間: 2026-04-01〜2026-05-10（チーム対象2試合）｜累積0打席/0打数｜打席あり0試合';
+    expect(has(full, caption2)).toBe(true);
+
+    const lean = await build({ types: ['official'], omitEmptyCharts: true });
+    expect(has(lean, caption2)).toBe(false);
+    expect(
+      has(
+        lean,
+        '背番号0 選手0｜公式戦｜対象期間: 2026-04-01〜2026-05-10（チーム対象2試合）｜累積2打席/2打数｜打席あり2試合'
+      )
+    ).toBe(true);
+    expect(
+      has(
+        lean,
+        '背番号1 選手1｜公式戦｜対象期間: 2026-04-01〜2026-05-10（チーム対象2試合）｜累積1打席/1打数｜打席あり1試合'
+      )
+    ).toBe(true);
+    expect(has(lean, '打席記録なし')).toBe(false);
+    expect(
+      has(
+        lean,
+        '打席記録のない選手1名のグラフ枠は省略しています。成績表には全選手を掲載しています。'
+      )
+    ).toBe(true);
+    // the table keeps the player the charts left out
+    const table = lean.find((c) => drawn(c, '日本語チーム｜公式戦'))!;
+    expect(drawn(table, '選手2')).toBe(true);
+  });
+
+  test('rebuilds tables, ledger and charts from the games inside the period', async () => {
+    const period = { start: '2026-05-01', end: '2026-05-31' };
+    const contents = await build({ period });
+    const official = contents.find((c) => drawn(c, '日本語チーム｜公式戦'))!;
+    expect(
+      drawn(
+        official,
+        '対象期間: 2026-05-01〜2026-05-31　実際の対象: 2026-05-10（1試合）　発行日時: 2026-11-15 01:30 JST'
+      )
+    ).toBe(true);
+    // the April game is gone from the ledger and from the chart
+    expect(has(contents, 'g1')).toBe(false);
+    expect(has(contents, 'g2')).toBe(true);
+    expect(
+      has(
+        contents,
+        '背番号0 選手0｜公式戦｜対象期間: 2026-05-10（チーム対象1試合）｜累積1打席/1打数｜打席あり1試合'
+      )
+    ).toBe(true);
+  });
+
+  test('still produces every section when the period holds no game', async () => {
+    const contents = await build({ period: { start: '2027-01-01' } });
+    const official = contents.find((c) => drawn(c, '日本語チーム｜公式戦'))!;
+    expect(
+      drawn(
+        official,
+        '対象期間: 2027-01-01以降　実際の対象: 試合なし　発行日時: 2026-11-15 01:30 JST'
+      )
+    ).toBe(true);
+    expect(has(contents, '日本語チーム｜公式戦｜対象試合一覧')).toBe(false);
+    expect(has(contents, '試合記録なし')).toBe(true);
+  });
+
+  test('rejects unusable options before drawing anything', async () => {
+    await expect(
+      createTeamStatsPdf(
+        buildTeamReportStats(games, team),
+        games,
+        fontBytes(),
+        new Date(),
+        () => {},
+        { ...DETAILED_PDF_OPTIONS, types: [] }
+      )
+    ).rejects.toThrow('区分');
+  });
+
+  test('keeps the qualification rule and player identity in the simple output', async () => {
+    const same = [game('h1', '2026-04-01', 'practice', team, [ab('0', 'SO')])];
+    const contents = await build({ charts: 'none', types: ['practice'] }, same);
+    const page = contents.find((c) => drawn(c, '日本語チーム｜練習試合'))!;
+    expect(drawn(page, '規定到達: 10打数以上')).toBe(true);
+    expect(drawn(page, '規定未到達')).toBe(true);
+  });
 });
 
 test('says that a rate with a zero denominator is printed as .000', async () => {

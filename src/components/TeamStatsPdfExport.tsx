@@ -2,14 +2,21 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Button,
+  Checkbox,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   FormControl,
+  FormControlLabel,
+  FormGroup,
+  FormLabel,
   InputLabel,
+  Radio,
+  RadioGroup,
   Select,
   MenuItem,
+  TextField,
   CircularProgress,
 } from '@mui/material';
 import { getUserTeams } from '../firebase/teamService';
@@ -18,7 +25,39 @@ import {
   buildTeamReportStats,
   getTeamReportInput,
 } from '../firebase/statsService';
-import type { TeamSetting } from '../types';
+import type { GameType, TeamSetting } from '../types';
+import {
+  ChartScope,
+  DETAILED_PDF_OPTIONS,
+  TeamStatsPdfOptions,
+  filterGamesByPeriod,
+  validatePdfOptions,
+} from '../services/TeamStatsPdfOptions';
+
+const TYPE_LABELS: [GameType, string][] = [
+  ['official', '公式戦'],
+  ['practice', '練習試合'],
+  ['junior', 'ジュニア戦'],
+];
+const CHART_LABELS: [ChartScope, string][] = [
+  ['none', '表のみ'],
+  ['team', 'チームのみ'],
+  ['all', 'チームと全選手'],
+];
+
+// An empty date input means "no bound".
+const toOptions = (
+  types: GameType[],
+  start: string,
+  end: string,
+  charts: ChartScope,
+  omitEmptyCharts: boolean
+): TeamStatsPdfOptions => ({
+  types,
+  period: { ...(start && { start }), ...(end && { end }) },
+  charts,
+  omitEmptyCharts: charts === 'all' && omitEmptyCharts,
+});
 
 export default function TeamStatsPdfExport() {
   const [open, setOpen] = useState(false);
@@ -28,6 +67,17 @@ export default function TeamStatsPdfExport() {
   const [loading, setLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [message, setMessage] = useState('');
+  const [simple, setSimple] = useState(false);
+  const [types, setTypes] = useState<GameType[]>(
+    TYPE_LABELS.map(([type]) => type)
+  );
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  // A date input reports '' while it is half typed; that must not read as "no bound".
+  const [startBad, setStartBad] = useState(false);
+  const [endBad, setEndBad] = useState(false);
+  const [charts, setCharts] = useState<ChartScope>('all');
+  const [omitEmpty, setOmitEmpty] = useState(false);
   const generation = useRef(0);
   const locked = useRef(false);
   useEffect(
@@ -58,8 +108,23 @@ export default function TeamStatsPdfExport() {
       if (generation.current === id) setLoading(false);
     }
   };
+  const options = simple
+    ? toOptions(types, start, end, charts, omitEmpty)
+    : DETAILED_PDF_OPTIONS;
+  const optionError = (() => {
+    if (simple && startBad)
+      return '開始日が入力途中です。日付を最後まで入力するか、空欄にしてください';
+    if (simple && endBad)
+      return '終了日が入力途中です。日付を最後まで入力するか、空欄にしてください';
+    try {
+      validatePdfOptions(options);
+      return '';
+    } catch (error) {
+      return error instanceof Error ? error.message : '出力条件が不正です';
+    }
+  })();
   const run = async () => {
-    if (locked.current) return;
+    if (locked.current || optionError) return;
     const owner = getCurrentUser()?.uid;
     const teamId = selected;
     if (!owner || !teamId) return;
@@ -77,7 +142,13 @@ export default function TeamStatsPdfExport() {
     try {
       const input = await getTeamReportInput(owner, teamId);
       check();
-      const sections = buildTeamReportStats(input.games, input.team);
+      // Tables, ledger and charts all come from this one period-filtered set.
+      const games = filterGamesByPeriod(
+        input.games,
+        options.period,
+        options.types
+      );
+      const sections = buildTeamReportStats([...games], input.team);
       const module = await import('../services/TeamStatsPdf');
       check();
       const response = await fetch(
@@ -88,10 +159,11 @@ export default function TeamStatsPdfExport() {
       check();
       const bytes = await module.createTeamStatsPdf(
         sections,
-        input.games,
+        games,
         font,
         new Date(),
-        check
+        check,
+        options
       );
       check();
       const url = URL.createObjectURL(
@@ -100,7 +172,9 @@ export default function TeamStatsPdfExport() {
       try {
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'チーム通算成績.pdf';
+        link.download = simple
+          ? 'チーム通算成績（簡易版）.pdf'
+          : 'チーム通算成績.pdf';
         link.click();
       } finally {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -133,12 +207,20 @@ export default function TeamStatsPdfExport() {
       >
         <DialogTitle>チーム通算成績のPDF出力</DialogTitle>
         <DialogContent>
-          <p>
-            公式戦・練習試合・ジュニア戦を順に出力します。選手数や氏名の長さにより続きページを追加します。
-          </p>
-          <p>
-            各区分の成績表の後に、チームと全選手の打撃成績推移グラフ（打率・出塁率・長打率・OPSの累積値）を掲載します。選手数や試合数に応じてページ数と作成時間が増えます。
-          </p>
+          {simple ? (
+            <p>
+              選択した期間・区分・グラフの範囲で出力します。成績表には選択した区分の全選手を掲載します。グラフを含める場合は、選手数や試合数に応じてページ数と作成時間が増えます。
+            </p>
+          ) : (
+            <>
+              <p>
+                公式戦・練習試合・ジュニア戦を順に出力します。選手数や氏名の長さにより続きページを追加します。
+              </p>
+              <p>
+                各区分の成績表の後に、チームと全選手の打撃成績推移グラフ（打率・出塁率・長打率・OPSの累積値）を掲載します。選手数や試合数に応じてページ数と作成時間が増えます。
+              </p>
+            </>
+          )}
           {message && (
             <Alert severity="info" role="status">
               {message}
@@ -168,6 +250,114 @@ export default function TeamStatsPdfExport() {
               </Select>
             </FormControl>
           )}
+          {!loading && !loadFailed && teams.length > 0 && (
+            <FormControl component="fieldset" margin="normal" fullWidth>
+              <FormLabel component="legend">出力内容</FormLabel>
+              <RadioGroup
+                value={simple ? 'simple' : 'detailed'}
+                onChange={(event) => setSimple(event.target.value === 'simple')}
+              >
+                <FormControlLabel
+                  value="detailed"
+                  control={<Radio disabled={busy} />}
+                  label="詳細版（全期間・3区分・チームと全選手のグラフ）"
+                />
+                <FormControlLabel
+                  value="simple"
+                  control={<Radio disabled={busy} />}
+                  label="簡易版（期間・区分・グラフを選ぶ）"
+                />
+              </RadioGroup>
+            </FormControl>
+          )}
+          {simple && !loading && teams.length > 0 && (
+            <>
+              <FormGroup row sx={{ gap: 2, my: 1 }}>
+                <TextField
+                  type="date"
+                  label="開始日"
+                  value={start}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setStart(event.target.value);
+                    setStartBad(event.target.validity.badInput);
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  type="date"
+                  label="終了日"
+                  value={end}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setEnd(event.target.value);
+                    setEndBad(event.target.validity.badInput);
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </FormGroup>
+              <p>
+                期間は開始日・終了日を含みます。空欄の側は期限を設けません。
+              </p>
+              <FormControl component="fieldset" margin="normal">
+                <FormLabel component="legend">出力する区分</FormLabel>
+                <FormGroup row>
+                  {TYPE_LABELS.map(([type, label]) => (
+                    <FormControlLabel
+                      key={type}
+                      label={label}
+                      control={
+                        <Checkbox
+                          checked={types.includes(type)}
+                          disabled={busy}
+                          onChange={(event) =>
+                            setTypes((current) =>
+                              TYPE_LABELS.map(([item]) => item).filter(
+                                (item) =>
+                                  item === type
+                                    ? event.target.checked
+                                    : current.includes(item)
+                              )
+                            )
+                          }
+                        />
+                      }
+                    />
+                  ))}
+                </FormGroup>
+              </FormControl>
+              <FormControl component="fieldset" margin="normal">
+                <FormLabel component="legend">推移グラフ</FormLabel>
+                <RadioGroup
+                  row
+                  value={charts}
+                  onChange={(event) =>
+                    setCharts(event.target.value as ChartScope)
+                  }
+                >
+                  {CHART_LABELS.map(([value, label]) => (
+                    <FormControlLabel
+                      key={value}
+                      value={value}
+                      control={<Radio disabled={busy} />}
+                      label={label}
+                    />
+                  ))}
+                </RadioGroup>
+                <FormControlLabel
+                  label="打席記録のない選手のグラフ枠を省略（成績表には全選手を掲載）"
+                  control={
+                    <Checkbox
+                      checked={omitEmpty}
+                      disabled={busy || charts !== 'all'}
+                      onChange={(event) => setOmitEmpty(event.target.checked)}
+                    />
+                  }
+                />
+              </FormControl>
+              {optionError && <Alert severity="error">{optionError}</Alert>}
+            </>
+          )}
           {busy && <p role="status">PDFを作成中です。お待ちください。</p>}
         </DialogContent>
         <DialogActions>
@@ -180,9 +370,19 @@ export default function TeamStatsPdfExport() {
               キャンセル
             </Button>
           ) : (
-            <Button onClick={() => setOpen(false)}>閉じる</Button>
+            <Button
+              onClick={() => {
+                generation.current++;
+                setOpen(false);
+              }}
+            >
+              閉じる
+            </Button>
           )}
-          <Button onClick={run} disabled={busy || loading || !selected}>
+          <Button
+            onClick={run}
+            disabled={busy || loading || !selected || !!optionError}
+          >
             生成してダウンロード
           </Button>
         </DialogActions>
