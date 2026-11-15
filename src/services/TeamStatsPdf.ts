@@ -7,6 +7,12 @@ import { drawTrendPages } from './TrendChartPdf';
 import { buildBattingTrend } from './BattingStatsTrend';
 import { formatRate, formatTrendPeriod } from './BattingTrendChart';
 import { ScoreCalculator } from './ScoreCalculator';
+import {
+  DETAILED_PDF_OPTIONS,
+  TeamStatsPdfOptions,
+  describePeriod,
+  validatePdfOptions,
+} from './TeamStatsPdfOptions';
 
 const labels = ['公式戦', '練習試合', 'ジュニア戦'];
 const types = ['official', 'practice', 'junior'] as const;
@@ -98,9 +104,11 @@ export async function createTeamStatsPdf(
   games: readonly Game[],
   fontBytes: ArrayBuffer,
   issuedAt: Date,
-  checkActive: () => void
+  checkActive: () => void,
+  options: TeamStatsPdfOptions = DETAILED_PDF_OPTIONS
 ): Promise<Uint8Array> {
   if (sections.length !== 3) throw new Error('3区分の成績が必要です');
+  validatePdfOptions(options);
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
   const font = await pdf.embedFont(new Uint8Array(fontBytes), {
@@ -132,6 +140,7 @@ export async function createTeamStatsPdf(
   const gamesById = new Map(games.map((game) => [game.id, game]));
   for (let index = 0; index < sections.length; index++) {
     const stats = sections[index];
+    if (!options.types.includes(types[index])) continue;
     checkActive();
     // Same filter and order as the trend charts, so (1)/(2) in both places agree.
     const covered = buildBattingTrend(games, types[index], {
@@ -229,12 +238,14 @@ export async function createTeamStatsPdf(
         12
       );
       text(
-        `対象期間: 全期間　実際の対象: ${covered.length ? formatTrendPeriod(covered) : '試合なし'}　発行日時: ${stamp}`
+        `対象期間: ${describePeriod(options.period)}　実際の対象: ${covered.length ? formatTrendPeriod(covered) : '試合なし'}　発行日時: ${stamp}`
       );
       if (!continued)
         text(
           '保存済みの試合をすべて集計しています。試合終了の確認はしていないため、入力途中の試合を含む場合があります。'
         );
+      if (!continued && options.charts === 'none')
+        text('グラフは出力していません（表のみ）。');
       text(
         '登録試合数は保存名簿または打席に含まれる試合数です。実際の出場数ではありません。'
       );
@@ -348,13 +359,18 @@ export async function createTeamStatsPdf(
       });
     }
     await new Promise((resolve) => setTimeout(resolve, 0));
-    await drawTrendPages(
-      { pdf, font, wrap, checkActive },
-      stats,
-      games,
-      types[index],
-      labels[index]
-    );
+    if (options.charts !== 'none')
+      await drawTrendPages(
+        { pdf, font, wrap, checkActive },
+        stats,
+        games,
+        types[index],
+        labels[index],
+        {
+          players: options.charts === 'all',
+          omitEmpty: options.omitEmptyCharts,
+        }
+      );
   }
   pdf.getPages().forEach((page, i, pages) =>
     page.drawText(`${i + 1} / ${pages.length}`, {
