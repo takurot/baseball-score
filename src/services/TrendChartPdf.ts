@@ -22,6 +22,13 @@ export interface TrendPdfContext {
   checkActive: () => void;
 }
 
+// The page a figure was drawn on, so the report can link to it.
+export interface FigureLocation {
+  name: string;
+  page: PDFPage;
+  isTeam: boolean;
+}
+
 export interface TrendScope {
   // Draw each player's figure after the team's.
   players: boolean;
@@ -256,7 +263,7 @@ export async function drawTrendPages(
   gameType: GameType,
   label: string,
   scope: TrendScope = { players: true, omitEmpty: false }
-): Promise<void> {
+): Promise<FigureLocation[]> {
   const { pdf, font, wrap, checkActive } = ctx;
   const subjects: { name: string; target: TrendTarget }[] = [
     { name: `チーム: ${stats.teamName}`, target: { teamId: stats.teamId } },
@@ -338,7 +345,9 @@ export async function drawTrendPages(
     return page;
   };
 
+  const locations: FigureLocation[] = [];
   for (const { subject, points } of shown) {
+    const isTeam = subject.target.playerId === undefined;
     checkActive();
     const item: Figure = {
       caption: trendCaption(subject, label, points),
@@ -358,11 +367,14 @@ export async function drawTrendPages(
     }
     const top = TOP - headerHeight - 4;
     if (needed > halfHeight) {
-      drawFigure(font, await startPage(), item, captionLines, top, fullHeight);
+      const whole = await startPage();
+      drawFigure(font, whole, item, captionLines, top, fullHeight);
+      locations.push({ name: subject.name, page: whole, isTeam });
       freeSlots = 0;
       continue;
     }
     const target: PDFPage = freeSlots ? page! : await startPage();
+    locations.push({ name: subject.name, page: target, isTeam });
     const slot = 2 - freeSlots;
     drawFigure(
       font,
@@ -376,4 +388,5 @@ export async function drawTrendPages(
   }
   checkActive();
   await yieldToBrowser();
+  return locations;
 }

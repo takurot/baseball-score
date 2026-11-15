@@ -4,6 +4,8 @@ import type { PlayerBattingStats, TeamStats } from '../firebase/statsService';
 import type { Game } from '../types';
 import { meetsQualification } from '../utils/gameType';
 import { drawTrendPages } from './TrendChartPdf';
+import { addOutline } from './PdfNavigation';
+import { Chapter, buildOutline, drawFrontPage } from './TeamStatsPdfFront';
 import { buildBattingTrend } from './BattingStatsTrend';
 import { formatRate, formatTrendPeriod } from './BattingTrendChart';
 import { ScoreCalculator } from './ScoreCalculator';
@@ -136,6 +138,9 @@ export async function createTeamStatsPdf(
     lines.push(line);
     return lines;
   };
+  // Reserved first, drawn last: the summary and contents need the final page numbers.
+  const front = pdf.addPage([841.89, 595.28]);
+  const chapters: Chapter[] = [];
   const stamp = formatIssuedAtJst(issuedAt);
   const gamesById = new Map(games.map((game) => [game.id, game]));
   for (let index = 0; index < sections.length; index++) {
@@ -147,6 +152,8 @@ export async function createTeamStatsPdf(
       teamId: stats.teamId,
     });
     let page: PDFPage;
+    let tablePage: PDFPage | undefined;
+    let ledgerPage: PDFPage | undefined;
     let y = 0;
     const text = (value: string, size = 8) => {
       const lines = wrap(value, 790, size);
@@ -232,6 +239,7 @@ export async function createTeamStatsPdf(
     ];
     const start = (continued: boolean) => {
       page = pdf.addPage([841.89, 595.28]);
+      if (!continued) tablePage = page;
       y = 565;
       text(
         `${stats.teamName}｜${labels[index]}${continued ? '｜続き' : ''}`,
@@ -320,8 +328,9 @@ export async function createTeamStatsPdf(
       qualifiedAbove = qualified;
     }
     if (covered.length) {
-      const ledgerPage = (continued: boolean) => {
+      const startLedger = (continued: boolean) => {
         page = pdf.addPage([841.89, 595.28]);
+        if (!continued) ledgerPage = page;
         y = 565;
         text(
           `${stats.teamName}｜${labels[index]}｜対象試合一覧${continued ? '｜続き' : ''}`,
@@ -333,7 +342,7 @@ export async function createTeamStatsPdf(
         y -= 4;
         table(LEDGER_HEADER, LEDGER_WIDTHS, true, { header: true });
       };
-      ledgerPage(false);
+      startLedger(false);
       covered.forEach((point, row) => {
         checkActive();
         const source = gamesById.get(point.game.id)!;
@@ -354,24 +363,42 @@ export async function createTeamStatsPdf(
           gameResult(ours, theirs),
           point.game.id,
         ];
-        if (y - table(cells, LEDGER_WIDTHS, false) < 35) ledgerPage(true);
+        if (y - table(cells, LEDGER_WIDTHS, false) < 35) startLedger(true);
         table(cells, LEDGER_WIDTHS, true, { stripe: row % 2 === 1 });
       });
     }
     await new Promise((resolve) => setTimeout(resolve, 0));
-    if (options.charts !== 'none')
-      await drawTrendPages(
-        { pdf, font, wrap, checkActive },
-        stats,
-        games,
-        types[index],
-        labels[index],
-        {
-          players: options.charts === 'all',
-          omitEmpty: options.omitEmptyCharts,
-        }
-      );
+    const figures =
+      options.charts === 'none'
+        ? []
+        : await drawTrendPages(
+            { pdf, font, wrap, checkActive },
+            stats,
+            games,
+            types[index],
+            labels[index],
+            {
+              players: options.charts === 'all',
+              omitEmpty: options.omitEmptyCharts,
+            }
+          );
+    chapters.push({
+      label: labels[index],
+      stats,
+      // start(false) above always ran, so the first table page exists
+      table: tablePage!,
+      ledger: ledgerPage,
+      team: figures.find((figure) => figure.isTeam)?.page,
+      players: figures.filter((figure) => !figure.isTeam),
+    });
   }
+  drawFrontPage({ pdf, font, wrap }, front, {
+    teamName: sections[0].teamName,
+    stamp,
+    options,
+    chapters,
+  });
+  addOutline(pdf, buildOutline(chapters));
   pdf.getPages().forEach((page, i, pages) =>
     page.drawText(`${i + 1} / ${pages.length}`, {
       x: 780,
