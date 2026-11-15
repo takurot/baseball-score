@@ -4,7 +4,9 @@ import type { PlayerBattingStats, TeamStats } from '../firebase/statsService';
 import type { Game } from '../types';
 import { meetsQualification } from '../utils/gameType';
 import { drawTrendPages } from './TrendChartPdf';
-import { formatRate } from './BattingTrendChart';
+import { buildBattingTrend } from './BattingStatsTrend';
+import { formatRate, formatTrendPeriod } from './BattingTrendChart';
+import { ScoreCalculator } from './ScoreCalculator';
 
 const labels = ['公式戦', '練習試合', 'ジュニア戦'];
 const types = ['official', 'practice', 'junior'] as const;
@@ -72,6 +74,25 @@ export const playerRowCells = (
   ];
 };
 
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+// "YYYY-MM-DD HH:mm JST": the zone is kept so a reader can tell when it was issued.
+export const formatIssuedAtJst = (issuedAt: Date): string => {
+  if (Number.isNaN(issuedAt.getTime()))
+    throw new Error('発行日時が不正なためPDFを作成できません');
+  const jst = new Date(issuedAt.getTime() + JST_OFFSET_MS)
+    .toISOString()
+    .slice(0, 16)
+    .replace('T', ' ');
+  return `${jst} JST`;
+};
+
+const LEDGER_HEADER = ['No.', '日付', '対戦相手', 'スコア', '結果', '試合ID'];
+const LEDGER_WIDTHS = [34, 110, 220, 60, 40, 326];
+
+const gameResult = (ours: number, theirs: number): string =>
+  ours > theirs ? '勝' : ours < theirs ? '負' : '分';
+
 export async function createTeamStatsPdf(
   sections: TeamStats[],
   games: readonly Game[],
@@ -107,10 +128,15 @@ export async function createTeamStatsPdf(
     lines.push(line);
     return lines;
   };
-  const stamp = `${issuedAt.toISOString()} (UTC)`;
+  const stamp = formatIssuedAtJst(issuedAt);
+  const gamesById = new Map(games.map((game) => [game.id, game]));
   for (let index = 0; index < sections.length; index++) {
     const stats = sections[index];
     checkActive();
+    // Same filter and order as the trend charts, so (1)/(2) in both places agree.
+    const covered = buildBattingTrend(games, types[index], {
+      teamId: stats.teamId,
+    });
     let page: PDFPage;
     let y = 0;
     const text = (value: string, size = 8) => {
@@ -202,7 +228,13 @@ export async function createTeamStatsPdf(
         `${stats.teamName}｜${labels[index]}${continued ? '｜続き' : ''}`,
         12
       );
-      text(`対象期間: 全期間　発行日時: ${stamp}`);
+      text(
+        `対象期間: 全期間　実際の対象: ${covered.length ? formatTrendPeriod(covered) : '試合なし'}　発行日時: ${stamp}`
+      );
+      if (!continued)
+        text(
+          '保存済みの試合をすべて集計しています。試合終了の確認はしていないため、入力途中の試合を含む場合があります。'
+        );
       text(
         '登録試合数は保存名簿または打席に含まれる試合数です。実際の出場数ではありません。打数0で打席のある選手の打率・長打率は、分母0のため.000と表示します。'
       );
@@ -275,6 +307,45 @@ export async function createTeamStatsPdf(
         right: numericColumns,
       });
       qualifiedAbove = qualified;
+    }
+    if (covered.length) {
+      const ledgerPage = (continued: boolean) => {
+        page = pdf.addPage([841.89, 595.28]);
+        y = 565;
+        text(
+          `${stats.teamName}｜${labels[index]}｜対象試合一覧${continued ? '｜続き' : ''}`,
+          12
+        );
+        text(
+          '同日の試合は保存されたIDの順に (1)(2) と並べています。実際の開催順とは限りません。'
+        );
+        y -= 4;
+        table(LEDGER_HEADER, LEDGER_WIDTHS, true, { header: true });
+      };
+      ledgerPage(false);
+      covered.forEach((point, row) => {
+        checkActive();
+        const source = gamesById.get(point.game.id)!;
+        const home = source.homeTeam.id === stats.teamId;
+        const score = (side: 'homeTeam' | 'awayTeam') =>
+          ScoreCalculator.calculateTotalScore(
+            source[side],
+            source.runEvents || [],
+            side === 'awayTeam'
+          );
+        const ours = score(home ? 'homeTeam' : 'awayTeam');
+        const theirs = score(home ? 'awayTeam' : 'homeTeam');
+        const cells = [
+          String(row + 1),
+          point.game.label,
+          point.game.opponentName,
+          `${ours}-${theirs}`,
+          gameResult(ours, theirs),
+          point.game.id,
+        ];
+        if (y - table(cells, LEDGER_WIDTHS, false) < 35) ledgerPage(true);
+        table(cells, LEDGER_WIDTHS, true, { stripe: row % 2 === 1 });
+      });
     }
     await new Promise((resolve) => setTimeout(resolve, 0));
     await drawTrendPages(
