@@ -6,7 +6,11 @@ import {
   PDFRawStream,
   decodePDFRawStream,
 } from 'pdf-lib';
-import { createTeamStatsPdf, playerRowCells } from './TeamStatsPdf';
+import {
+  createTeamStatsPdf,
+  formatIssuedAtJst,
+  playerRowCells,
+} from './TeamStatsPdf';
 import {
   buildTeamReportStats,
   PlayerBattingStats,
@@ -148,12 +152,20 @@ test('places team then player charts after each section, in table order, with sh
   );
   const labels = ['公式戦', '練習試合', 'ジュニア戦'];
   expect(
-    contents.map((c) => labels.find((l) => drawn(c, chartHeader(l))) ?? 'table')
+    contents.map(
+      (c) =>
+        labels.find((l) => drawn(c, chartHeader(l))) ??
+        (labels.some((l) => drawn(c, `日本語チーム｜${l}｜対象試合一覧`))
+          ? 'ledger'
+          : 'table')
+    )
   ).toEqual([
     'table',
+    'ledger',
     '公式戦',
     '公式戦',
     'table',
+    'ledger',
     '練習試合',
     '練習試合',
     'table',
@@ -161,7 +173,7 @@ test('places team then player charts after each section, in table order, with sh
     'ジュニア戦',
   ]);
 
-  const official = contents.slice(1, 3);
+  const official = contents.slice(2, 4);
   const period = '対象期間: 2026-04-01〜2026-04-08（2試合）';
   const captions = [
     `チーム: 日本語チーム｜公式戦｜${period}`,
@@ -197,7 +209,7 @@ test('places team then player charts after each section, in table order, with sh
   for (const tick of teamTicks) expect(drawn(official[0], tick)).toBe(true);
   expect(drawn(official[0], '4/1')).toBe(true);
   expect(drawn(official[0], '4/8')).toBe(true);
-  expect(drawn(contents[7], '試合記録なし')).toBe(true);
+  expect(drawn(contents[9], '試合記録なし')).toBe(true);
 });
 
 test('gives a long-named player a whole chart page instead of splitting the figure', async () => {
@@ -476,6 +488,183 @@ describe('table layout', () => {
     for (const page of continued) {
       expect(page).toContain('0.88 0.88 0.88 RG');
       expect(drawn(page, '試合数')).toBe(true);
+    }
+  });
+});
+
+describe('issued-at time', () => {
+  test('formats in JST with the zone shown, rolling the date over across midnight', () => {
+    expect(formatIssuedAtJst(new Date('2026-11-14T16:30:00Z'))).toBe(
+      '2026-11-15 01:30 JST'
+    );
+    expect(formatIssuedAtJst(new Date('2026-11-15T00:00:00Z'))).toBe(
+      '2026-11-15 09:00 JST'
+    );
+    expect(formatIssuedAtJst(new Date('2026-12-31T15:05:00Z'))).toBe(
+      '2027-01-01 00:05 JST'
+    );
+  });
+
+  test('refuses an invalid date instead of printing NaN', () => {
+    expect(() => formatIssuedAtJst(new Date('nope'))).toThrow('発行日時');
+  });
+});
+
+describe('game ledger and scope note', () => {
+  const withScores = (
+    g: Game,
+    ours: number,
+    theirs: number,
+    opponent = '相手'
+  ): Game => ({
+    ...g,
+    homeTeam: {
+      ...g.homeTeam,
+      atBats: g.homeTeam.atBats.map((a, i) => ({
+        ...a,
+        rbi: i === 0 ? ours : 0,
+      })),
+    },
+    awayTeam: {
+      ...g.awayTeam,
+      name: opponent,
+      atBats: theirs ? [{ ...ab('x', 'IH'), rbi: theirs }] : [],
+    },
+  });
+  const team = roster(2);
+  // Two games on 04-01 (ids deliberately out of order) and one unnamed opponent on 04-08.
+  const ledgerGames = (): Game[] => [
+    withScores(
+      game('b-game', '2026-04-01', 'official', team, [ab('0', 'HR')]),
+      1,
+      1
+    ),
+    withScores(
+      game('a-game', '2026-04-01', 'official', team, [ab('0', 'HR')]),
+      3,
+      2
+    ),
+    withScores(
+      game('c-game', '2026-04-08', 'official', team, [ab('0', 'SO')]),
+      0,
+      4,
+      '  '
+    ),
+  ];
+  const build = async (
+    games: Game[],
+    issuedAt = new Date('2026-11-14T16:30:00Z')
+  ) =>
+    pageContents(
+      await createTeamStatsPdf(
+        buildTeamReportStats(games, team),
+        games,
+        fontBytes(),
+        issuedAt,
+        () => {}
+      )
+    );
+  const yOf = (content: string, text: string) =>
+    Array.from(
+      content.matchAll(
+        new RegExp(`1 0 0 1 [\\d.]+ ([\\d.]+) TM\\s*<${encode(text)}> TJ`, 'g')
+      )
+    ).map((m) => Number(m[1]));
+  const ledgerHeader = (label: string) =>
+    `日本語チーム｜${label}｜対象試合一覧`;
+
+  test('states the all-period condition, the dates actually covered, the count and the issue time in JST', async () => {
+    const contents = await build(ledgerGames());
+    expect(
+      drawn(
+        contents[0],
+        '対象期間: 全期間　実際の対象: 2026-04-01〜2026-04-08（3試合）　発行日時: 2026-11-15 01:30 JST'
+      )
+    ).toBe(true);
+    expect(
+      drawn(
+        contents[0],
+        '保存済みの試合をすべて集計しています。試合終了の確認はしていないため、入力途中の試合を含む場合があります。'
+      )
+    ).toBe(true);
+  });
+
+  test('lists the covered games in chart order with opponent, score, result and game id', async () => {
+    const contents = await build(ledgerGames());
+    const ledger = contents.find((c) => drawn(c, ledgerHeader('公式戦')))!;
+    expect(ledger).toBeDefined();
+    for (const text of [
+      '2026-04-01 (1)',
+      '2026-04-01 (2)',
+      '2026-04-08',
+      'a-game',
+      'b-game',
+      'c-game',
+      '相手未設定',
+      '3-2',
+      '1-1',
+      '0-4',
+    ]) {
+      expect(drawn(ledger, text)).toBe(true);
+    }
+    // top-to-bottom = descending y; same-date games follow the stored-ID order of the charts.
+    const row = (id: string) => yOf(ledger, id)[0];
+    expect(row('a-game')).toBeGreaterThan(row('b-game'));
+    expect(row('b-game')).toBeGreaterThan(row('c-game'));
+    // each result sits on its own game's row
+    expect(yOf(ledger, '勝')[0]).toBeCloseTo(row('a-game'));
+    expect(yOf(ledger, '分')[0]).toBeCloseTo(row('b-game'));
+    expect(yOf(ledger, '負')[0]).toBeCloseTo(row('c-game'));
+    expect(
+      drawn(
+        ledger,
+        '同日の試合は保存されたIDの順に (1)(2) と並べています。実際の開催順とは限りません。'
+      )
+    ).toBe(true);
+  });
+
+  test('lists exactly as many games as the section counts, and omits the ledger when there are none', async () => {
+    const games = ledgerGames();
+    expect(buildTeamReportStats(games, team)[0].gameCount).toBe(3);
+    const contents = await build(games);
+    expect(
+      contents.filter((c) => drawn(c, ledgerHeader('公式戦')))
+    ).toHaveLength(1);
+    // practice and junior have no games: no ledger page, and the scope line says so
+    expect(contents.some((c) => drawn(c, ledgerHeader('練習試合')))).toBe(
+      false
+    );
+    const practiceTable = contents.find((c) =>
+      drawn(c, '日本語チーム｜練習試合')
+    )!;
+    expect(
+      drawn(
+        practiceTable,
+        '対象期間: 全期間　実際の対象: 試合なし　発行日時: 2026-11-15 01:30 JST'
+      )
+    ).toBe(true);
+  });
+
+  test('continues the ledger over several pages without dropping a game', async () => {
+    const many = Array.from({ length: 60 }, (_, i) =>
+      game(
+        `g${String(i).padStart(2, '0')}`,
+        `2026-05-${String((i % 28) + 1).padStart(2, '0')}`,
+        'official',
+        team,
+        [ab('0', 'SO')]
+      )
+    );
+    const contents = await build(many);
+    const pages = contents.filter(
+      (c) =>
+        drawn(c, ledgerHeader('公式戦')) ||
+        drawn(c, `${ledgerHeader('公式戦')}｜続き`)
+    );
+    expect(pages.length).toBeGreaterThan(1);
+    for (let i = 0; i < 60; i++) {
+      const id = `g${String(i).padStart(2, '0')}`;
+      expect(pages.filter((c) => drawn(c, id))).toHaveLength(1);
     }
   });
 });
