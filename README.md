@@ -127,6 +127,21 @@ node scripts/remove-user-email.js --project=baseball-score-18c48
 node scripts/remove-user-email.js --project=baseball-score-18c48 --apply
 ```
 
+### Firestore ルールの書き込み検証と App Check
+
+- `games` / `teams` の更新では、`userId` と `createdAt` は変更できません。`userEmail` は新しい値を設定できず、削除のみ可能です。
+- 新規作成では、`userId` が自分であること、許可されたキーのみであること（`userEmail` は不可）、主要フィールドの型（`date` が文字列、`isPublic` が真偽値、など）が検証されます。
+  旧データは現在の型にないフィールドを持つ場合があるため、キーの制限は新規作成時のみです。
+- ドキュメントのサイズ上限（1MB）は、ルールでは検証できません。クライアントのチェックに加えて、App Check で不正なクライアントからの書き込みを抑止します。
+
+App Check（reCAPTCHA v3）は、`REACT_APP_RECAPTCHA_SITE_KEY` を設定したときだけ有効になります（未設定なら初期化しません）。
+有効化は管理者が次の順で行います（**Console 操作と強制は未実施**です）。
+
+1. Firebase Console の App Check でウェブアプリを reCAPTCHA v3 で登録し、site key を取得する。
+2. `REACT_APP_RECAPTCHA_SITE_KEY` を設定してビルド・デプロイする。ローカル開発では Console でデバッグトークンを登録し、`REACT_APP_APPCHECK_DEBUG_TOKEN` に設定する（本番ビルドでは無視されます）。
+3. Console の App Check の指標で、トークン付きリクエストの割合を確認する。
+4. 問題がなければ Cloud Firestore の「強制」を有効にする。強制すると、トークンを送らない旧バージョンのクライアントは拒否されます。
+
 ## ライセンス
 
 MIT

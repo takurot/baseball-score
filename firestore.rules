@@ -2,26 +2,83 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // 既存ドキュメントの所有者か
+    function isOwner() {
+      return isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 更新で変更できないフィールド。
+    // - userId / createdAt は固定する（所有権の付け替え・作成日時の改ざん防止）
+    // - userEmail は新しい値の設定を禁止し、削除のみ許可する（旧データの消去用）
+    function keepsImmutableFields() {
+      return request.resource.data.userId == resource.data.userId
+        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
+        && (!('userEmail' in request.resource.data)
+          || request.resource.data.userEmail == resource.data.get('userEmail', null));
+    }
+
+    // 新規作成時に書き込めるキー（保存処理 buildGameToSave が書くフィールド）
+    function gameCreateKeys() {
+      return ['id', 'date', 'homeTeam', 'awayTeam', 'currentInning', 'isTop',
+        'userId', 'venue', 'tournament', 'gameType', 'isPublic', 'runEvents',
+        'outEvents', 'lastUpdated', 'createdAt', 'updatedAt'];
+    }
+
+    function validNewGame() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(gameCreateKeys())
+        && data.keys().hasAll(['date', 'homeTeam', 'awayTeam', 'currentInning', 'userId', 'isPublic'])
+        && data.date is string
+        && data.currentInning is number
+        && data.homeTeam is map
+        && data.awayTeam is map
+        && data.isPublic is bool;
+    }
+
+    function validNewTeam() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['name', 'players', 'userId', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['name', 'players', 'userId'])
+        && data.name is string
+        && data.players is list;
+    }
+
     // ゲームデータのルール
     match /games/{gameId} {
       // 公開されたゲームデータは、IDを知っていれば誰でも単一取得できる。
       // list（一覧・クエリ）は許可しない: 公開試合の列挙を防ぐ。
       allow get: if resource.data.isPublic == true;
-      
-      // 自分のデータだけ読み書き可能
-      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      
-      // 新規作成時はユーザーIDが自分のものである必要がある
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+
+      // 自分のデータだけ読み取り・削除できる
+      allow read, delete: if isOwner();
+
+      // 更新: 所有者のみ。不変フィールドを固定し、isPublic は真偽値のみ。
+      // 旧データは現在の型に無いフィールドを持ち得るため、キーの制限は新規作成時のみ行う。
+      allow update: if isOwner()
+        && keepsImmutableFields()
+        && request.resource.data.get('isPublic', false) is bool;
+
+      // 新規作成時はユーザーIDが自分のものであり、内容が正しい型である必要がある
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && validNewGame();
     }
-    
+
     // チームと選手データのルール
     match /teams/{teamId} {
-      // 自分のデータだけ読み書き可能
-      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      
-      // 新規作成時はユーザーIDが自分のものである必要がある
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // 自分のデータだけ読み取り・削除できる
+      allow read, delete: if isOwner();
+
+      allow update: if isOwner() && keepsImmutableFields();
+
+      // 新規作成時はユーザーIDが自分のものであり、内容が正しい型である必要がある
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && validNewTeam();
     }
   }
 }
