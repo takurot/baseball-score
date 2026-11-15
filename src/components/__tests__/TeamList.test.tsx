@@ -1,6 +1,6 @@
 import React from 'react';
 import nodeCrypto from 'crypto';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import TeamList from '../TeamList';
@@ -472,5 +472,71 @@ describe('TeamList', () => {
         screen.getByText(/選手の保存に失敗しました.*選手更新エラー/)
       ).toBeInTheDocument();
     });
+  });
+});
+
+describe('TeamList - 試合画面からの登録導線', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedUseAuth.mockReturnValue({
+      currentUser: { uid: 'user-1', email: 'user1@example.com' },
+    });
+    mockedGetUserTeams.mockResolvedValue(mockTeams);
+  });
+
+  const renderWith = (props: React.ComponentProps<typeof TeamList>) =>
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <TeamList {...props} />
+      </ThemeProvider>
+    );
+
+  test('通常表示では新規チーム作成ダイアログを自動で開かず、案内も出さない', async () => {
+    renderWith({});
+    expect(await screen.findByText('ライオンズ')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText(/試合画面に戻る/)).not.toBeInTheDocument();
+  });
+
+  test('導線から入ったときだけ作成ダイアログを1回開き、キャンセル後は再び開かない', async () => {
+    const user = userEvent.setup();
+    const onCreateDialogOpened = jest.fn();
+    const { rerender } = render(
+      <ThemeProvider theme={createTheme()}>
+        <TeamList
+          openCreateOnMount
+          onCreateDialogOpened={onCreateDialogOpened}
+        />
+      </ThemeProvider>
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: '新しいチームを作成',
+    });
+    expect(onCreateDialogOpened).toHaveBeenCalledTimes(1);
+    await user.click(
+      within(dialog).getByRole('button', { name: 'キャンセル' })
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    );
+    rerender(
+      <ThemeProvider theme={createTheme()}>
+        <TeamList
+          openCreateOnMount={false}
+          onCreateDialogOpened={onCreateDialogOpened}
+        />
+      </ThemeProvider>
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onCreateDialogOpened).toHaveBeenCalledTimes(1);
+  });
+
+  test('試合から来た場合は戻り方の案内を表示する', async () => {
+    renderWith({ showReturnGuidance: true });
+    expect(
+      await screen.findByText(
+        /「試合画面に戻る」で試合へ戻り、「チームを選択」から登録したチームを選んでください/
+      )
+    ).toBeInTheDocument();
   });
 });

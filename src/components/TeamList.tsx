@@ -41,8 +41,19 @@ import {
 } from '../firebase/teamService';
 import { useAuth } from '../contexts/AuthContext';
 import { generateDefaultPlayers } from '../utils/defaultPlayers';
+import { UNSAVED_TEAM_ID_PREFIX } from '../utils/teamId';
 
-const TeamList: React.FC = () => {
+interface TeamListProps {
+  openCreateOnMount?: boolean;
+  onCreateDialogOpened?: () => void;
+  showReturnGuidance?: boolean;
+}
+
+const TeamList: React.FC<TeamListProps> = ({
+  openCreateOnMount = false,
+  onCreateDialogOpened,
+  showReturnGuidance = false,
+}) => {
   const { currentUser } = useAuth();
   const [teams, setTeams] = useState<TeamSetting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,6 +128,16 @@ const TeamList: React.FC = () => {
     loadTeams(true);
   }, [loadTeams]);
 
+  // 試合画面の登録導線から入った場合のみ、新規チーム作成ダイアログを1回開く
+  useEffect(() => {
+    if (!openCreateOnMount) return;
+    setTeamDialogError(null);
+    setTeamName('');
+    setEditingTeamId(null);
+    setOpenTeamDialog(true);
+    onCreateDialogOpened?.();
+  }, [openCreateOnMount, onCreateDialogOpened]);
+
   // チームダイアログの内部リセット
   const resetTeamDialogState = () => {
     setOpenTeamDialog(false);
@@ -185,7 +206,7 @@ const TeamList: React.FC = () => {
       );
     } else {
       // 新規チーム作成（楽観的更新）
-      const tempTeamId = 'temp-' + crypto.randomUUID();
+      const tempTeamId = UNSAVED_TEAM_ID_PREFIX + crypto.randomUUID();
       const defaultPlayers = generateDefaultPlayers().map(
         ({ id, name, number, position }) => ({ id, name, number, position })
       );
@@ -651,6 +672,12 @@ const TeamList: React.FC = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
+        </Alert>
+      )}
+
+      {showReturnGuidance && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          チームを登録して名簿を整えたら、「試合画面に戻る」で試合へ戻り、「チームを選択」から登録したチームを選んでください。
         </Alert>
       )}
 
