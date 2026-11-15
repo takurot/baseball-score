@@ -4,8 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // ゲームデータのルール
     match /games/{gameId} {
-      // 公開されたゲームデータは誰でも読み取り可能
-      allow read: if resource.data.isPublic == true;
+      // 公開されたゲームデータは、IDを知っていれば誰でも単一取得できる。
+      // list（一覧・クエリ）は許可しない: 公開試合の列挙を防ぐ。
+      allow get: if resource.data.isPublic == true;
       
       // 自分のデータだけ読み書き可能
       allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;

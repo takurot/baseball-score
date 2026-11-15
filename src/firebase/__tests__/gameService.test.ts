@@ -1,8 +1,16 @@
-import { getDoc, updateDoc, addDoc, getDocs, limit } from 'firebase/firestore';
+import {
+  getDoc,
+  updateDoc,
+  addDoc,
+  getDocs,
+  limit,
+  deleteField,
+} from 'firebase/firestore';
 import { Game } from '../../types';
 import { getCurrentUser } from '../authService';
 import {
   saveGame,
+  saveGameAsNew,
   getSharedGameById,
   getGameById,
   getAllGames,
@@ -21,6 +29,7 @@ jest.mock('firebase/firestore', () => ({
   deleteDoc: jest.fn(),
   where: jest.fn(),
   updateDoc: jest.fn(),
+  deleteField: jest.fn(() => 'DELETE_FIELD'),
 }));
 
 jest.mock('../config', () => ({ db: {} }));
@@ -98,6 +107,40 @@ describe('saveGame (update path)', () => {
       data: () => payload,
     });
     expect((await getGameById('game-1'))?.gameType).toBe('junior');
+  });
+});
+
+describe('owner email is not stored', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedGetCurrentUser.mockReturnValue({
+      uid: 'user-1',
+      email: 'me@example.com',
+    });
+    mockedAddDoc.mockResolvedValue({ id: 'new-game' });
+    (deleteField as jest.Mock).mockReturnValue('DELETE_FIELD');
+  });
+
+  it('does not write userEmail when creating, even if the game carries a legacy one', async () => {
+    await saveGame(makeGame({ id: '', userEmail: 'legacy@example.com' }));
+    const payload = mockedAddDoc.mock.calls[0][1];
+    expect(payload).not.toHaveProperty('userEmail');
+    expect(JSON.stringify(payload)).not.toContain('example.com');
+  });
+
+  it('does not write userEmail when saving as new', async () => {
+    await saveGameAsNew(makeGame({ userEmail: 'legacy@example.com' }));
+    expect(mockedAddDoc.mock.calls[0][1]).not.toHaveProperty('userEmail');
+  });
+
+  it('removes a legacy userEmail from the stored document on update', async () => {
+    mockedGetDoc.mockResolvedValue({
+      exists: () => true,
+      id: 'game-1',
+      data: () => ({ userId: 'user-1', userEmail: 'legacy@example.com' }),
+    });
+    await saveGame(makeGame({ userEmail: 'legacy@example.com' }));
+    expect(mockedUpdateDoc.mock.calls[0][1].userEmail).toBe('DELETE_FIELD');
   });
 });
 
