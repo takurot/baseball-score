@@ -168,6 +168,9 @@ export function drawFrontPage(
       y -= ROW;
     }
   });
+  y -= 8;
+  text('指標の定義', 10);
+  INDICATOR_DEFINITIONS.forEach((line) => text(line));
   if (chapters.some((chapter) => chapter.players.length)) {
     y -= 4;
     text(
@@ -175,6 +178,14 @@ export function drawFrontPage(
     );
   }
 }
+
+// 表の数値を検算できるように、用語と計算式を1ページ目に載せる
+export const INDICATOR_DEFINITIONS = [
+  '打席 = 打数 + 四死球 + 犠打 + 犠飛。四死球は四球と死球の合計で、犠打・犠飛は打数に含めません。',
+  '打率 = 安打 ÷ 打数　出塁率 = (安打 + 四死球) ÷ (打数 + 四死球 + 犠飛)　長打率 = 塁打 ÷ 打数　OPS = 出塁率 + 長打率　勝率 = 勝 ÷ (勝 + 負)',
+  '分母が0のときの率は0として扱います。打席のない選手の率は「—」と表示します。',
+  '率は四捨五入する前の値で計算し、最後に小数第3位まで表示します。表示された出塁率と長打率の和が OPS と .001 異なることがありますが、誤りではありません。',
+];
 
 export const buildOutline = (chapters: Chapter[]): OutlineNode[] =>
   chapters.map((chapter) => ({

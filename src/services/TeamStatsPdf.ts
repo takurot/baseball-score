@@ -26,6 +26,8 @@ const keys = [
   'homeRuns',
   'rbis',
   'walks',
+  'sacrificeBunts',
+  'sacrificeFlies',
   'strikeouts',
   'battingAvg',
   'obp',
@@ -40,6 +42,8 @@ const headings = [
   '本塁打',
   '打点',
   '四死球',
+  '犠打',
+  '犠飛',
   '三振',
   '打率',
   '出塁率',
@@ -49,7 +53,7 @@ const headings = [
 const HEADER_FILL = rgb(0.88, 0.88, 0.88);
 const STRIPE_FILL = rgb(0.93, 0.93, 0.93);
 const DIVIDER = rgb(0.35, 0.35, 0.35);
-const RATE_START = 8;
+const RATE_START = 10;
 const values = (s: TeamStats['battingStats']) =>
   keys.map((key, i) => (i >= RATE_START ? formatRate(s[key]) : String(s[key])));
 
@@ -224,7 +228,7 @@ export async function createTeamStatsPdf(
       }
       return height;
     };
-    const widths = [30, 132, 38, 30, ...Array(12).fill(38), 104];
+    const widths = [30, 132, 36, 30, ...Array(14).fill(34), 84];
     // 背番号 and 氏名 stay left; 登録試合数 through the 12 stats read as numbers.
     const numericColumns = widths.map(
       (_, i) => i >= 2 && i < widths.length - 1
@@ -294,13 +298,17 @@ export async function createTeamStatsPdf(
           );
           y -= 14;
           text('チーム打撃成績', 10);
-          table(headings, Array(12).fill(65), true, {
+          // 打席 = 打数 + 四死球 + 犠打 + 犠飛 が、この行で検算できる
+          table(['打席', ...headings], Array(15).fill(52), true, {
             header: true,
-            right: Array(12).fill(true),
+            right: Array(15).fill(true),
           });
-          table(values(stats.battingStats), Array(12).fill(65), true, {
-            right: Array(12).fill(true),
-          });
+          table(
+            [String(stats.plateAppearances), ...values(stats.battingStats)],
+            Array(15).fill(52),
+            true,
+            { right: Array(15).fill(true) }
+          );
         }
         y -= 16;
         text('個人成績', 10);

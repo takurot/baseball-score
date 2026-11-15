@@ -348,6 +348,7 @@ describe('playerRowCells', () => {
     triples: 0,
     homeRuns: 0,
     walks: 0,
+    sacrificeBunts: 0,
     sacrificeFlies: 0,
     strikeouts: 0,
     rbis: 0,
@@ -357,15 +358,15 @@ describe('playerRowCells', () => {
     ops: 0,
     ...over,
   });
-  // header: 背番号, 氏名, 登録試合数, 打席, 12 stat columns (last 4 are rates), 備考
-  const RATE_FROM = 4 + 8;
+  // header: 背番号, 氏名, 登録試合数, 打席, 14 stat columns (last 4 are rates), 備考
+  const RATE_FROM = 4 + 10;
   const rates = (cells: string[]) => cells.slice(RATE_FROM, RATE_FROM + 4);
-  const counts = (cells: string[]) => cells.slice(4, 4 + 8);
+  const counts = (cells: string[]) => cells.slice(4, 4 + 10);
 
   test('shows a dash for all four rates when a registered player has no plate appearance, keeping counts and remark', () => {
     const cells = playerRowCells('practice', player());
     expect(rates(cells)).toEqual(['—', '—', '—', '—']);
-    expect(counts(cells)).toEqual(Array(8).fill('0'));
+    expect(counts(cells)).toEqual(Array(10).fill('0'));
     expect(cells[2]).toBe('3');
     expect(cells[3]).toBe('0');
     expect(cells[cells.length - 1]).toBe('控え・打席なし');
@@ -390,7 +391,7 @@ describe('playerRowCells', () => {
 
   test('keeps dashing every column for a player with no registered games', () => {
     const cells = playerRowCells('official', player({ gameCount: 0 }));
-    expect(cells.slice(3, 4 + 12)).toEqual(Array(13).fill('—'));
+    expect(cells.slice(3, 4 + 14)).toEqual(Array(15).fill('—'));
     expect(cells[cells.length - 1]).toBe('該当記録なし');
   });
 });
@@ -528,6 +529,7 @@ describe('table layout', () => {
   });
 
   test('stacks a name that wraps over several lines and moves the next row down by that height', async () => {
+    // the name column is 132pt wide (126pt usable): 15 full-width characters per line
     const wrapped = 'あ'.repeat(15);
     const team = roster(3, (i) => (i === 1 ? wrapped.repeat(3) : `選手${i}`));
     const page = (
@@ -1387,4 +1389,91 @@ test('leaves out the dots, and says so, when the games would crowd them together
       '試合数が多い図では、点が重なるため下段の●/○を省略しています。'
     )
   ).toBe(true);
+});
+
+describe('sacrifice bunts, flies and indicator definitions', () => {
+  const at = (id: string, playerId: string, result: HitResult): AtBat => ({
+    ...ab(playerId, result),
+    id,
+  });
+  const team = roster(2);
+  // player 0: 11 at-bats with 3 hits (a triple and two singles) -> OBP 3/11, SLG 5/11;
+  //   plus one sacrifice bunt, one sacrifice fly and one walk
+  // player 1: one sacrifice bunt only
+  const bats: AtBat[] = [
+    at('1', '0', '3B'),
+    at('2', '0', 'IH'),
+    at('3', '0', 'IH'),
+    ...Array.from({ length: 8 }, (_, i) => at(`o${i}`, '0', 'GO_SS')),
+    at('s1', '0', 'SAC'),
+    at('f1', '0', 'SF'),
+    at('w1', '0', 'BB'),
+    at('s2', '1', 'SAC'),
+  ];
+  const games = [game('g1', '2026-04-01', 'practice', team, bats)];
+  const build = async () =>
+    pageContents(
+      await createTeamStatsPdf(
+        buildTeamReportStats(games, team),
+        games,
+        fontBytes(),
+        new Date('2026-11-14T16:30:00Z'),
+        () => {}
+      )
+    );
+  const rowYs = (content: string, text: string) =>
+    Array.from(
+      content.matchAll(
+        new RegExp(`1 0 0 1 [\\d.]+ ([\\d.]+) TM\\s*<${encode(text)}> TJ`, 'g')
+      )
+    ).map((m) => Number(m[1]));
+
+  test('puts 犠打 and 犠飛 next to 四死球 in the player and team tables, and 打席 in the team table', async () => {
+    const contents = await build();
+    const page = contents.find((c) => drawn(c, '日本語チーム｜練習試合'))!;
+    // header of the team batting table and of the player table
+    expect(rowYs(page, '犠打')).toHaveLength(2);
+    expect(rowYs(page, '犠飛')).toHaveLength(2);
+    expect(rowYs(page, '四死球')).toHaveLength(2);
+    const team = buildTeamReportStats(games, roster(2))[1];
+    expect(team.plateAppearances).toBe(15);
+    const b = team.battingStats;
+    expect(b.atBats + b.walks + b.sacrificeBunts + b.sacrificeFlies).toBe(15);
+  });
+
+  test("shows the player's breakdown so 打席 = 打数 + 四死球 + 犠打 + 犠飛 can be checked on the row", () => {
+    const [, practice] = buildTeamReportStats(games, team);
+    const first = practice.playerStats.find((p) => p.playerId === '0')!;
+    const cells = playerRowCells('practice', first);
+    // 打席, 打数, 安打, 二塁打, 三塁打, 本塁打, 打点, 四死球, 犠打, 犠飛
+    const [pa, ab11, , , , , , walks, bunts, flies] = cells
+      .slice(3, 13)
+      .map(Number);
+    expect([pa, ab11, walks, bunts, flies]).toEqual([14, 11, 1, 1, 1]);
+    expect(ab11 + walks + bunts + flies).toBe(pa);
+  });
+
+  test('prints OBP/SLG/OPS from unrounded values: .308 + .455 shows .763 but OPS is .762', async () => {
+    const contents = await build();
+    const page = contents.find((c) => drawn(c, '日本語チーム｜練習試合'))!;
+    const y = rowYs(page, '選手0')[0];
+    // OBP = (3 + 1) / (11 + 1 + 1) = .3077, SLG = 5 / 11 = .4545, OPS = .7622
+    expect(rowYs(page, '.308')).toContain(y);
+    expect(rowYs(page, '.455')).toContain(y);
+    expect(rowYs(page, '.762')).toContain(y);
+    expect(rowYs(page, '.763')).not.toContain(y);
+  });
+
+  test('states the definitions, the zero-denominator rule and the rounding rule on the first page', async () => {
+    const front = (await build())[0];
+    for (const line of [
+      '指標の定義',
+      '打席 = 打数 + 四死球 + 犠打 + 犠飛。四死球は四球と死球の合計で、犠打・犠飛は打数に含めません。',
+      '打率 = 安打 ÷ 打数　出塁率 = (安打 + 四死球) ÷ (打数 + 四死球 + 犠飛)　長打率 = 塁打 ÷ 打数　OPS = 出塁率 + 長打率　勝率 = 勝 ÷ (勝 + 負)',
+      '分母が0のときの率は0として扱います。打席のない選手の率は「—」と表示します。',
+      '率は四捨五入する前の値で計算し、最後に小数第3位まで表示します。表示された出塁率と長打率の和が OPS と .001 異なることがありますが、誤りではありません。',
+    ]) {
+      expect(drawn(front, line)).toBe(true);
+    }
+  });
 });
