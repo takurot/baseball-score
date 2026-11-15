@@ -385,6 +385,7 @@ export async function createTeamStatsPdf(
     chapters.push({
       label: labels[index],
       stats,
+      // start(false) above always ran, so the first table page exists
       table: tablePage!,
       ledger: ledgerPage,
       team: figures.find((figure) => figure.isTeam)?.page,

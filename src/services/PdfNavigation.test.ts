@@ -58,12 +58,21 @@ test('builds nested bookmarks whose destinations are the chosen pages', async ()
   const doc = await reload(pdf);
   const outlines = doc.catalog.lookup(PDFName.of('Outlines'), PDFDict);
   expect(outlines.get(PDFName.of('Count'))?.toString()).toBe('4');
+  expect(outlines.get(PDFName.of('Type'))).toBe(PDFName.of('Outlines'));
+  // the viewer opens with the bookmark panel
+  expect(doc.catalog.get(PDFName.of('PageMode'))).toBe(
+    PDFName.of('UseOutlines')
+  );
   const title = (item: PDFDict) =>
     (item.lookup(PDFName.of('Title')) as PDFHexString).decodeText();
   const first = outlines.lookup(PDFName.of('First'), PDFDict);
   expect(title(first)).toBe('公式戦');
   expect(indexOf(doc, first.lookup(PDFName.of('Dest'), PDFArray))).toBe(1);
+  // an open parent counts its two children; leaves carry no Count
+  expect(first.get(PDFName.of('Count'))?.toString()).toBe('2');
+  expect(first.lookup(PDFName.of('Parent'), PDFDict)).toBe(outlines);
   const child = first.lookup(PDFName.of('First'), PDFDict);
+  expect(child.get(PDFName.of('Count'))).toBeUndefined();
   const lastChild = first.lookup(PDFName.of('Last'), PDFDict);
   expect([title(child), title(lastChild)]).toEqual(['成績表', '背番号1 選手']);
   expect(indexOf(doc, lastChild.lookup(PDFName.of('Dest'), PDFArray))).toBe(3);
