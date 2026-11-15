@@ -6,8 +6,11 @@ import {
   PDFRawStream,
   decodePDFRawStream,
 } from 'pdf-lib';
-import { createTeamStatsPdf } from './TeamStatsPdf';
-import { buildTeamReportStats } from '../firebase/statsService';
+import { createTeamStatsPdf, playerRowCells } from './TeamStatsPdf';
+import {
+  buildTeamReportStats,
+  PlayerBattingStats,
+} from '../firebase/statsService';
 import { buildBattingTrend } from './BattingStatsTrend';
 import { buildTrendScale, formatRate, TREND_SERIES } from './BattingTrendChart';
 import { AtBat, Game, GameType, HitResult, TeamSetting } from '../types';
@@ -273,4 +276,68 @@ test('rejects table headers below the printable area for long team names', async
   await expect(
     createTeamStatsPdf(data, [], fontBytes(), new Date(), () => {})
   ).rejects.toThrow('ページ');
+});
+
+describe('playerRowCells', () => {
+  const player = (
+    over: Partial<PlayerBattingStats> = {}
+  ): PlayerBattingStats => ({
+    playerId: 'p',
+    playerName: '選手',
+    playerNumber: '1',
+    playerPosition: '',
+    gameCount: 3,
+    plateAppearances: 0,
+    atBats: 0,
+    hits: 0,
+    singles: 0,
+    doubles: 0,
+    triples: 0,
+    homeRuns: 0,
+    walks: 0,
+    sacrificeFlies: 0,
+    strikeouts: 0,
+    rbis: 0,
+    battingAvg: 0,
+    obp: 0,
+    slg: 0,
+    ops: 0,
+    ...over,
+  });
+  // header: 背番号, 氏名, 登録試合数, 打席, 12 stat columns (last 4 are rates), 備考
+  const RATE_FROM = 4 + 8;
+  const rates = (cells: string[]) => cells.slice(RATE_FROM, RATE_FROM + 4);
+  const counts = (cells: string[]) => cells.slice(4, 4 + 8);
+
+  test('shows a dash for all four rates when a registered player has no plate appearance, keeping counts and remark', () => {
+    const cells = playerRowCells('practice', player());
+    expect(rates(cells)).toEqual(['—', '—', '—', '—']);
+    expect(counts(cells)).toEqual(Array(8).fill('0'));
+    expect(cells[2]).toBe('3');
+    expect(cells[3]).toBe('0');
+    expect(cells[cells.length - 1]).toBe('控え・打席なし');
+  });
+
+  test('keeps .000 for a player who batted without a hit', () => {
+    const cells = playerRowCells(
+      'practice',
+      player({ plateAppearances: 3, atBats: 3, strikeouts: 3 })
+    );
+    expect(rates(cells)).toEqual(['.000', '.000', '.000', '.000']);
+    expect(cells[cells.length - 1]).toBe('規定未到達');
+  });
+
+  test('keeps 1.000 on-base for a walk-only player (zero at-bats, nonzero plate appearances)', () => {
+    const cells = playerRowCells(
+      'practice',
+      player({ plateAppearances: 2, walks: 2, obp: 1, ops: 1 })
+    );
+    expect(rates(cells)).toEqual(['.000', '1.000', '.000', '1.000']);
+  });
+
+  test('keeps dashing every column for a player with no registered games', () => {
+    const cells = playerRowCells('official', player({ gameCount: 0 }));
+    expect(cells.slice(3, 4 + 12)).toEqual(Array(13).fill('—'));
+    expect(cells[cells.length - 1]).toBe('該当記録なし');
+  });
 });

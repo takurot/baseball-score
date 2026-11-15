@@ -1,6 +1,6 @@
 import { PDFDocument, PDFFont, PDFPage, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
-import type { TeamStats } from '../firebase/statsService';
+import type { PlayerBattingStats, TeamStats } from '../firebase/statsService';
 import type { Game } from '../types';
 import { meetsQualification } from '../utils/gameType';
 import { drawTrendPages } from './TrendChartPdf';
@@ -36,8 +36,38 @@ const headings = [
   '長打率',
   'OPS',
 ];
+const RATE_START = 8;
 const values = (s: TeamStats['battingStats']) =>
-  keys.map((key, i) => (i >= 8 ? formatRate(s[key]) : String(s[key])));
+  keys.map((key, i) => (i >= RATE_START ? formatRate(s[key]) : String(s[key])));
+
+// A registered player with no plate appearance has no rate to report, so the
+// rates read "—" instead of a ".000" that looks like a hitless batter.
+export const playerRowCells = (
+  type: (typeof types)[number],
+  player: PlayerBattingStats
+): string[] => {
+  const registered = player.gameCount > 0;
+  const batted = player.plateAppearances > 0;
+  const stats = registered
+    ? values(player).map((value, i) =>
+        i >= RATE_START && !batted ? '—' : value
+      )
+    : Array(keys.length).fill('—');
+  return [
+    player.playerNumber,
+    player.playerName,
+    String(player.gameCount),
+    registered ? String(player.plateAppearances) : '—',
+    ...stats,
+    !registered
+      ? '該当記録なし'
+      : meetsQualification(type, player)
+        ? '規定到達'
+        : batted
+          ? '規定未到達'
+          : '控え・打席なし',
+  ];
+};
 
 export async function createTeamStatsPdf(
   sections: TeamStats[],
@@ -178,20 +208,7 @@ export async function createTeamStatsPdf(
     start(false);
     for (const player of stats.playerStats) {
       checkActive();
-      const cells = [
-        player.playerNumber,
-        player.playerName,
-        String(player.gameCount),
-        player.gameCount ? String(player.plateAppearances) : '—',
-        ...(player.gameCount ? values(player) : Array(12).fill('—')),
-        !player.gameCount
-          ? '該当記録なし'
-          : meetsQualification(types[index], player)
-            ? '規定到達'
-            : player.plateAppearances
-              ? '規定未到達'
-              : '控え・打席なし',
-      ];
+      const cells = playerRowCells(types[index], player);
       const height = table(cells, widths, false);
       if (y - height < 35) start(true);
       if (y - height < 35)
