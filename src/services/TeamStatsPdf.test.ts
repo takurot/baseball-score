@@ -760,15 +760,28 @@ test('marks each game under the chart as filled when it added plate appearances 
     )
   );
   const chart = contents.find((c) => drawn(c, chartHeader('公式戦')))!;
-  // fill colour is written as RG in the upper-cased stream; the dots use a 0.6 line width
-  const dots = (fill: string) =>
-    (
-      chart.match(
-        new RegExp(`^${fill} RG\\n0\\.2 0\\.2 0\\.2 RG\\n0\\.6 W`, 'gm')
-      ) ?? []
-    ).length;
-  // team figure and the single player's figure: filled, hollow, filled each
-  expect(dots('0.2 0.2 0.2')).toBe(4);
-  expect(dots('1 1 1')).toBe(2);
+  // The stream is upper-cased, so a fill colour reads as RG; dots are the 0.6-wide circles.
+  const dots = Array.from(
+    chart.matchAll(
+      /^(0\.2 0\.2 0\.2|1 1 1) RG\n0\.2 0\.2 0\.2 RG\n0\.6 W\n\[\] 0 D\nQ\n([\d.]+) [\d.]+ M/gm
+    )
+  ).map((m) => ({ filled: m[1] !== '1 1 1', x: Number(m[2]) }));
+  // team figure then the player's figure, each: filled, hollow (no turn in g2), filled
+  expect(dots.map((dot) => dot.filled)).toEqual([
+    true,
+    false,
+    true,
+    true,
+    false,
+    true,
+  ]);
+  // left to right in game order within each figure, at the same x in both figures
+  for (const figure of [dots.slice(0, 3), dots.slice(3)]) {
+    expect(figure[0].x).toBeLessThan(figure[1].x);
+    expect(figure[1].x).toBeLessThan(figure[2].x);
+  }
+  expect(dots.slice(0, 3).map((dot) => dot.x)).toEqual(
+    dots.slice(3).map((dot) => dot.x)
+  );
   expect(drawn(chart, '打席')).toBe(true);
 });

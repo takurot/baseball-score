@@ -303,7 +303,7 @@ export async function drawTrendPages(
       PAD * 2 +
       captionLines.length * CAPTION_LINE +
       (item.points.some((point) => point.rates)
-        ? LEGEND_ROW + MIN_PLOT_HEIGHT + X_LABEL_ROW
+        ? LEGEND_ROW + MIN_PLOT_HEIGHT + X_LABEL_ROW + APPEARANCE_ROW
         : MESSAGE_HEIGHT);
     if (needed > fullHeight) {
       throw new Error(
