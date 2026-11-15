@@ -40,7 +40,12 @@ const TICK_LABEL_WIDTH = 30;
 const X_LABEL_ROW = 16;
 const APPEARANCE_ROW = 12;
 const APPEARANCE_DOT = 2;
+// A dot is 2 x radius wide plus its border; keep a gap so neighbours stay apart.
+const MIN_DOT_SPACING = 6;
 const MIN_PLOT_HEIGHT = 100;
+const PLOT_WIDTH = WIDTH - PAD * 2 - TICK_LABEL_WIDTH - 4;
+const showAppearanceDots = (gameCount: number): boolean =>
+  PLOT_WIDTH / gameCount >= MIN_DOT_SPACING;
 const MESSAGE_HEIGHT = 40;
 const AXIS_LABEL_SLOT = 48;
 const INK = rgb(0.2, 0.2, 0.2);
@@ -147,7 +152,7 @@ function drawFigure(
   }
 
   const plotLeft = LEFT + PAD + TICK_LABEL_WIDTH;
-  const plotWidth = WIDTH - PAD * 2 - TICK_LABEL_WIDTH - 4;
+  const plotWidth = PLOT_WIDTH;
   const plotTop = y - LEGEND_ROW + 6;
   const plotBottom = top - height + PAD + X_LABEL_ROW + APPEARANCE_ROW;
   const plotHeight = plotTop - plotBottom;
@@ -189,17 +194,19 @@ function drawFigure(
   // One dot per game: filled when it added plate appearances, hollow when the
   // value is only carried forward, so flat stretches are not read as repeated results.
   const dotY = plotBottom - 11 - APPEARANCE_ROW + 4;
-  text('打席', plotLeft - 4 - font.widthOfTextAtSize('打席', 7), dotY - 2, 7);
-  figure.points.forEach((point, index) => {
-    page.drawCircle({
-      x: plotLeft + xPosition(index, count, plotWidth),
-      y: dotY,
-      size: APPEARANCE_DOT,
-      borderColor: INK,
-      borderWidth: 0.6,
-      color: point.volume.added > 0 ? INK : WHITE,
+  if (showAppearanceDots(count)) {
+    text('打席', plotLeft - 4 - font.widthOfTextAtSize('打席', 7), dotY - 2, 7);
+    figure.points.forEach((point, index) => {
+      page.drawCircle({
+        x: plotLeft + xPosition(index, count, plotWidth),
+        y: dotY,
+        size: APPEARANCE_DOT,
+        borderColor: INK,
+        borderWidth: 0.6,
+        color: point.volume.added > 0 ? INK : WHITE,
+      });
     });
-  });
+  }
 
   for (const series of TREND_SERIES) {
     const color = toColor(series.color);
@@ -266,6 +273,15 @@ export async function drawTrendPages(
       8,
     ],
   ];
+  // Every figure has one point per game of the team, so one count tells whether any is crowded.
+  const teamGames = buildBattingTrend(games, gameType, {
+    teamId: stats.teamId,
+  }).length;
+  if (teamGames && !showAppearanceDots(teamGames))
+    header.push([
+      '試合数が多い図では、点が重なるため下段の●/○を省略しています。',
+      8,
+    ]);
   const headerLines = header.flatMap(([value, size]) =>
     wrap(value, WIDTH, size).map((line): [string, number] => [line, size])
   );
