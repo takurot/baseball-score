@@ -2,7 +2,10 @@ import { readFileSync } from 'fs';
 import fontkit from '@pdf-lib/fontkit';
 import {
   PDFArray,
+  PDFDict,
   PDFDocument,
+  PDFHexString,
+  PDFName,
   PDFRawStream,
   decodePDFRawStream,
 } from 'pdf-lib';
@@ -129,7 +132,8 @@ test('keeps landscape A4 table pages and adds one chart page per two figures', a
     const chartPages = contents.filter(isChartPage).length;
     expect(chartPages).toBe(3 * Math.ceil((count + 1) / 2));
     expect(contents.length - chartPages).toBeGreaterThanOrEqual(3);
-    if (count < 2) expect(contents.length).toBe(6);
+    // summary page + 3 x (table + 2 chart pages)
+    if (count < 2) expect(contents.length).toBe(7);
     const pdf = await PDFDocument.load(bytes);
     for (const page of pdf.getPages()) {
       expect(page.getWidth()).toBeCloseTo(841.89);
@@ -159,12 +163,14 @@ test('places team then player charts after each section, in table order, with sh
   expect(
     contents.map(
       (c) =>
+        (drawn(c, '日本語チーム｜チーム通算成績') ? 'front' : undefined) ??
         labels.find((l) => drawn(c, chartHeader(l))) ??
         (labels.some((l) => drawn(c, `日本語チーム｜${l}｜対象試合一覧`))
           ? 'ledger'
           : 'table')
     )
   ).toEqual([
+    'front',
     'table',
     'ledger',
     '公式戦',
@@ -178,7 +184,7 @@ test('places team then player charts after each section, in table order, with sh
     'ジュニア戦',
   ]);
 
-  const official = contents.slice(2, 4);
+  const official = contents.slice(3, 5);
   const period = (unit: string) =>
     `対象期間: 2026-04-01〜2026-04-08（${unit}2試合）`;
   // [plate appearances, at-bats, games with a plate appearance] per player, in table order
@@ -242,7 +248,7 @@ test('places team then player charts after each section, in table order, with sh
   for (const tick of teamTicks) expect(drawn(official[0], tick)).toBe(true);
   expect(drawn(official[0], '4/1')).toBe(true);
   expect(drawn(official[0], '4/8')).toBe(true);
-  expect(drawn(contents[9], '試合記録なし')).toBe(true);
+  expect(drawn(contents[10], '試合記録なし')).toBe(true);
 });
 
 test('gives a long-named player a whole chart page instead of splitting the figure', async () => {
@@ -608,15 +614,17 @@ describe('game ledger and scope note', () => {
 
   test('states the all-period condition, the dates actually covered, the count and the issue time in JST', async () => {
     const contents = await build(ledgerGames());
+    // table is the summary page; the official table follows it
+    const table = contents.find((c) => drawn(c, '日本語チーム｜公式戦'))!;
     expect(
       drawn(
-        contents[0],
+        table,
         '対象期間: 全期間　実際の対象: 2026-04-01〜2026-04-08（3試合）　発行日時: 2026-11-15 01:30 JST'
       )
     ).toBe(true);
     expect(
       drawn(
-        contents[0],
+        table,
         '保存済みの試合をすべて集計しています。試合終了の確認はしていないため、入力途中の試合を含む場合があります。'
       )
     ).toBe(true);
@@ -969,5 +977,204 @@ describe('output options', () => {
     const page = contents.find((c) => drawn(c, '日本語チーム｜練習試合'))!;
     expect(drawn(page, '規定到達: 10打数以上')).toBe(true);
     expect(drawn(page, '規定未到達')).toBe(true);
+  });
+});
+
+describe('summary page and navigation', () => {
+  const marks = (n: number) => roster(n);
+  const gamesFor = (team: ReturnType<typeof roster>): Game[] => [
+    game('g1', '2026-04-01', 'official', team, [ab('0', 'HR')]),
+    game('g2', '2026-05-10', 'official', team, [ab('0', 'SO'), ab('1', 'IH')]),
+    game('g3', '2026-05-20', 'practice', team, [ab('0', 'IH')]),
+  ];
+  const make = async (
+    players: number,
+    options: Partial<TeamStatsPdfOptions> = {}
+  ) => {
+    const team = marks(players);
+    const games = gamesFor(team);
+    const report = buildTeamReportStats(games, team);
+    const bytes = await createTeamStatsPdf(
+      report,
+      games,
+      fontBytes(),
+      new Date('2026-11-14T16:30:00Z'),
+      () => {},
+      { ...DETAILED_PDF_OPTIONS, ...options }
+    );
+    return {
+      bytes,
+      report,
+      contents: await pageContents(bytes),
+      doc: await PDFDocument.load(bytes),
+    };
+  };
+  const yOf = (content: string, text: string) =>
+    Array.from(
+      content.matchAll(
+        new RegExp(`1 0 0 1 [\\d.]+ ([\\d.]+) TM\\s*<${encode(text)}> TJ`, 'g')
+      )
+    ).map((m) => Number(m[1]));
+  // a caption is one long run; match its beginning
+  const startsWith = (content: string, text: string) =>
+    content.includes(`<${encode(text)}`);
+  const num = (value: unknown) => (value as { asNumber(): number }).asNumber();
+  const pageOf = (doc: PDFDocument, dest: PDFArray) =>
+    doc.getPages().findIndex((page) => page.ref === dest.get(0));
+  const frontLinks = (doc: PDFDocument) =>
+    (doc.getPage(0).node.Annots()?.asArray() ?? []).map((ref) => {
+      const link = doc.context.lookup(ref, PDFDict);
+      const rect = link.lookup(PDFName.of('Rect'), PDFArray).asArray().map(num);
+      return {
+        bottom: rect[1],
+        top: rect[3],
+        page: pageOf(doc, link.lookup(PDFName.of('Dest'), PDFArray)),
+      };
+    });
+  // The table-of-contents row for `label`: where it jumps and the number printed on that row.
+  const entry = (
+    { contents, doc }: Awaited<ReturnType<typeof make>>,
+    label: string
+  ) => {
+    const y = yOf(contents[0], label);
+    expect(y).toHaveLength(1);
+    const link = frontLinks(doc).find((l) => l.bottom <= y[0] && y[0] <= l.top);
+    expect(link).toBeDefined();
+    return {
+      page: link!.page,
+      printed: yOf(contents[0], String(link!.page + 1)).some(
+        (row) => link!.bottom <= row && row <= link!.top
+      ),
+    };
+  };
+
+  test('opens with a per-type summary that keeps the three types apart', async () => {
+    const out = await make(3);
+    const front = out.contents[0];
+    expect(drawn(front, '日本語チーム｜チーム通算成績')).toBe(true);
+    expect(
+      drawn(front, '対象期間: 全期間　発行日時: 2026-11-15 01:30 JST')
+    ).toBe(true);
+    // one row per type, no combined total row
+    expect(drawn(front, '合計')).toBe(false);
+    out.report.forEach((stats, i) => {
+      const label = ['公式戦', '練習試合', 'ジュニア戦'][i];
+      const row = yOf(front, label);
+      expect(row).toHaveLength(1);
+      const cells = stats.gameCount
+        ? [
+            stats.gameCount,
+            stats.wins,
+            stats.losses,
+            stats.draws,
+            stats.wins + stats.losses
+              ? (stats.wins / (stats.wins + stats.losses)).toFixed(3)
+              : '—',
+            stats.totalRuns,
+            stats.totalRunsAllowed,
+            formatRate(stats.battingStats.battingAvg),
+            formatRate(stats.battingStats.obp),
+            formatRate(stats.battingStats.slg),
+            formatRate(stats.battingStats.ops),
+          ].map(String)
+        : Array(11).fill('—');
+      cells.forEach((cell) => expect(yOf(front, cell)).toContain(row[0]));
+    });
+  });
+
+  test('lists each chapter with the page it really starts on and links to it', async () => {
+    const out = await make(3);
+    const expected: [string, string][] = [
+      ['公式戦　成績表', '個人成績'],
+      ['公式戦　対象試合一覧', '日本語チーム｜公式戦｜対象試合一覧'],
+      ['公式戦　推移グラフ（チーム）', 'チーム: 日本語チーム｜公式戦'],
+      ['公式戦　推移グラフ（選手別）', '背番号0 選手0｜公式戦'],
+      ['練習試合　成績表', '個人成績'],
+      ['練習試合　対象試合一覧', '日本語チーム｜練習試合｜対象試合一覧'],
+      ['練習試合　推移グラフ（チーム）', 'チーム: 日本語チーム｜練習試合'],
+      ['練習試合　推移グラフ（選手別）', '背番号0 選手0｜練習試合'],
+      ['ジュニア戦　成績表', '個人成績'],
+      ['ジュニア戦　推移グラフ（チーム）', 'チーム: 日本語チーム｜ジュニア戦'],
+      ['ジュニア戦　推移グラフ（選手別）', '背番号0 選手0｜ジュニア戦'],
+    ];
+    for (const [label, marker] of expected) {
+      const { page, printed } = entry(out, label);
+      expect(printed).toBe(true);
+      expect(page).toBeGreaterThan(0);
+      expect(startsWith(out.contents[page], marker)).toBe(true);
+    }
+    // a type without a game has no ledger, so no ledger entry is offered
+    expect(yOf(out.contents[0], 'ジュニア戦　対象試合一覧')).toEqual([]);
+    expect(frontLinks(out.doc)).toHaveLength(expected.length);
+  });
+
+  test('keeps the numbers right when many players add pages', async () => {
+    const out = await make(100);
+    for (const label of ['公式戦　成績表', '練習試合　推移グラフ（選手別）']) {
+      expect(entry(out, label).printed).toBe(true);
+    }
+    const table = entry(out, '練習試合　成績表').page;
+    expect(drawn(out.contents[table], '日本語チーム｜練習試合')).toBe(true);
+    const last = out.contents.length;
+    expect(drawn(out.contents[last - 1], `${last} / ${last}`)).toBe(true);
+    expect(drawn(out.contents[0], `1 / ${last}`)).toBe(true);
+  });
+
+  test('lists only what the simple output produces', async () => {
+    const out = await make(3, {
+      types: ['practice'],
+      charts: 'team',
+    });
+    expect(yOf(out.contents[0], '公式戦')).toEqual([]);
+    expect(yOf(out.contents[0], '練習試合')).toHaveLength(1);
+    expect(entry(out, '練習試合　成績表').printed).toBe(true);
+    expect(entry(out, '練習試合　推移グラフ（チーム）').printed).toBe(true);
+    expect(yOf(out.contents[0], '練習試合　推移グラフ（選手別）')).toEqual([]);
+
+    const tablesOnly = await make(3, { charts: 'none' });
+    expect(yOf(tablesOnly.contents[0], '公式戦　推移グラフ（チーム）')).toEqual(
+      []
+    );
+    expect(entry(tablesOnly, '公式戦　対象試合一覧').printed).toBe(true);
+  });
+
+  test('adds bookmarks down to each charted player', async () => {
+    const { doc, contents } = await make(3);
+    const outlines = doc.catalog.lookup(PDFName.of('Outlines'), PDFDict);
+    const title = (item: PDFDict) =>
+      (item.lookup(PDFName.of('Title')) as PDFHexString).decodeText();
+    const children = (item: PDFDict) => {
+      const out: PDFDict[] = [];
+      let next: PDFDict | undefined = item.lookup(PDFName.of('First'), PDFDict);
+      while (next) {
+        out.push(next);
+        next = next.lookupMaybe(PDFName.of('Next'), PDFDict);
+      }
+      return out;
+    };
+    const top = children(outlines);
+    expect(top.map(title)).toEqual(['公式戦', '練習試合', 'ジュニア戦']);
+    const official = children(top[0]);
+    expect(official.map(title)).toEqual([
+      '成績表',
+      '対象試合一覧',
+      '推移グラフ（チーム）',
+      '背番号0 選手0',
+      '背番号1 選手1',
+      '背番号2 選手2',
+    ]);
+    const player = official[3];
+    const page = pageOf(doc, player.lookup(PDFName.of('Dest'), PDFArray));
+    expect(startsWith(contents[page], '背番号0 選手0｜公式戦')).toBe(true);
+  });
+
+  test('tells the reader where the player charts are reached', async () => {
+    const { contents } = await make(3);
+    expect(
+      drawn(
+        contents[0],
+        '選手別グラフは、目次の「推移グラフ（選手別）」から先頭の選手へ移動できます。個々の選手へはPDFビューアのブックマークから移動できます。'
+      )
+    ).toBe(true);
   });
 });
