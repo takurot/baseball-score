@@ -11,6 +11,7 @@ import { getCurrentUser } from '../authService';
 import {
   saveGame,
   saveGameAsNew,
+  updateGamePublicStatus,
   getSharedGameById,
   getGameById,
   getAllGames,
@@ -141,6 +142,39 @@ describe('owner email is not stored', () => {
     });
     await saveGame(makeGame({ userEmail: 'legacy@example.com' }));
     expect(mockedUpdateDoc.mock.calls[0][1].userEmail).toBe('DELETE_FIELD');
+  });
+});
+
+describe('updateGamePublicStatus', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedGetCurrentUser.mockReturnValue({
+      uid: 'user-1',
+      email: 'me@example.com',
+    });
+    (deleteField as jest.Mock).mockReturnValue('DELETE_FIELD');
+    mockedGetDoc.mockResolvedValue({
+      exists: () => true,
+      id: 'game-1',
+      data: () => ({ userId: 'user-1', userEmail: 'legacy@example.com' }),
+    });
+  });
+
+  it('removes a legacy userEmail when publishing, so a public document never exposes it', async () => {
+    await updateGamePublicStatus('game-1', true);
+    const payload = mockedUpdateDoc.mock.calls[0][1];
+    expect(payload.isPublic).toBe(true);
+    expect(payload.userEmail).toBe('DELETE_FIELD');
+  });
+
+  it('still refuses another users game', async () => {
+    mockedGetDoc.mockResolvedValue({
+      exists: () => true,
+      id: 'game-1',
+      data: () => ({ userId: 'someone-else' }),
+    });
+    await expect(updateGamePublicStatus('game-1', true)).rejects.toThrow();
+    expect(mockedUpdateDoc).not.toHaveBeenCalled();
   });
 });
 

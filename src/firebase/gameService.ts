@@ -252,6 +252,8 @@ export const updateGamePublicStatus = async (
     const docRef = doc(db, GAMES_COLLECTION, gameId);
     await updateDoc(docRef, {
       isPublic: isPublic,
+      // 公開すると誰でも取得できるため、旧データの所有者メールアドレスも同時に削除する
+      userEmail: deleteField(),
       updatedAt: serverTimestamp(),
     });
 
