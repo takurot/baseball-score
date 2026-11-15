@@ -1,4 +1,7 @@
 const fs = require('fs');
+const {
+  applyProductionCspToHtml,
+} = require('../../../scripts/apply-production-csp');
 const path = require('path');
 
 const config = JSON.parse(
@@ -15,9 +18,27 @@ const directive = (name) =>
     .map((part) => part.trim())
     .find((part) => part === name || part.startsWith(`${name} `)) || '';
 
+describe('the CSP copied into the built index.html', () => {
+  it('has no frame-ancestors (ignored in a meta tag) and keeps the rest', () => {
+    const html =
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'" />';
+    const built = applyProductionCspToHtml(
+      html,
+      headers['Content-Security-Policy']
+    );
+    expect(built).not.toContain('frame-ancestors');
+    expect(built).toContain("object-src 'none'");
+    expect(built).toContain('https://*.googleusercontent.com');
+  });
+});
+
 describe('firebase.json hosting security headers', () => {
-  it('sends HSTS for a year on every response', () => {
-    expect(headers['Strict-Transport-Security']).toBe('max-age=31536000');
+  it('sends HSTS for a year on every response, without dropping what Hosting sends by default', () => {
+    // Firebase Hosting already sends `max-age=31556926; includeSubDomains; preload`.
+    // A custom header must not make that weaker, so includeSubDomains is kept.
+    expect(headers['Strict-Transport-Security']).toBe(
+      'max-age=31536000; includeSubDomains'
+    );
   });
 
   it('disables powerful browser features the app does not use', () => {

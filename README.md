@@ -147,7 +147,7 @@ App Check（reCAPTCHA v3）は、`REACT_APP_RECAPTCHA_SITE_KEY` を設定した�
 
 `firebase.json` の `hosting.headers` で、次のヘッダを全レスポンスに付与します。
 
-- `Strict-Transport-Security: max-age=31536000`（`includeSubDomains` はサブドメインを運用する際に追加）
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains`（Firebase Hosting が既定で返す値より弱くならないよう `includeSubDomains` を付与。`preload` は付けていません）
 - `Permissions-Policy`: カメラ・マイク・位置情報・決済・USB・`interest-cohort` を無効化
 - `Content-Security-Policy`: `frame-ancestors 'self'`、`img-src` は許可オリジンを列挙、`connect-src` から Realtime Database（`*.firebaseio.com`）を削除
 - `style-src 'unsafe-inline'` は、MUI/Emotion がインラインスタイルを挿入するため残しています（受け入れたトレードオフ）。スクリプトは `'unsafe-inline'` / `'unsafe-eval'` を許可していません。
