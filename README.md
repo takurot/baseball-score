@@ -79,6 +79,19 @@ REACT_APP_FIREBASE_APP_ID=your_app_id
 REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
 ```
 
+### 認証のセキュリティ設定（Firebase Console）
+
+パスワードリセットは、未登録のメールアドレスでも登録済みと同じ「送信しました」を表示し、
+アカウントの存在を外部から確認できないようにしています（アプリ側の対応）。
+サーバー側でも列挙を塞ぐため、管理者が Firebase Console で次を有効にしてください
+（**Console 操作は未実施**です）。
+
+1. Firebase Console → Authentication → Settings → User actions
+2. 「Email enumeration protection（メール列挙保護）」を有効にする
+3. 有効にすると、未登録のメールアドレスに対する一部の API が、存在しない場合でも成功扱いの応答になります
+
+新規登録時の `auth/email-already-in-use` の表示は、利用者の案内として必要なため対象外です。
+
 ## デプロイ方法
 
 デプロイ先は `.firebaserc` のエイリアス（`production` / `staging`）で切り替えます。
