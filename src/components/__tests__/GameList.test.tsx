@@ -200,6 +200,64 @@ describe('GameList - 公開時の注意喚起', () => {
     await waitFor(() => expect(screen.getByRole('checkbox')).toBeChecked());
   });
 
+  test('確認後もキーボード操作の位置を失わない（スイッチにフォーカスが戻る）', async () => {
+    mockedGetAllGames.mockResolvedValue([makeGame('game-1')]);
+    let finish: () => void = () => {};
+    mockedUpdateGamePublicStatus.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+    );
+    const user = userEvent.setup();
+    renderGameList();
+
+    const toggle = await screen.findByRole('checkbox');
+    await user.click(toggle);
+    await confirmPublish(user);
+
+    await waitFor(() => expect(toggle).toHaveFocus());
+    // 更新中は操作を受け付けないが、フォーカスは持てる（disabled にしない）
+    expect(toggle).toHaveAttribute('aria-disabled', 'true');
+    finish();
+    await waitFor(() => expect(toggle).toBeChecked());
+    expect(toggle).toHaveAttribute('aria-disabled', 'false');
+  });
+
+  test('更新中に同じ試合のスイッチをもう一度操作しても二重に送信しない', async () => {
+    mockedGetAllGames.mockResolvedValue([
+      makeGame('game-1', { isPublic: true }),
+    ]);
+    mockedUpdateGamePublicStatus.mockImplementation(
+      () => new Promise<void>(() => {})
+    );
+    const user = userEvent.setup();
+    renderGameList();
+
+    const toggle = await screen.findByRole('checkbox');
+    await user.click(toggle);
+    await user.click(toggle);
+
+    expect(mockedUpdateGamePublicStatus).toHaveBeenCalledTimes(1);
+  });
+
+  test('Escapeで閉じても公開しない', async () => {
+    mockedGetAllGames.mockResolvedValue([makeGame('game-1')]);
+    const user = userEvent.setup();
+    renderGameList();
+
+    await user.click(await screen.findByRole('checkbox'));
+    await screen.findByRole('dialog', { name: '試合を公開する前の確認' });
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: '試合を公開する前の確認' })
+      ).not.toBeInTheDocument()
+    );
+    expect(mockedUpdateGamePublicStatus).not.toHaveBeenCalled();
+  });
+
   test('キャンセルすると公開せず、スイッチもOFFのまま', async () => {
     mockedGetAllGames.mockResolvedValue([makeGame('game-1')]);
     const user = userEvent.setup();

@@ -131,6 +131,7 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     event.stopPropagation();
+    if (updatingPublicStatus.has(gameId)) return;
     if (nextPublicStatus) {
       // 公開は、選手の個人情報が見られる旨を確認してから行う（非公開に戻すのは即時）
       setGameToPublish(gameId);
@@ -233,7 +234,11 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
                           onChange={(event, checked) =>
                             handleTogglePublic(game.id, checked, event)
                           }
-                          disabled={updatingPublicStatus.has(game.id)}
+                          // disabled にするとフォーカスが失われる（確認ダイアログから戻った直後など）
+                          // ため、更新中は aria-disabled と二重送信の防止で扱う
+                          inputProps={{
+                            'aria-disabled': updatingPublicStatus.has(game.id),
+                          }}
                           color="primary"
                           size="small"
                           icon={<PublicOffIcon />}
