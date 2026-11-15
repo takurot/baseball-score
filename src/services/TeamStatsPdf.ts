@@ -36,6 +36,9 @@ const headings = [
   '長打率',
   'OPS',
 ];
+const HEADER_FILL = rgb(0.88, 0.88, 0.88);
+const STRIPE_FILL = rgb(0.96, 0.96, 0.96);
+const DIVIDER = rgb(0.35, 0.35, 0.35);
 const RATE_START = 8;
 const values = (s: TeamStats['battingStats']) =>
   keys.map((key, i) => (i >= RATE_START ? formatRate(s[key]) : String(s[key])));
@@ -121,7 +124,18 @@ export async function createTeamStatsPdf(
         y -= size + 4;
       }
     };
-    const table = (cells: string[], widths: number[], draw = true) => {
+    interface RowStyle {
+      header?: boolean;
+      stripe?: boolean;
+      divider?: boolean;
+      right?: boolean[];
+    }
+    const table = (
+      cells: string[],
+      widths: number[],
+      draw = true,
+      style: RowStyle = {}
+    ) => {
       const lines = cells.map((cell, i) => wrap(cell, widths[i] - 6));
       const height = Math.max(...lines.map((l) => l.length)) * 11 + 8;
       if (draw) {
@@ -129,6 +143,11 @@ export async function createTeamStatsPdf(
           throw new Error(
             '表がページに収まりません。チーム名や項目の長さを確認してください'
           );
+        const fill = style.header
+          ? HEADER_FILL
+          : style.stripe
+            ? STRIPE_FILL
+            : undefined;
         let x = 24;
         lines.forEach((cell, i) => {
           page.drawRectangle({
@@ -138,21 +157,40 @@ export async function createTeamStatsPdf(
             height,
             borderWidth: 0.3,
             borderColor: rgb(0.6, 0.6, 0.6),
+            ...(fill && { color: fill }),
           });
           cell.forEach((line, j) =>
-            page.drawText(line, { x: x + 3, y: y - j * 11 - 6, size: 8, font })
+            page.drawText(line, {
+              x: style.right?.[i]
+                ? x + widths[i] - 3 - font.widthOfTextAtSize(line, 8)
+                : x + 3,
+              y: y - j * 11 - 6,
+              size: 8,
+              font,
+            })
           );
           x += widths[i];
         });
+        if (style.divider)
+          page.drawLine({
+            start: { x: 24, y: y + 4 },
+            end: { x: 24 + widths.reduce((sum, w) => sum + w, 0), y: y + 4 },
+            thickness: 1,
+            color: DIVIDER,
+          });
         y -= height;
       }
       return height;
     };
     const widths = [30, 132, 38, 30, ...Array(12).fill(38), 104];
+    // 背番号 and 氏名 stay left; 登録試合数 through the 12 stats read as numbers.
+    const numericColumns = widths.map(
+      (_, i) => i >= 2 && i < widths.length - 1
+    );
     const header = [
       '背番号',
       '氏名',
-      '登録試合数',
+      '登録\n試合数',
       '打席',
       ...headings,
       '備考',
@@ -173,13 +211,19 @@ export async function createTeamStatsPdf(
           ? '規定到達: 1打席以上（四死球・犠打・犠飛を含む）'
           : '規定到達: 10打数以上'
       );
+      text(
+        '並び順: 規定到達 → 規定未到達（打席なし・該当記録なしを含む）。各グループ内は背番号順'
+      );
+      y -= 4;
       if (!continued) {
         text('チーム成績', 10);
         if (!stats.gameCount) text('試合記録なし');
         else {
           table(
             ['試合数', '勝', '負', '分', '勝率', '得点', '失点'],
-            Array(7).fill(100)
+            Array(7).fill(100),
+            true,
+            { header: true, right: Array(7).fill(true) }
           );
           table(
             [
@@ -193,20 +237,29 @@ export async function createTeamStatsPdf(
               stats.totalRuns,
               stats.totalRunsAllowed,
             ].map(String),
-            Array(7).fill(100)
+            Array(7).fill(100),
+            true,
+            { right: Array(7).fill(true) }
           );
           y -= 14;
           text('チーム打撃成績', 10);
-          table(headings, Array(12).fill(65));
-          table(values(stats.battingStats), Array(12).fill(65));
+          table(headings, Array(12).fill(65), true, {
+            header: true,
+            right: Array(12).fill(true),
+          });
+          table(values(stats.battingStats), Array(12).fill(65), true, {
+            right: Array(12).fill(true),
+          });
         }
         y -= 16;
         text('個人成績', 10);
       }
-      table(header, widths);
+      table(header, widths, true, { header: true, right: numericColumns });
     };
     start(false);
-    for (const player of stats.playerStats) {
+    let qualifiedAbove: boolean | null = null;
+    for (let row = 0; row < stats.playerStats.length; row++) {
+      const player = stats.playerStats[row];
       checkActive();
       const cells = playerRowCells(types[index], player);
       const height = table(cells, widths, false);
@@ -215,7 +268,13 @@ export async function createTeamStatsPdf(
         throw new Error(
           '選手の1行がページに収まりません。氏名・IDの長さを確認してください'
         );
-      table(cells, widths);
+      const qualified = meetsQualification(types[index], player);
+      table(cells, widths, true, {
+        stripe: row % 2 === 1,
+        divider: qualifiedAbove === true && !qualified,
+        right: numericColumns,
+      });
+      qualifiedAbove = qualified;
     }
     await new Promise((resolve) => setTimeout(resolve, 0));
     await drawTrendPages(

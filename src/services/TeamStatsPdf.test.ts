@@ -69,6 +69,7 @@ const game = (
 });
 
 let encode: (text: string) => string;
+let measure: (text: string, size?: number) => number;
 beforeAll(async () => {
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
@@ -77,6 +78,7 @@ beforeAll(async () => {
   });
   encode = (text) =>
     embedded.encodeText(text).toString().slice(1, -1).toUpperCase();
+  measure = (text, size = 8) => embedded.widthOfTextAtSize(text, size);
 });
 
 // Each page's decoded content stream, so tests can look for the glyph runs drawn on it.
@@ -339,5 +341,105 @@ describe('playerRowCells', () => {
     const cells = playerRowCells('official', player({ gameCount: 0 }));
     expect(cells.slice(3, 4 + 12)).toEqual(Array(13).fill('—'));
     expect(cells[cells.length - 1]).toBe('該当記録なし');
+  });
+});
+
+describe('table layout', () => {
+  const practiceTablePage = async (
+    atBatCounts: number[],
+    gameType: GameType = 'practice'
+  ) => {
+    const team = roster(atBatCounts.length);
+    const games = [
+      game(
+        'g1',
+        '2026-04-01',
+        gameType,
+        team,
+        atBatCounts.flatMap((n, i) =>
+          Array.from({ length: n }, () => ab(String(i), 'SO'))
+        )
+      ),
+    ];
+    const contents = await pageContents(
+      await createTeamStatsPdf(
+        buildTeamReportStats(games, team),
+        games,
+        fontBytes(),
+        new Date('2026-11-15T00:00:00Z'),
+        () => {}
+      )
+    );
+    // Section 2 (練習試合) starts with its table page, right after the 公式戦 pages.
+    const first = contents.findIndex((c) => drawn(c, '日本語チーム｜練習試合'));
+    return contents[first];
+  };
+  const xsOf = (content: string, text: string) =>
+    Array.from(
+      content.matchAll(
+        new RegExp(`1 0 0 1 ([\\d.]+) [\\d.]+ TM\\s*<${encode(text)}> TJ`, 'g')
+      )
+    ).map((m) => Number(m[1]));
+
+  test('breaks the 登録試合数 heading at a word boundary instead of orphaning 数', async () => {
+    const page = await practiceTablePage([1]);
+    expect(drawn(page, '登録')).toBe(true);
+    expect(drawn(page, '試合数')).toBe(true);
+    expect(drawn(page, '登録試合')).toBe(false);
+  });
+
+  test('explains the order of the player rows', async () => {
+    const page = await practiceTablePage([1]);
+    expect(
+      drawn(
+        page,
+        '並び順: 規定到達 → 規定未到達（打席なし・該当記録なしを含む）。各グループ内は背番号順'
+      )
+    ).toBe(true);
+  });
+
+  test('shades header rows and alternate player rows in light grey that survives monochrome print', async () => {
+    const page = await practiceTablePage([1, 1, 1]);
+    expect(page).toContain('0.88 0.88 0.88 RG');
+    expect(page).toContain('0.96 0.96 0.96 RG');
+  });
+
+  test('right-aligns numeric cells so digits of different widths share a right edge', async () => {
+    const page = await practiceTablePage([1, 10]);
+    const wantedShift = measure('10') - measure('1');
+    const aligned = xsOf(page, '1').some((one) =>
+      xsOf(page, '10').some((ten) => Math.abs(one - ten - wantedShift) < 0.01)
+    );
+    expect(aligned).toBe(true);
+  });
+
+  test('draws a group divider only where qualified rows give way to unqualified ones', async () => {
+    const divider = '0.35 0.35 0.35 RG';
+    expect(await practiceTablePage([1, 10])).toContain(divider);
+    expect(await practiceTablePage([1, 2])).not.toContain(divider);
+  });
+
+  test('renders a 15-player roster with long names and two-digit counts without clipping', async () => {
+    const team = roster(15, (i) => `とても長い選手の名前${i}あいうえお`);
+    const games = [
+      game(
+        'g1',
+        '2026-04-01',
+        'practice',
+        team,
+        team.players.flatMap((p) =>
+          Array.from({ length: 12 }, () => ab(p.id, 'IH'))
+        )
+      ),
+    ];
+    const bytes = await createTeamStatsPdf(
+      buildTeamReportStats(games, team),
+      games,
+      fontBytes(),
+      new Date(),
+      () => {}
+    );
+    const contents = await pageContents(bytes);
+    expect(contents.length).toBeGreaterThanOrEqual(9);
   });
 });
