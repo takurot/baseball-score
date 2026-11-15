@@ -69,7 +69,7 @@ jobs:
         run: npm ci
 
       - name: Run Firestore rules tests
-        run: npx --yes firebase-tools@15.16.0 emulators:exec --only firestore --project demo-rules "npx jest --config jest.rules.config.js --runInBand"
+        run: npx --yes firebase-tools@15.16.0 emulators:exec --config firestore-rules-tests/firebase.json --only firestore --project demo-rules "npx jest --config jest.rules.config.js --runInBand"
 
   # セキュリティ監査
   security-audit:

@@ -27,7 +27,7 @@
     "eject": "react-scripts eject",
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint \"src/**/*.{js,jsx,ts,tsx}\" --fix",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-rules \"jest --config jest.rules.config.js --runInBand\"",
+    "test:rules": "firebase emulators:exec --config firestore-rules-tests/firebase.json --only firestore --project demo-rules \"jest --config jest.rules.config.js --runInBand\"",
     "ci:local": "npx prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" && npm run lint && npx tsc --noEmit && npm run test:ci && npm run build",
     "postinstall": "patch-package"
   },
