@@ -229,7 +229,7 @@ export async function createTeamStatsPdf(
       return height;
     };
     const widths = [30, 132, 36, 30, ...Array(14).fill(34), 84];
-    // 背番号 and 氏名 stay left; 登録試合数 through the 12 stats read as numbers.
+    // 背番号 and 氏名 stay left; 登録試合数 through the 14 stats read as numbers.
     const numericColumns = widths.map(
       (_, i) => i >= 2 && i < widths.length - 1
     );

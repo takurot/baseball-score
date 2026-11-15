@@ -1435,6 +1435,13 @@ describe('sacrifice bunts, flies and indicator definitions', () => {
     expect(rowYs(page, '犠打')).toHaveLength(2);
     expect(rowYs(page, '犠飛')).toHaveLength(2);
     expect(rowYs(page, '四死球')).toHaveLength(2);
+    // the team row sits one header-row height (19pt) below the team table's header
+    const teamHeaderY = Math.max(...rowYs(page, '犠打'));
+    const teamRowY = teamHeaderY - 19;
+    expect(rowYs(page, '15')).toContain(teamRowY); // 打席
+    expect(rowYs(page, '11')).toContain(teamRowY); // 打数
+    expect(rowYs(page, '2')).toContain(teamRowY); // 犠打 (player 0 and player 1)
+    expect(rowYs(page, '1')).toContain(teamRowY); // 犠飛
     const team = buildTeamReportStats(games, roster(2))[1];
     expect(team.plateAppearances).toBe(15);
     const b = team.battingStats;
@@ -1470,7 +1477,7 @@ describe('sacrifice bunts, flies and indicator definitions', () => {
       '指標の定義',
       '打席 = 打数 + 四死球 + 犠打 + 犠飛。四死球は四球と死球の合計で、犠打・犠飛は打数に含めません。',
       '打率 = 安打 ÷ 打数　出塁率 = (安打 + 四死球) ÷ (打数 + 四死球 + 犠飛)　長打率 = 塁打 ÷ 打数　OPS = 出塁率 + 長打率　勝率 = 勝 ÷ (勝 + 負)',
-      '分母が0のときの率は0として扱います。打席のない選手の率は「—」と表示します。',
+      '分母が0のときの打率・出塁率・長打率は0として扱います。打席のない選手の率と、勝敗のない区分の勝率は「—」と表示します。',
       '率は四捨五入する前の値で計算し、最後に小数第3位まで表示します。表示された出塁率と長打率の和が OPS と .001 異なることがありますが、誤りではありません。',
     ]) {
       expect(drawn(front, line)).toBe(true);
