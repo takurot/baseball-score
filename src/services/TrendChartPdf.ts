@@ -38,6 +38,8 @@ const CAPTION_LINE = 14;
 const LEGEND_ROW = 14;
 const TICK_LABEL_WIDTH = 30;
 const X_LABEL_ROW = 16;
+const APPEARANCE_ROW = 12;
+const APPEARANCE_DOT = 2;
 const MIN_PLOT_HEIGHT = 100;
 const MESSAGE_HEIGHT = 40;
 const AXIS_LABEL_SLOT = 48;
@@ -59,6 +61,23 @@ const playerCaption = (player: TeamStats['playerStats'][number]) =>
   player.playerNumber
     ? `背番号${player.playerNumber} ${player.playerName}`
     : player.playerName;
+
+// A player's period counts the team's games, so it also says how many of them
+// gave that player a plate appearance; the totals show how thin the sample is.
+const trendCaption = (
+  subject: { name: string; target: TrendTarget },
+  label: string,
+  points: TrendPoint[]
+): string => {
+  const isPlayer = subject.target.playerId !== undefined;
+  const head = `${subject.name}｜${label}｜対象期間: ${formatTrendPeriod(points, isPlayer ? 'チーム対象' : '')}`;
+  if (!points.length) return head;
+  const { plateAppearances, atBats } = points[points.length - 1].volume;
+  const totals = `累積${plateAppearances}打席/${atBats}打数`;
+  if (!isPlayer) return `${head}｜${totals}`;
+  const played = points.filter((point) => point.volume.added > 0).length;
+  return `${head}｜${totals}｜打席あり${played}試合`;
+};
 
 function drawFigure(
   font: PDFFont,
@@ -115,14 +134,22 @@ function drawFigure(
       borderWidth: 0.5,
       scale: 0.75,
     });
-    text(series.label, legendX + 26, legendY - 3);
-    legendX += 26 + font.widthOfTextAtSize(series.label, 8) + 16;
+    // Label and value are separate runs: a digit right after a Latin letter
+    // (e.g. "OPS 1.500") is drawn with a gap by the embedded font.
+    const labelX = legendX + 26;
+    text(series.label, labelX, legendY - 3);
+    const valueX = labelX + font.widthOfTextAtSize(series.label, 8) + 4;
+    const finalRate =
+      figure.points[figure.points.length - 1].rates?.[series.metric];
+    const value = finalRate === undefined ? '' : formatRate(finalRate);
+    if (value) text(value, valueX, legendY - 3);
+    legendX = valueX + font.widthOfTextAtSize(value, 8) + 16;
   }
 
   const plotLeft = LEFT + PAD + TICK_LABEL_WIDTH;
   const plotWidth = WIDTH - PAD * 2 - TICK_LABEL_WIDTH - 4;
   const plotTop = y - LEGEND_ROW + 6;
-  const plotBottom = top - height + PAD + X_LABEL_ROW;
+  const plotBottom = top - height + PAD + X_LABEL_ROW + APPEARANCE_ROW;
   const plotHeight = plotTop - plotBottom;
   const scale = buildTrendScale(figure.points);
 
@@ -158,6 +185,21 @@ function drawFigure(
     const x = plotLeft + xPosition(index, count, plotWidth);
     text(label, x - font.widthOfTextAtSize(label, 8) / 2, plotBottom - 11);
   }
+
+  // One dot per game: filled when it added plate appearances, hollow when the
+  // value is only carried forward, so flat stretches are not read as repeated results.
+  const dotY = plotBottom - 11 - APPEARANCE_ROW + 4;
+  text('打席', plotLeft - 4 - font.widthOfTextAtSize('打席', 7), dotY - 2, 7);
+  figure.points.forEach((point, index) => {
+    page.drawCircle({
+      x: plotLeft + xPosition(index, count, plotWidth),
+      y: dotY,
+      size: APPEARANCE_DOT,
+      borderColor: INK,
+      borderWidth: 0.6,
+      color: point.volume.added > 0 ? INK : WHITE,
+    });
+  });
 
   for (const series of TREND_SERIES) {
     const color = toColor(series.color);
@@ -219,6 +261,10 @@ export async function drawTrendPages(
       '横軸は試合順（試合日）です。同日の試合は保存されたIDの順に並べており、実際の開催順とは限りません。試合が多い場合は日付ラベルを間引きます。',
       8,
     ],
+    [
+      '凡例の数値は最終試合時点の累積値です。下段の●はその試合で打席が追加された試合、○は打席がなく前の値を維持した試合（初打席前を含む）です。',
+      8,
+    ],
   ];
   const headerLines = header.flatMap(([value, size]) =>
     wrap(value, WIDTH, size).map((line): [string, number] => [line, size])
@@ -249,7 +295,7 @@ export async function drawTrendPages(
     checkActive();
     const points = buildBattingTrend(games, gameType, subject.target);
     const item: Figure = {
-      caption: `${subject.name}｜${label}｜対象期間: ${formatTrendPeriod(points)}`,
+      caption: trendCaption(subject, label, points),
       points,
     };
     const captionLines = wrap(item.caption, WIDTH - PAD * 2, 10);

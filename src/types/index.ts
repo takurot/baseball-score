@@ -141,10 +141,19 @@ export interface TrendGame {
   opponentName: string;
 }
 
+// Plate appearances and at-bats summed through this game, and the plate
+// appearances this game itself added (0 when the value is only carried forward).
+export interface TrendVolume {
+  plateAppearances: number;
+  atBats: number;
+  added: number;
+}
+
 // Rates from counts summed through this game; null before the first plate appearance.
 export interface TrendPoint {
   game: TrendGame;
   rates: TrendRates | null;
+  volume: TrendVolume;
 }
 
 // 保存用の選手情報

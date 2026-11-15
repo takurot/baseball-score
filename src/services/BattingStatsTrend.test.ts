@@ -323,3 +323,29 @@ test.each(['all', 'official', 'practice', 'junior'] as const)(
     }
   }
 );
+
+test('reports cumulative plate appearances and at-bats and how many were added by each game', () => {
+  const games = [
+    game('g1', '2026-04-01', side('t', [ab('other', 'HR')])),
+    game('g2', '2026-04-02', side('t', [ab('p', 'BB'), ab('p', 'SO')])),
+    game('g3', '2026-04-03', side('t', [ab('other', 'SO')])),
+    game('g4', '2026-04-04', side('t', [ab('p', 'IH')])),
+  ];
+  const volume = buildBattingTrend(games, 'all', {
+    teamId: 't',
+    playerId: 'p',
+  }).map((point) => point.volume);
+  // a walk is a plate appearance but not an at-bat; games without his turn add nothing
+  expect(volume).toEqual([
+    { plateAppearances: 0, atBats: 0, added: 0 },
+    { plateAppearances: 2, atBats: 1, added: 2 },
+    { plateAppearances: 2, atBats: 1, added: 0 },
+    { plateAppearances: 3, atBats: 2, added: 1 },
+  ]);
+  const team = buildBattingTrend(games, 'all', { teamId: 't' });
+  expect(team[3].volume).toEqual({
+    plateAppearances: 5,
+    atBats: 4,
+    added: 1,
+  });
+});

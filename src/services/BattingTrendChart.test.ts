@@ -19,6 +19,7 @@ const point = (
 ): TrendPoint => ({
   game: { id, date, label, opponentName: '相手' },
   rates,
+  volume: { plateAppearances: 0, atBats: 0, added: 0 },
 });
 
 const r = (battingAvg: number, obp: number, slg: number): TrendRates => ({

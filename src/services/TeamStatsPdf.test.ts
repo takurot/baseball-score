@@ -174,14 +174,23 @@ test('places team then player charts after each section, in table order, with sh
   ]);
 
   const official = contents.slice(2, 4);
-  const period = '対象期間: 2026-04-01〜2026-04-08（2試合）';
+  const period = (unit: string) =>
+    `対象期間: 2026-04-01〜2026-04-08（${unit}2試合）`;
+  // [plate appearances, at-bats, games with a plate appearance] per player, in table order
+  const volumes = [
+    [2, 2, 2],
+    [1, 1, 1],
+    [0, 0, 0],
+  ];
   const captions = [
-    `チーム: 日本語チーム｜公式戦｜${period}`,
-    ...report[0].playerStats.map((p) =>
-      p.playerNumber
-        ? `背番号${p.playerNumber} ${p.playerName}｜公式戦｜${period}`
-        : `${p.playerName}｜公式戦｜${period}`
-    ),
+    `チーム: 日本語チーム｜公式戦｜${period('')}｜累積3打席/3打数`,
+    ...report[0].playerStats.map((p, i) => {
+      const [pa, atBats, played] = volumes[i];
+      const name = p.playerNumber
+        ? `背番号${p.playerNumber} ${p.playerName}`
+        : p.playerName;
+      return `${name}｜公式戦｜${period('チーム対象')}｜累積${pa}打席/${atBats}打数｜打席あり${played}試合`;
+    }),
   ];
   expect(report[0].playerStats.map((p) => p.playerName)).toEqual([
     '長打者',
@@ -192,9 +201,28 @@ test('places team then player charts after each section, in table order, with sh
     expect(drawn(official[Math.floor(figure / 2)], caption)).toBe(true)
   );
   expect(drawn(official[1], '打席記録なし')).toBe(true);
+  // the legend carries each metric's final cumulative value next to the chart
+  const finalRates = buildBattingTrend(games, 'official', { teamId: 't' })[1]
+    .rates!;
+  const rowY = (text: string) =>
+    Array.from(
+      official[0].matchAll(
+        new RegExp(`1 0 0 1 [\\d.]+ ([\\d.]+) TM\\s*<${encode(text)}> TJ`, 'g')
+      )
+    ).map((m) => m[1]);
   for (const series of TREND_SERIES) {
-    expect(drawn(official[0], series.label)).toBe(true);
+    const labelRows = rowY(series.label);
+    // two figures share the page; the team's legend is drawn first
+    expect(labelRows).toHaveLength(2);
+    // the value sits on the legend row itself, not only on an axis tick
+    expect(rowY(formatRate(finalRates[series.metric]))).toContain(labelRows[0]);
   }
+  expect(
+    drawn(
+      official[0],
+      '凡例の数値は最終試合時点の累積値です。下段の●はその試合で打席が追加された試合、○は打席がなく前の値を維持した試合（初打席前を含む）です。'
+    )
+  ).toBe(true);
   const teamTicks = buildTrendScale(
     buildBattingTrend(games, 'official', { teamId: 't' })
   ).ticks.map(formatRate);
@@ -713,4 +741,34 @@ describe('game ledger and scope note', () => {
     expect(drawn(ledger, '勝')).toBe(true);
     expect(drawn(ledger, '先攻でない相手')).toBe(true);
   });
+});
+
+test('marks each game under the chart as filled when it added plate appearances and hollow when the value is only carried forward', async () => {
+  const team = roster(1);
+  const games = [
+    game('g1', '2026-04-01', 'official', team, [ab('0', 'SO')]),
+    game('g2', '2026-04-08', 'official', team, []),
+    game('g3', '2026-04-15', 'official', team, [ab('0', 'IH')]),
+  ];
+  const contents = await pageContents(
+    await createTeamStatsPdf(
+      buildTeamReportStats(games, team),
+      games,
+      fontBytes(),
+      new Date(),
+      () => {}
+    )
+  );
+  const chart = contents.find((c) => drawn(c, chartHeader('公式戦')))!;
+  // fill colour is written as RG in the upper-cased stream; the dots use a 0.6 line width
+  const dots = (fill: string) =>
+    (
+      chart.match(
+        new RegExp(`^${fill} RG\\n0\\.2 0\\.2 0\\.2 RG\\n0\\.6 W`, 'gm')
+      ) ?? []
+    ).length;
+  // team figure and the single player's figure: filled, hollow, filled each
+  expect(dots('0.2 0.2 0.2')).toBe(4);
+  expect(dots('1 1 1')).toBe(2);
+  expect(drawn(chart, '打席')).toBe(true);
 });

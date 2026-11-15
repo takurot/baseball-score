@@ -113,6 +113,11 @@ export const buildBattingTrend = (
         plateAppearances > 0
           ? ScoreCalculator.calculateBattingRates(counts)
           : null,
+      volume: {
+        plateAppearances,
+        atBats: counts.atBats,
+        added: atBats.length,
+      },
     };
   });
 };
