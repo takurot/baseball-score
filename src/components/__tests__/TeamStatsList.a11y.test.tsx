@@ -127,7 +127,7 @@ describe('TeamStatsList - 表の名前と行見出し', () => {
       await screen.findByRole('table', { name: 'チーム成績' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('rowheader', { name: /テストチーム/ })
+      screen.getByRole('rowheader', { name: 'テストチーム' })
     ).toBeInTheDocument();
     expect(
       screen.getByRole('columnheader', { name: '試合数' })
@@ -146,8 +146,9 @@ describe('TeamStatsList - 表の名前と行見出し', () => {
     expect(
       await screen.findByRole('table', { name: 'テストチームの選手成績' })
     ).toBeInTheDocument();
+    // 行見出しの名前は選手名そのもの（中の「推移グラフを開く」ボタンのラベルではない）
     expect(
-      screen.getByRole('rowheader', { name: /山田太郎/ })
+      screen.getByRole('rowheader', { name: '山田太郎' })
     ).toBeInTheDocument();
     expect(
       screen.getByRole('columnheader', { name: '登録試合数' })

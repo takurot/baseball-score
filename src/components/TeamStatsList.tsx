@@ -448,7 +448,12 @@ const TeamStatsList: React.FC = () => {
             <TableBody>
               {teamStats.map((stats) => (
                 <TableRow key={stats.teamId}>
-                  <TableCell component="th" scope="row">
+                  <TableCell
+                    component="th"
+                    scope="row"
+                    // 中のボタンのラベル（「…を開く」）ではなく、チーム名を行見出しの名前にする
+                    aria-label={stats.teamName}
+                  >
                     {teamTrendButton(stats)}
                   </TableCell>
                   <TableCell align="center">{stats.gameCount}</TableCell>
@@ -518,7 +523,11 @@ const TeamStatsList: React.FC = () => {
               <TableBody>
                 {teamStats.map((stats) => (
                   <TableRow key={stats.teamId}>
-                    <TableCell component="th" scope="row">
+                    <TableCell
+                      component="th"
+                      scope="row"
+                      aria-label={stats.teamName}
+                    >
                       {teamTrendButton(stats)}
                     </TableCell>
                     <TableCell align="center">{stats.gameCount}</TableCell>
@@ -708,6 +717,7 @@ const TeamStatsList: React.FC = () => {
                           <TableCell
                             component="th"
                             scope="row"
+                            aria-label={player.playerName}
                             sx={{ minWidth: '140px', width: '140px' }}
                           >
                             <TrendButton
