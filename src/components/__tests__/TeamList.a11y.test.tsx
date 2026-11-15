@@ -84,4 +84,17 @@ describe('TeamList accessibility', () => {
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
+
+  test('has no axe violations with the registration entry dialog and guidance', async () => {
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <TeamList openCreateOnMount showReturnGuidance />
+      </ThemeProvider>
+    );
+
+    const dialog = await screen.findByRole('dialog', {
+      name: '新しいチームを作成',
+    });
+    expect(await axe(dialog)).toHaveNoViolations();
+  });
 });

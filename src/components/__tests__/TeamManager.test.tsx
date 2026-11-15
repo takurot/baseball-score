@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import TeamManager from '../TeamManager';
@@ -57,14 +57,20 @@ const savedTeam: TeamSetting = {
 const renderTeamManager = (
   team: Team,
   onTeamUpdate = jest.fn(),
-  role: 'away' | 'home' = 'away'
+  role: 'away' | 'home' = 'away',
+  onRegisterTeam = jest.fn()
 ) => {
   render(
     <ThemeProvider theme={createTheme()}>
-      <TeamManager team={team} role={role} onTeamUpdate={onTeamUpdate} />
+      <TeamManager
+        team={team}
+        role={role}
+        onTeamUpdate={onTeamUpdate}
+        onRegisterTeam={onRegisterTeam}
+      />
     </ThemeProvider>
   );
-  return { onTeamUpdate };
+  return { onTeamUpdate, onRegisterTeam };
 };
 
 describe('TeamManager - チーム選択導線の統合', () => {
@@ -396,16 +402,143 @@ describe('TeamManager - 試合名簿からの選手削除', () => {
     ).toBeInTheDocument();
   });
 
-  test('新しい選手の追加ダイアログには削除を表示しない', async () => {
+  test('試合内に新しい選手を追加する操作を提供せず、編集ダイアログは既存選手専用', async () => {
     const user = userEvent.setup();
     renderTeamManager(makeTeam());
-    await user.click(screen.getByRole('button', { name: '選手を追加' }));
     expect(
-      screen.getByRole('dialog', { name: '新しい選手を追加' })
+      screen.queryByRole('button', { name: '選手を追加' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '選手の新規登録は「チーム・選手管理」から行い、登録後にチームを選び直してください。'
+      )
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '選手情報を編集' }));
+    expect(
+      screen.getByRole('dialog', { name: '選手情報を編集' })
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'この試合から削除' })
+      screen.getByRole('button', { name: 'この試合から削除' })
+    ).toBeInTheDocument();
+  });
+});
+
+describe('TeamManager - チーム選択からの登録導線', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockCurrentUser = { uid: 'user-1', email: 'me@example.com' };
+    mockedGetUserTeams.mockResolvedValue([savedTeam]);
+    mockedGetTeamById.mockResolvedValue(savedTeam);
+  });
+
+  test('0件のとき空状態の案内と「チームを登録」を表示し、押すと閉じて登録へ移動する', async () => {
+    mockedGetUserTeams.mockResolvedValue([]);
+    const user = userEvent.setup();
+    const { onRegisterTeam, onTeamUpdate } = renderTeamManager(makeTeam());
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '登録済みのチームから選択',
+    });
+    expect(
+      within(dialog).getByText(/登録済みのチームがありません/)
+    ).toBeInTheDocument();
+    expect(await axe(dialog)).toHaveNoViolations();
+    await user.click(
+      within(dialog).getByRole('button', { name: 'チームを登録' })
+    );
+    expect(onRegisterTeam).toHaveBeenCalledTimes(1);
+    expect(onTeamUpdate).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: '登録済みのチームから選択' })
+      ).not.toBeInTheDocument()
+    );
+  });
+
+  test('1件以上のとき一覧と「チームを登録」を併せて表示する', async () => {
+    const user = userEvent.setup();
+    const { onRegisterTeam } = renderTeamManager(makeTeam());
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '登録済みのチームから選択',
+    });
+    expect(within(dialog).getByText('保存済みチーム')).toBeInTheDocument();
+    await user.click(
+      within(dialog).getByRole('button', { name: 'チームを登録' })
+    );
+    expect(onRegisterTeam).toHaveBeenCalledTimes(1);
+  });
+
+  test('取得失敗では0件扱いにせず「チームを登録」を出さない', async () => {
+    mockedGetUserTeams.mockRejectedValue(new Error('network'));
+    const user = userEvent.setup();
+    renderTeamManager(makeTeam());
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '登録済みのチームから選択',
+    });
+    expect(dialog).toHaveTextContent('チームの読み込みに失敗しました');
+    expect(dialog).not.toHaveTextContent('登録済みのチームがありません');
+    expect(
+      within(dialog).queryByRole('button', { name: 'チームを登録' })
     ).not.toBeInTheDocument();
+  });
+
+  test('取得失敗後に「再試行」でエラー表示を消しても「チームを登録」を出さない', async () => {
+    mockedGetUserTeams.mockRejectedValue(new Error('network'));
+    const user = userEvent.setup();
+    renderTeamManager(makeTeam());
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '登録済みのチームから選択',
+    });
+    await user.click(within(dialog).getByRole('button', { name: '再試行' }));
+    expect(
+      within(dialog).queryByRole('button', { name: 'チームを登録' })
+    ).not.toBeInTheDocument();
+  });
+
+  test('未ログインではログイン案内のみで「チームを登録」を出さない', async () => {
+    mockCurrentUser = null;
+    const user = userEvent.setup();
+    renderTeamManager(makeTeam());
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '登録済みのチームから選択',
+    });
+    expect(
+      within(dialog).queryByRole('button', { name: 'チームを登録' })
+    ).not.toBeInTheDocument();
+  });
+
+  test('読み込み中は「チームを登録」を出さない', async () => {
+    mockedGetTeamById.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    renderTeamManager(makeTeam());
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '登録済みのチームから選択',
+    });
+    await user.click(within(dialog).getByText('保存済みチーム'));
+    expect(await within(dialog).findByRole('progressbar')).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole('button', { name: 'チームを登録' })
+    ).not.toBeInTheDocument();
+  });
+
+  test('保存前の仮IDチームは一覧に出さず取り込めない', async () => {
+    mockedGetUserTeams.mockResolvedValue([
+      { ...savedTeam, id: 'temp-pending', name: '登録中チーム' },
+      savedTeam,
+    ]);
+    const user = userEvent.setup();
+    renderTeamManager(makeTeam({ players: [], atBats: [] }));
+    await user.click(screen.getByRole('button', { name: 'チームを選択' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '登録済みのチームから選択',
+    });
+    expect(within(dialog).queryByText('登録中チーム')).not.toBeInTheDocument();
+    expect(within(dialog).getByText('保存済みチーム')).toBeInTheDocument();
   });
 });
 
