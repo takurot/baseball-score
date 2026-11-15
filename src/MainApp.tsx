@@ -344,10 +344,8 @@ const MainApp: React.FC<{
             setSharedGameError(null);
 
             // 共有モードの場合はアナリティクスイベントを送信
-            sendAnalyticsEvent('shared_game_view', {
-              gameId: sharedGameId,
-              gameTitle: `${sharedGame.awayTeam.name} vs ${sharedGame.homeTeam.name}`,
-            });
+            // 共有URLのIDは閲覧用のアクセスキーなので、外部の計測には送らない
+            sendAnalyticsEvent('shared_game_view');
           } else {
             console.error('Game not found:', sharedGameId);
             setSharedGameError('指定された試合データが見つかりませんでした。');
@@ -777,7 +775,6 @@ const MainApp: React.FC<{
         // アナリティクスイベントを送信
         sendAnalyticsEvent('game_save_new', {
           gameId,
-          teams: `${awayTeam.name} vs ${homeTeam.name}`,
         });
       } else {
         // 既存の試合データを更新または新規に保存
@@ -785,7 +782,6 @@ const MainApp: React.FC<{
         gameActions.setGameId(gameId);
         sendAnalyticsEvent(id ? 'game_save_update' : 'game_save_new', {
           gameId,
-          teams: `${awayTeam.name} vs ${homeTeam.name}`,
         });
         message = '試合データを保存しました';
       }
@@ -833,7 +829,6 @@ const MainApp: React.FC<{
         // アナリティクスイベント：試合データ読み込み
         sendAnalyticsEvent('game_load', {
           gameId,
-          teams: `${loadedGame.awayTeam.name} vs ${loadedGame.homeTeam.name}`,
         });
       }
     } catch (error: any) {

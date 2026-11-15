@@ -53,6 +53,33 @@ const loadAnalyticsInstance = async (): Promise<Analytics | null> => {
   return analyticsInstance;
 };
 
+// チーム名・選手名・試合タイトルなど、個人を識別し得る情報は計測に送らない。
+// 呼び出し側の誤りで混入しても、送信の直前でここで取り除く。
+const FORBIDDEN_PARAM_KEYS = new Set(
+  [
+    'teams',
+    'team',
+    'teamName',
+    'gameTitle',
+    'title',
+    'playerName',
+    'venue',
+    'tournament',
+    'email',
+    'userEmail',
+  ].map((key) => key.toLowerCase())
+);
+
+const withoutPersonalParams = (
+  params?: Record<string, any>
+): Record<string, any> | undefined =>
+  params &&
+  Object.fromEntries(
+    Object.entries(params).filter(
+      ([key]) => !FORBIDDEN_PARAM_KEYS.has(key.toLowerCase())
+    )
+  );
+
 export const logAnalyticsEvent = async (
   eventName: string,
   eventParams?: Record<string, any>
@@ -65,7 +92,7 @@ export const logAnalyticsEvent = async (
       return;
     }
 
-    module.logEvent(instance, eventName, eventParams);
+    module.logEvent(instance, eventName, withoutPersonalParams(eventParams));
   } catch (error) {
     console.warn('Analytics event skipped:', error);
   }
