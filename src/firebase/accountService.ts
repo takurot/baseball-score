@@ -16,33 +16,25 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 import { getCurrentUser } from './authService';
+import {
+  AccountDeletionIncompleteError,
+  ReauthRequiredError,
+} from './accountErrors';
+
+export { AccountDeletionIncompleteError, ReauthRequiredError };
 
 // アカウント削除（利用者自身のデータ消去）。
 // 順序: 再認証 → games/teams の全削除 → Auth アカウントの削除。
 // データの削除には認証済みであること（ルール）が必要なため Auth は最後に消す。
-// 再認証を先に行うので、再認証に失敗してもデータだけ消えた状態にはならない。
+// 再認証は、サインインからの経過時間にかかわらず必ず最初に行う。Firebase が
+// アカウント削除で見るのはこのセッションのトークンの認証時刻で、クライアントの
+// 時計や lastSignInTime（他の端末のログインも反映される）では判定できない。
+// 再認証が済んでいなければ、データだけ消えてアカウントが残る状態になり得る。
 
 const COLLECTIONS = ['games', 'teams'] as const;
 const BATCH_SIZE = 400; // Firestore の 1 バッチ上限(500)より小さくする
 
-// Firebase は、直近のサインインから一定時間が過ぎると機密操作に再認証を要求する
-const RECENT_LOGIN_WINDOW_MS = 5 * 60 * 1000;
-
 export type ReauthMethod = 'google' | 'password' | 'unknown';
-
-export class ReauthRequiredError extends Error {
-  constructor() {
-    super('再認証のためパスワードの入力が必要です');
-    this.name = 'ReauthRequiredError';
-  }
-}
-
-export const needsReauthentication = (user: User): boolean => {
-  const lastSignIn = Date.parse(user.metadata?.lastSignInTime ?? '');
-  return (
-    Number.isNaN(lastSignIn) || Date.now() - lastSignIn > RECENT_LOGIN_WINDOW_MS
-  );
-};
 
 export const getReauthMethod = (user: User): ReauthMethod => {
   const providers = (user.providerData ?? []).map((info) => info.providerId);
@@ -93,9 +85,12 @@ export const deleteAccount = async ({
   const user = getCurrentUser();
   if (!user) throw new Error('ログインが必要です');
 
-  if (needsReauthentication(user)) {
-    await reauthenticate(user, password);
-  }
+  await reauthenticate(user, password);
   await deleteOwnedDocuments(user.uid);
-  await deleteUser(user);
+  try {
+    await deleteUser(user);
+  } catch (error) {
+    console.error('Account deletion failed after the data was deleted:', error);
+    throw new AccountDeletionIncompleteError();
+  }
 };

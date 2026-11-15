@@ -13,12 +13,9 @@ import {
   TextField,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  deleteAccount,
-  getReauthMethod,
-  needsReauthentication,
-} from '../firebase/accountService';
-import { getAuthErrorMessage } from '../firebase/authService';
+import { deleteAccount, getReauthMethod } from '../firebase/accountService';
+import { AccountDeletionIncompleteError } from '../firebase/accountErrors';
+import { getAuthErrorMessage } from '../utils/authErrorMessage';
 
 interface DeleteAccountDialogProps {
   open: boolean;
@@ -57,10 +54,9 @@ const DeleteAccountDialog: React.FC<DeleteAccountDialogProps> = ({
   // 閉じている間は再認証の要否などを計算しない
   if (!open || !currentUser) return null;
 
-  // 直近のログインが古いときだけ再認証を求める
-  const reauth = needsReauthentication(currentUser);
+  // 削除の前に、必ず本人確認（再認証）を行う
   const method = getReauthMethod(currentUser);
-  const needsPassword = reauth && method === 'password';
+  const needsPassword = method === 'password';
   const ready = confirmed && !busy && (!needsPassword || password.length > 0);
 
   const handleDelete = async () => {
@@ -72,11 +68,13 @@ const DeleteAccountDialog: React.FC<DeleteAccountDialogProps> = ({
     } catch (err) {
       console.error('Account deletion failed:', err);
       setError(
-        getAuthErrorMessage(
-          err,
-          ERROR_MESSAGES,
-          'アカウントの削除に失敗しました'
-        )
+        err instanceof AccountDeletionIncompleteError
+          ? err.message
+          : getAuthErrorMessage(
+              err,
+              ERROR_MESSAGES,
+              'アカウントの削除に失敗しました'
+            )
       );
       setPassword('');
     } finally {
@@ -102,7 +100,7 @@ const DeleteAccountDialog: React.FC<DeleteAccountDialogProps> = ({
           <p>
             公開中の試合も削除されるため、共有リンクからは見られなくなります。
           </p>
-          {reauth && method === 'google' && (
+          {method === 'google' && (
             <p>
               セキュリティのため、削除の前に Google のログイン画面が開きます。
             </p>
@@ -115,7 +113,7 @@ const DeleteAccountDialog: React.FC<DeleteAccountDialogProps> = ({
             fullWidth
             margin="dense"
             autoComplete="current-password"
-            helperText="セキュリティのため、現在のパスワードを入力してください"
+            helperText="削除の前に本人確認をします。現在のパスワードを入力してください"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             disabled={busy}

@@ -8,7 +8,6 @@ jest.mock('../../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
 jest.mock('../../firebase/accountService', () => ({
   deleteAccount: jest.fn(),
   getReauthMethod: jest.fn(() => 'google'),
-  needsReauthentication: jest.fn(() => false),
 }));
 
 describe('UserProfile', () => {

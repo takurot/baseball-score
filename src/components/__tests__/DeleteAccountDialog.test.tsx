@@ -3,31 +3,23 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import DeleteAccountDialog from '../DeleteAccountDialog';
+import { AccountDeletionIncompleteError } from '../../firebase/accountErrors';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  deleteAccount,
-  getReauthMethod,
-  needsReauthentication,
-} from '../../firebase/accountService';
+import { deleteAccount, getReauthMethod } from '../../firebase/accountService';
 
 jest.mock('../../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
 jest.mock('../../firebase/accountService', () => ({
   deleteAccount: jest.fn(),
   getReauthMethod: jest.fn(),
-  needsReauthentication: jest.fn(),
 }));
 
 const mockedDelete = deleteAccount as jest.Mock;
 
-const setup = ({
-  method = 'google',
-  reauth = false,
-}: { method?: string; reauth?: boolean } = {}) => {
+const setup = ({ method = 'google' }: { method?: string } = {}) => {
   (useAuth as jest.Mock).mockReturnValue({
     currentUser: { uid: 'u1', email: 'me@example.com' },
   });
   (getReauthMethod as jest.Mock).mockReturnValue(method);
-  (needsReauthentication as jest.Mock).mockReturnValue(reauth);
   const onClose = jest.fn();
   render(<DeleteAccountDialog open onClose={onClose} />);
   return { onClose, user: userEvent.setup() };
@@ -59,9 +51,9 @@ describe('DeleteAccountDialog', () => {
     expect(deleteButton()).toBeEnabled();
   });
 
-  it('deletes without asking for a password when no re-authentication is needed', async () => {
+  it('deletes a Google account without a password (a sign-in window opens instead)', async () => {
     mockedDelete.mockResolvedValue(undefined);
-    const { user } = setup({ method: 'password', reauth: false });
+    const { user } = setup({ method: 'google' });
     expect(screen.queryByLabelText('パスワード')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('checkbox'));
@@ -70,9 +62,9 @@ describe('DeleteAccountDialog', () => {
     await waitFor(() => expect(mockedDelete).toHaveBeenCalledWith({}));
   });
 
-  it('asks a password account for the password only when re-authentication is needed', async () => {
+  it('always asks a password account for the password, because the identity is re-checked before deleting', async () => {
     mockedDelete.mockResolvedValue(undefined);
-    const { user } = setup({ method: 'password', reauth: true });
+    const { user } = setup({ method: 'password' });
 
     await user.click(screen.getByRole('checkbox'));
     expect(deleteButton()).toBeDisabled();
@@ -85,8 +77,8 @@ describe('DeleteAccountDialog', () => {
     );
   });
 
-  it('tells a Google account that a sign-in window will open when re-authentication is needed', () => {
-    setup({ method: 'google', reauth: true });
+  it('always tells a Google account that a sign-in window will open before deleting', () => {
+    setup({ method: 'google' });
     expect(screen.getByRole('dialog')).toHaveTextContent(
       'Google のログイン画面'
     );
@@ -95,7 +87,7 @@ describe('DeleteAccountDialog', () => {
   it('shows why the deletion failed and stays open', async () => {
     mockedDelete.mockRejectedValue({ code: 'auth/invalid-credential' });
     jest.spyOn(console, 'error').mockImplementation(() => {});
-    const { user, onClose } = setup({ method: 'password', reauth: true });
+    const { user, onClose } = setup({ method: 'password' });
 
     await user.click(screen.getByRole('checkbox'));
     await user.type(screen.getByLabelText('パスワード'), 'wrong');
@@ -112,7 +104,20 @@ describe('DeleteAccountDialog', () => {
     (useAuth as jest.Mock).mockReturnValue({ currentUser: { uid: 'u1' } });
     render(<DeleteAccountDialog open={false} onClose={jest.fn()} />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(needsReauthentication).not.toHaveBeenCalled();
+    expect(getReauthMethod).not.toHaveBeenCalled();
+  });
+
+  it('explains when only the account deletion could not be finished', async () => {
+    mockedDelete.mockRejectedValue(new AccountDeletionIncompleteError());
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { user } = setup({ method: 'google' });
+
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(deleteButton());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'データは削除済み'
+    );
   });
 
   it('can be cancelled without deleting anything', async () => {
@@ -123,7 +128,7 @@ describe('DeleteAccountDialog', () => {
   });
 
   it('has no serious accessibility violations', async () => {
-    setup({ method: 'password', reauth: true });
+    setup({ method: 'password' });
     expect(
       await axe(document.body, { rules: { region: { enabled: false } } })
     ).toHaveNoViolations();

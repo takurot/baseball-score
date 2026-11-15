@@ -14,10 +14,10 @@ import {
 } from 'firebase/firestore';
 import { getCurrentUser } from '../authService';
 import {
+  AccountDeletionIncompleteError,
   ReauthRequiredError,
   deleteAccount,
   getReauthMethod,
-  needsReauthentication,
 } from '../accountService';
 
 jest.mock('firebase/auth', () => ({
@@ -102,19 +102,7 @@ const stubData = () =>
     .mockResolvedValueOnce(snapshot('t1'))
     .mockResolvedValueOnce(snapshot());
 
-describe('needsReauthentication / getReauthMethod', () => {
-  it('asks for re-authentication only when the last sign-in is older than 5 minutes', () => {
-    expect(needsReauthentication(userWith('google.com', recent) as never)).toBe(
-      false
-    );
-    expect(needsReauthentication(userWith('google.com', old) as never)).toBe(
-      true
-    );
-    expect(
-      needsReauthentication(userWith('google.com', 'invalid') as never)
-    ).toBe(true);
-  });
-
+describe('getReauthMethod', () => {
   it('tells Google and password accounts apart', () => {
     expect(getReauthMethod(userWith('google.com', recent) as never)).toBe(
       'google'
@@ -135,7 +123,9 @@ describe('deleteAccount', () => {
     expect(getDocs).not.toHaveBeenCalled();
   });
 
-  it('deletes every game and team of the user, then the Auth account, without re-authenticating after a recent sign-in', async () => {
+  it('re-authenticates first even after a very recent sign-in, then deletes the data, then the account', async () => {
+    // the sign-in time of *this* session cannot be judged reliably on the client
+    // (another device, clock skew, a slow deletion), so the identity is always re-checked
     (getCurrentUser as jest.Mock).mockReturnValue(
       userWith('google.com', recent)
     );
@@ -144,10 +134,7 @@ describe('deleteAccount', () => {
     await deleteAccount();
 
     expect(batchDeletes).toEqual(['g1', 'g2', 't1']);
-    expect(reauthenticateWithPopup).not.toHaveBeenCalled();
-    expect(reauthenticateWithCredential).not.toHaveBeenCalled();
-    // the data goes first (rules need the signed-in user), the account last
-    expect(calls).toEqual(['commit', 'commit', 'deleteUser']);
+    expect(calls).toEqual(['reauth', 'commit', 'commit', 'deleteUser']);
   });
 
   it('queries only the signed-in users own documents, in games and teams', async () => {
@@ -172,16 +159,6 @@ describe('deleteAccount', () => {
         value: 'u1',
       });
     }
-  });
-
-  it('re-authenticates a Google account first when the sign-in is old', async () => {
-    (getCurrentUser as jest.Mock).mockReturnValue(userWith('google.com', old));
-    stubData();
-
-    await deleteAccount();
-
-    expect(calls[0]).toBe('reauth');
-    expect(calls).toEqual(['reauth', 'commit', 'commit', 'deleteUser']);
   });
 
   it('asks a password account for its password, and deletes nothing without it', async () => {
@@ -245,6 +222,6 @@ describe('deleteAccount', () => {
     await deleteAccount();
 
     expect(batchDeletes).toEqual(['g1', 'g2']);
-    expect(calls).toEqual(['commit', 'commit', 'deleteUser']);
+    expect(calls).toEqual(['reauth', 'commit', 'commit', 'deleteUser']);
   });
 });
