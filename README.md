@@ -142,6 +142,19 @@ App Check（reCAPTCHA v3）は、`REACT_APP_RECAPTCHA_SITE_KEY` を設定した�
 3. Console の App Check の指標で、トークン付きリクエストの割合を確認する。
 4. 問題がなければ Cloud Firestore の「強制」を有効にする。強制すると、トークンを送らない旧バージョンのクライアントは拒否されます。
 
+### セキュリティヘッダ（Firebase Hosting）
+
+`firebase.json` の `hosting.headers` で、次のヘッダを全レスポンスに付与します。
+
+- `Strict-Transport-Security: max-age=31536000`（`includeSubDomains` はサブドメインを運用する際に追加）
+- `Permissions-Policy`: カメラ・マイク・位置情報・決済・USB・`interest-cohort` を無効化
+- `Content-Security-Policy`: `frame-ancestors 'self'`、`img-src` は許可オリジンを列挙、`connect-src` から Realtime Database（`*.firebaseio.com`）を削除
+- `style-src 'unsafe-inline'` は、MUI/Emotion がインラインスタイルを挿入するため残しています（受け入れたトレードオフ）。スクリプトは `'unsafe-inline'` / `'unsafe-eval'` を許可していません。
+
+CSP の値は `firebase.json` が唯一の情報源で、ビルド時に `build/index.html` の meta タグへ反映します
+（`frame-ancestors` など meta では無効なディレクティブは除きます）。
+ヘッダを変更した場合は、デプロイ後にログイン・試合一覧・成績画面でコンソールに CSP 違反が出ないことを確認してください。
+
 ## ライセンス
 
 MIT
