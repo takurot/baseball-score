@@ -1,5 +1,6 @@
 import type { Game, GameType } from '../types';
 import { isCalendarDate } from './BattingStatsTrend';
+import { getEffectiveGameType } from '../utils/gameType';
 
 // Inclusive date bounds (YYYY-MM-DD); an omitted bound is open.
 export interface ReportPeriod {
@@ -53,17 +54,21 @@ export const describePeriod = ({ start, end }: ReportPeriod): string =>
         ? `${end}以前`
         : '全期間';
 
-// The tables and the charts are both built from this one result.
+// The tables and the charts are both built from this one result. Games of a
+// type that is not printed are left out, so their dates are never judged.
 export const filterGamesByPeriod = (
   games: readonly Game[],
-  { start, end }: ReportPeriod
+  { start, end }: ReportPeriod,
+  types: readonly GameType[] = KNOWN_TYPES
 ): readonly Game[] =>
   !start && !end
     ? games
-    : games.filter((game) => {
-        if (!isCalendarDate(game.date))
-          throw new Error(
-            `試合日付が不正なため期間を判定できません（試合ID: ${game.id}、日付: ${game.date || '未設定'}）`
-          );
-        return (!start || game.date >= start) && (!end || game.date <= end);
-      });
+    : games
+        .filter((game) => types.includes(getEffectiveGameType(game)))
+        .filter((game) => {
+          if (!isCalendarDate(game.date))
+            throw new Error(
+              `試合日付が不正なため期間を判定できません（試合ID: ${game.id}、日付: ${game.date || '未設定'}）`
+            );
+          return (!start || game.date >= start) && (!end || game.date <= end);
+        });

@@ -55,6 +55,22 @@ describe('filterGamesByPeriod', () => {
     ).toEqual([]);
   });
 
+  test('ignores a game of an unselected type, even one with an unusable date', () => {
+    const junior = { ...game('junior-broken', ''), gameType: 'junior' } as Game;
+    expect(
+      ids(
+        filterGamesByPeriod(
+          [junior, game('b', '2026-04-01')],
+          { start: '2026-04-01' },
+          ['official']
+        )
+      )
+    ).toEqual(['b']);
+    expect(() =>
+      filterGamesByPeriod([junior], { start: '2026-04-01' }, ['junior'])
+    ).toThrow(/junior-broken/);
+  });
+
   test('refuses a game whose date cannot be placed in a chosen period', () => {
     expect(() =>
       filterGamesByPeriod([game('broken', '')], { start: '2026-04-01' })

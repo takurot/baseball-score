@@ -136,7 +136,11 @@ export default function TeamStatsPdfExport() {
       const input = await getTeamReportInput(owner, teamId);
       check();
       // Tables, ledger and charts all come from this one period-filtered set.
-      const games = filterGamesByPeriod(input.games, options.period);
+      const games = filterGamesByPeriod(
+        input.games,
+        options.period,
+        options.types
+      );
       const sections = buildTeamReportStats([...games], input.team);
       const module = await import('../services/TeamStatsPdf');
       check();
