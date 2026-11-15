@@ -22,6 +22,20 @@ describe('PrivacyPolicyDialog', () => {
     expect(dialog).toHaveTextContent('メールアドレス');
   });
 
+  test('公開されるデータを実態どおりに説明し、実装と異なる断定をしない', () => {
+    render(<PrivacyPolicyDialog open onClose={jest.fn()} />);
+    const dialog = screen.getByRole('dialog', { name: 'プライバシーポリシー' });
+    // 公開されるのは試合データ全体（メモ等の自由記入欄を含む）
+    expect(dialog).toHaveTextContent('自由記入欄');
+    expect(dialog).toHaveTextContent('チーム名');
+    expect(dialog).toHaveTextContent('内部ID');
+    // メールアドレスは「新たに保存しない」。旧データの消去方法にも触れる
+    expect(dialog).toHaveTextContent('新たに保存しません');
+    expect(dialog).toHaveTextContent('以前に保存された');
+    // 一覧で探せない、という断定は実装（ルール）に依存するため書かない
+    expect(dialog).not.toHaveTextContent('一覧には表示されません');
+  });
+
   test('閉じるボタンで onClose を呼ぶ', async () => {
     const onClose = jest.fn();
     render(<PrivacyPolicyDialog open onClose={onClose} />);
