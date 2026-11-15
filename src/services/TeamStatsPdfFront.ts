@@ -168,10 +168,12 @@ export function drawFrontPage(
       y -= ROW;
     }
   });
-  y -= 4;
-  text(
-    '選手別グラフは、目次の「推移グラフ（選手別）」から先頭の選手へ移動できます。個々の選手へはPDFビューアのブックマークから移動できます。'
-  );
+  if (chapters.some((chapter) => chapter.players.length)) {
+    y -= 4;
+    text(
+      '選手別グラフは、目次の「推移グラフ（選手別）」から先頭の選手へ移動できます。個々の選手へはPDFビューアのブックマークから移動できます。'
+    );
+  }
 }
 
 export const buildOutline = (chapters: Chapter[]): OutlineNode[] =>
