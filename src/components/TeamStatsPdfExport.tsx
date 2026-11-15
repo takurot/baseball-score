@@ -73,6 +73,9 @@ export default function TeamStatsPdfExport() {
   );
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
+  // A date input reports '' while it is half typed; that must not read as "no bound".
+  const [startBad, setStartBad] = useState(false);
+  const [endBad, setEndBad] = useState(false);
   const [charts, setCharts] = useState<ChartScope>('all');
   const [omitEmpty, setOmitEmpty] = useState(false);
   const generation = useRef(0);
@@ -109,6 +112,10 @@ export default function TeamStatsPdfExport() {
     ? toOptions(types, start, end, charts, omitEmpty)
     : DETAILED_PDF_OPTIONS;
   const optionError = (() => {
+    if (simple && startBad)
+      return '開始日が入力途中です。日付を最後まで入力するか、空欄にしてください';
+    if (simple && endBad)
+      return '終了日が入力途中です。日付を最後まで入力するか、空欄にしてください';
     try {
       validatePdfOptions(options);
       return '';
@@ -200,12 +207,20 @@ export default function TeamStatsPdfExport() {
       >
         <DialogTitle>チーム通算成績のPDF出力</DialogTitle>
         <DialogContent>
-          <p>
-            公式戦・練習試合・ジュニア戦を順に出力します。選手数や氏名の長さにより続きページを追加します。
-          </p>
-          <p>
-            各区分の成績表の後に、チームと全選手の打撃成績推移グラフ（打率・出塁率・長打率・OPSの累積値）を掲載します。選手数や試合数に応じてページ数と作成時間が増えます。
-          </p>
+          {simple ? (
+            <p>
+              選択した期間・区分・グラフの範囲で出力します。成績表には選択した区分の全選手を掲載します。グラフを含める場合は、選手数や試合数に応じてページ数と作成時間が増えます。
+            </p>
+          ) : (
+            <>
+              <p>
+                公式戦・練習試合・ジュニア戦を順に出力します。選手数や氏名の長さにより続きページを追加します。
+              </p>
+              <p>
+                各区分の成績表の後に、チームと全選手の打撃成績推移グラフ（打率・出塁率・長打率・OPSの累積値）を掲載します。選手数や試合数に応じてページ数と作成時間が増えます。
+              </p>
+            </>
+          )}
           {message && (
             <Alert severity="info" role="status">
               {message}
@@ -263,7 +278,10 @@ export default function TeamStatsPdfExport() {
                   label="開始日"
                   value={start}
                   disabled={busy}
-                  onChange={(event) => setStart(event.target.value)}
+                  onChange={(event) => {
+                    setStart(event.target.value);
+                    setStartBad(event.target.validity.badInput);
+                  }}
                   InputLabelProps={{ shrink: true }}
                 />
                 <TextField
@@ -271,7 +289,10 @@ export default function TeamStatsPdfExport() {
                   label="終了日"
                   value={end}
                   disabled={busy}
-                  onChange={(event) => setEnd(event.target.value)}
+                  onChange={(event) => {
+                    setEnd(event.target.value);
+                    setEndBad(event.target.validity.badInput);
+                  }}
                   InputLabelProps={{ shrink: true }}
                 />
               </FormGroup>
@@ -349,7 +370,14 @@ export default function TeamStatsPdfExport() {
               キャンセル
             </Button>
           ) : (
-            <Button onClick={() => setOpen(false)}>閉じる</Button>
+            <Button
+              onClick={() => {
+                generation.current++;
+                setOpen(false);
+              }}
+            >
+              閉じる
+            </Button>
           )}
           <Button
             onClick={run}

@@ -204,6 +204,42 @@ describe('output options', () => {
     expect(optionsPassed().charts).toBe('all');
   });
 
+  test('refuses a half-typed date instead of silently using the whole period', async () => {
+    await openWithTeam();
+    fireEvent.click(screen.getByLabelText(/簡易版/));
+    const start = screen.getByLabelText('開始日');
+    fireEvent.change(start, { target: { value: '2026-05-01' } });
+    // clearing one field of a complete date makes the input report '' with badInput
+    Object.defineProperty(start, 'validity', {
+      value: { badInput: true },
+      configurable: true,
+    });
+    fireEvent.change(start, { target: { value: '' } });
+    expect(screen.getByRole('alert')).toHaveTextContent('開始日が入力途中です');
+    expect(screen.getByText('生成してダウンロード')).toBeDisabled();
+    Object.defineProperty(start, 'validity', {
+      value: { badInput: false },
+      configurable: true,
+    });
+    fireEvent.change(start, { target: { value: '2026-05-01' } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText('生成してダウンロード')).toBeEnabled();
+  });
+
+  test('describes the output that matches the chosen mode', async () => {
+    await openWithTeam();
+    expect(
+      screen.getByText(/公式戦・練習試合・ジュニア戦を順に出力/)
+    ).toBeVisible();
+    fireEvent.click(screen.getByLabelText(/簡易版/));
+    expect(
+      screen.queryByText(/公式戦・練習試合・ジュニア戦を順に出力/)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/選択した期間・区分・グラフの範囲で出力します/)
+    ).toBeVisible();
+  });
+
   test('explains an unusable choice and blocks the export', async () => {
     await openWithTeam();
     fireEvent.click(screen.getByLabelText(/簡易版/));
