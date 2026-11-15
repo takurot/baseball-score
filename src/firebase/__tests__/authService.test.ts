@@ -2,6 +2,7 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   signInWithPopup,
+  sendPasswordResetEmail,
   getAuth,
   initializeAuth,
   browserLocalPersistence,
@@ -11,6 +12,7 @@ import {
 import {
   registerWithEmailAndPassword,
   signInWithGoogle,
+  sendPasswordReset,
   getAuthErrorMessage,
 } from '../authService';
 
@@ -159,5 +161,31 @@ describe('auth initialization', () => {
       expect.any(Error)
     );
     consoleWarnSpy.mockRestore();
+  });
+});
+
+describe('sendPasswordReset', () => {
+  const mockedSend = sendPasswordResetEmail as jest.Mock;
+
+  test('未登録メールのエラーはコンソールに記録しない（記録の有無で存在が分かるため）が、呼び出し元には再送出する', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    mockedSend.mockRejectedValueOnce({ code: 'auth/user-not-found' });
+
+    await expect(sendPasswordReset('unknown@example.com')).rejects.toEqual({
+      code: 'auth/user-not-found',
+    });
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  test('その他の失敗は従来どおり記録して再送出する', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    mockedSend.mockRejectedValueOnce({ code: 'auth/network-request-failed' });
+
+    await expect(sendPasswordReset('known@example.com')).rejects.toEqual({
+      code: 'auth/network-request-failed',
+    });
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    consoleError.mockRestore();
   });
 });

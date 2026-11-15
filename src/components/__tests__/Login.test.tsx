@@ -342,3 +342,33 @@ describe('Login component - password reset', () => {
     expect(alert).not.toHaveTextContent('送信しました');
   });
 });
+
+describe('Login component - email login with enumeration protection', () => {
+  test('メール列挙保護が有効なときの auth/invalid-credential も、同じ汎用メッセージで表示する', async () => {
+    const user = userEvent.setup();
+    const mockLogin = jest.fn().mockRejectedValueOnce({
+      code: 'auth/invalid-credential',
+    });
+    mockedUseAuth.mockReturnValue({
+      currentUser: null,
+      isLoading: false,
+      signIn: jest.fn(),
+      loginWithEmailAndPassword: mockLogin,
+      registerWithEmailAndPassword: jest.fn(),
+      sendPasswordReset: jest.fn(),
+    });
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    render(<Login />);
+
+    await user.type(
+      screen.getAllByLabelText('メールアドレス')[0],
+      'a@example.com'
+    );
+    await user.type(screen.getByLabelText('パスワード'), 'wrong-password');
+    await user.click(screen.getByRole('button', { name: 'ログイン' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'メールアドレスまたはパスワードが正しくありません'
+    );
+  });
+});
