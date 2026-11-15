@@ -30,11 +30,18 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
 import {
-  getAllTeamStats,
+  getTeamStatsSnapshot,
   TeamStats,
   GameTypeFilter,
 } from '../firebase/statsService';
+import { Game } from '../types';
+import { formatRate } from '../services/BattingTrendChart';
+import BattingTrendDialog, {
+  subjectName,
+  TrendSubject,
+} from './BattingTrendDialog';
 import {
   getGameTypeLabel,
   meetsQualification,
@@ -155,18 +162,44 @@ const PLAYER_MOBILE_ORDER: StatKey[] = [
   'ops',
 ];
 
-// 打率などをフォーマット
-const formatBattingAvg = (value: number): string => {
-  return value.toFixed(3).replace(/^0+/, '');
-};
-
 const formatStatValue = (key: StatKey, value: number): string =>
-  STAT_FIELDS[key].isRate ? formatBattingAvg(value) : String(value);
+  STAT_FIELDS[key].isRate ? formatRate(value) : String(value);
 
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) return error.message;
   return '不明なエラーが発生しました';
 };
+
+interface TrendButtonProps {
+  subject: TrendSubject;
+  disabled: boolean;
+  onOpen: (subject: TrendSubject) => void;
+  children: React.ReactNode;
+}
+
+const TrendButton = ({
+  subject,
+  disabled,
+  onOpen,
+  children,
+}: TrendButtonProps) => (
+  <Button
+    size="small"
+    startIcon={<ShowChartIcon fontSize="small" />}
+    aria-label={`${subjectName(subject)}の打撃推移グラフを開く`}
+    aria-haspopup="dialog"
+    disabled={disabled}
+    onClick={() => onOpen(subject)}
+    sx={{
+      textTransform: 'none',
+      textAlign: 'left',
+      justifyContent: 'flex-start',
+      minWidth: 0,
+    }}
+  >
+    {children}
+  </Button>
+);
 
 const getGameTypeFromUrl = (): GameTypeFilter => {
   if (typeof window === 'undefined') return 'all';
@@ -183,6 +216,12 @@ const TeamStatsList: React.FC = () => {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [gameTypeFilter, setGameTypeFilter] =
     useState<GameTypeFilter>(getGameTypeFromUrl);
+  // The games behind the visible table, so the trend never mixes fetches or filters.
+  const [trendSource, setTrendSource] = useState<{
+    filter: GameTypeFilter;
+    games: Game[];
+  } | null>(null);
+  const [trendSubject, setTrendSubject] = useState<TrendSubject | null>(null);
   const isInitialMountRef = useRef(true);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -200,18 +239,21 @@ const TeamStatsList: React.FC = () => {
     let cancelled = false;
 
     const fetchTeamStats = async () => {
+      setTrendSubject(null);
       try {
         if (isInitialMountRef.current) {
           setLoading(true);
         }
         setError(null);
-        const stats = await getAllTeamStats(gameTypeFilter);
+        const { teamStats: stats, games } =
+          await getTeamStatsSnapshot(gameTypeFilter);
         if (cancelled) return;
 
         isInitialMountRef.current = false;
 
         const safeStats = Array.isArray(stats) ? stats : [];
         setTeamStats(safeStats);
+        setTrendSource({ filter: gameTypeFilter, games });
         // 最初のチームが選択された状態にする
         if (safeStats.length > 0) {
           setSelectedTeamId((prev) =>
@@ -264,6 +306,30 @@ const TeamStatsList: React.FC = () => {
   // 選択中のチーム（一覧が変化しても存在しないIDを指し続けない）
   const selectedTeam =
     teamStats?.find((team) => team.teamId === selectedTeamId) ?? null;
+
+  // Trend buttons wait while a filter change is still loading its games.
+  const trendDisabled = trendSource?.filter !== gameTypeFilter;
+  const teamTrendButton = (stats: TeamStats) => (
+    <TrendButton
+      subject={{ teamId: stats.teamId, teamName: stats.teamName }}
+      disabled={trendDisabled}
+      onOpen={setTrendSubject}
+    >
+      {stats.teamName}
+    </TrendButton>
+  );
+  const playerTrendSubject = (
+    team: TeamStats,
+    player: TeamStats['playerStats'][number]
+  ): TrendSubject => ({
+    teamId: team.teamId,
+    teamName: team.teamName,
+    player: {
+      id: player.playerId,
+      name: player.playerName,
+      number: player.playerNumber,
+    },
+  });
 
   const renderFilterControls = () => (
     <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
@@ -378,7 +444,7 @@ const TeamStatsList: React.FC = () => {
               {teamStats.map((stats) => (
                 <TableRow key={stats.teamId}>
                   <TableCell component="th" scope="row">
-                    {stats.teamName}
+                    {teamTrendButton(stats)}
                   </TableCell>
                   <TableCell align="center">{stats.gameCount}</TableCell>
                   <TableCell align="center">{stats.wins}</TableCell>
@@ -386,9 +452,7 @@ const TeamStatsList: React.FC = () => {
                   <TableCell align="center">{stats.draws}</TableCell>
                   <TableCell align="center">
                     {stats.wins + stats.losses > 0
-                      ? formatBattingAvg(
-                          stats.wins / (stats.wins + stats.losses)
-                        )
+                      ? formatRate(stats.wins / (stats.wins + stats.losses))
                       : '.000'}
                   </TableCell>
                   <TableCell align="center">{stats.totalRuns}</TableCell>
@@ -409,7 +473,7 @@ const TeamStatsList: React.FC = () => {
               <Card key={stats.teamId} sx={{ mb: 2 }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
-                    {stats.teamName}
+                    {teamTrendButton(stats)}
                   </Typography>
                   {TEAM_MOBILE_ORDER.map((key) => (
                     <Typography variant="body2" key={key}>
@@ -445,7 +509,7 @@ const TeamStatsList: React.FC = () => {
                 {teamStats.map((stats) => (
                   <TableRow key={stats.teamId}>
                     <TableCell component="th" scope="row">
-                      {stats.teamName}
+                      {teamTrendButton(stats)}
                     </TableCell>
                     <TableCell align="center">{stats.gameCount}</TableCell>
                     {DESKTOP_TABLE_ORDER.map((key) => (
@@ -513,49 +577,69 @@ const TeamStatsList: React.FC = () => {
                   <Alert severity="info">選手の打撃成績はまだありません</Alert>
                 ) : (
                   selectedTeam.playerStats.map((player) => (
-                    <Accordion key={player.playerId} sx={{ mb: 1 }}>
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            width: '100%',
-                          }}
-                        >
-                          <Typography>
-                            {player.playerNumber} {player.playerName}
-                          </Typography>
-                          <Typography
-                            variant="body2"
-                            sx={{ ml: 2, fontWeight: 'bold' }}
+                    <Box
+                      key={player.playerId}
+                      sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}
+                    >
+                      <Accordion sx={{ flex: 1, minWidth: 0 }}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              width: '100%',
+                            }}
                           >
-                            打率 {formatBattingAvg(player.battingAvg)}
-                          </Typography>
-                        </Box>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <Box
-                          sx={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
-                            gap: 1,
-                          }}
-                        >
-                          <Typography variant="body2">
-                            打席: {player.plateAppearances}
-                          </Typography>
-                          {PLAYER_MOBILE_ORDER.map((key) => (
-                            <Typography variant="body2" key={key}>
-                              {key === 'gameCount'
-                                ? '登録試合数'
-                                : STAT_FIELDS[key].label}
-                              : {formatStatValue(key, player[key])}
+                            <Typography>
+                              {player.playerNumber} {player.playerName}
                             </Typography>
-                          ))}
-                        </Box>
-                      </AccordionDetails>
-                    </Accordion>
+                            <Typography
+                              variant="body2"
+                              sx={{ ml: 2, fontWeight: 'bold' }}
+                            >
+                              打率 {formatRate(player.battingAvg)}
+                            </Typography>
+                          </Box>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <Box
+                            sx={{
+                              display: 'grid',
+                              gridTemplateColumns: '1fr 1fr',
+                              gap: 1,
+                            }}
+                          >
+                            <Typography variant="body2">
+                              打席: {player.plateAppearances}
+                            </Typography>
+                            {PLAYER_MOBILE_ORDER.map((key) => (
+                              <Typography variant="body2" key={key}>
+                                {key === 'gameCount'
+                                  ? '登録試合数'
+                                  : STAT_FIELDS[key].label}
+                                : {formatStatValue(key, player[key])}
+                              </Typography>
+                            ))}
+                          </Box>
+                        </AccordionDetails>
+                      </Accordion>
+                      <IconButton
+                        aria-label={`${subjectName(
+                          playerTrendSubject(selectedTeam, player)
+                        )}の打撃推移グラフを開く`}
+                        aria-haspopup="dialog"
+                        disabled={trendDisabled}
+                        onClick={() =>
+                          setTrendSubject(
+                            playerTrendSubject(selectedTeam, player)
+                          )
+                        }
+                        sx={{ ml: 0.5, mt: 0.5 }}
+                      >
+                        <ShowChartIcon />
+                      </IconButton>
+                    </Box>
                   ))
                 )}
               </Box>
@@ -604,7 +688,13 @@ const TeamStatsList: React.FC = () => {
                         >
                           <TableCell>{player.playerNumber}</TableCell>
                           <TableCell sx={{ minWidth: '140px', width: '140px' }}>
-                            {player.playerName}
+                            <TrendButton
+                              subject={playerTrendSubject(selectedTeam, player)}
+                              disabled={trendDisabled}
+                              onOpen={setTrendSubject}
+                            >
+                              {player.playerName}
+                            </TrendButton>
                           </TableCell>
                           <TableCell align="center">
                             {player.gameCount}
@@ -635,6 +725,14 @@ const TeamStatsList: React.FC = () => {
           </>
         )}
       </TabPanel>
+      {trendSource && (
+        <BattingTrendDialog
+          subject={trendSubject}
+          games={trendSource.games}
+          filter={trendSource.filter}
+          onClose={() => setTrendSubject(null)}
+        />
+      )}
     </Container>
   );
 };

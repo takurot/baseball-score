@@ -69,10 +69,15 @@ export const getTeamReportInput = async (
   };
 };
 
-// チームごとの通算成績を取得
-export const getAllTeamStats = async (
+export interface TeamStatsSnapshot {
+  games: Game[];
+  teamStats: TeamStats[];
+}
+
+// The stats table and trend charts derive from these same fetched games.
+export const getTeamStatsSnapshot = async (
   gameTypeFilter: GameTypeFilter = 'all'
-): Promise<TeamStats[]> => {
+): Promise<TeamStatsSnapshot> => {
   try {
     const user = getCurrentUser();
     if (!user) {
@@ -94,11 +99,14 @@ export const getAllTeamStats = async (
       const data = doc.data() as Game;
       return { ...data, id: doc.id };
     });
-    return aggregateTeamStats(
+    return {
       games,
-      registeredTeams.map((team) => team.id),
-      gameTypeFilter
-    );
+      teamStats: aggregateTeamStats(
+        games,
+        registeredTeams.map((team) => team.id),
+        gameTypeFilter
+      ),
+    };
   } catch (error) {
     console.error('Error getting team stats:', error);
     throw error;

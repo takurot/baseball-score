@@ -5,7 +5,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { getDoc, getDocs, updateDoc } from 'firebase/firestore';
 import TeamManager from '../TeamManager';
 import { saveGame } from '../../firebase/gameService';
-import { getAllTeamStats } from '../../firebase/statsService';
+import { getTeamStatsSnapshot } from '../../firebase/statsService';
 import { Game } from '../../types';
 
 jest.mock('../../firebase/config', () => ({ db: {} }));
@@ -98,7 +98,7 @@ test.each(['all', 'official', 'practice'] as const)(
       stored = { ...stored, ...payload };
     });
     (updateDoc as jest.Mock).mockClear();
-    const before = (await getAllTeamStats(filter))[0];
+    const before = (await getTeamStatsSnapshot(filter)).teamStats[0];
     expect(before.playerStats.map((p) => p.playerId)).toEqual([
       'canonical',
       'extra',
@@ -141,7 +141,7 @@ test.each(['all', 'official', 'practice'] as const)(
     expect(stored.awayTeam).toEqual(initial.awayTeam);
     expect(stored.runEvents).toEqual(initial.runEvents);
     expect(stored.outEvents).toEqual(initial.outEvents);
-    const after = (await getAllTeamStats(filter))[0];
+    const after = (await getTeamStatsSnapshot(filter)).teamStats[0];
     expect(after.playerStats.map((p) => p.playerId)).toEqual(['canonical']);
     expect(after.playerStats[0]).toEqual(before.playerStats[0]);
     expect({ ...after, playerStats: [] }).toEqual({
@@ -152,6 +152,6 @@ test.each(['all', 'official', 'practice'] as const)(
       await screen.findByRole('button', { name: '試合を上書き保存' })
     );
     await waitFor(() => expect(updateDoc).toHaveBeenCalledTimes(2));
-    expect(await getAllTeamStats(filter)).toEqual([after]);
+    expect((await getTeamStatsSnapshot(filter)).teamStats).toEqual([after]);
   }
 );
