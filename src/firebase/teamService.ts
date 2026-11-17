@@ -52,7 +52,6 @@ export const createTeam = async (
     const teamToSave = {
       ...team,
       userId: user.uid,
-      userEmail: user.email,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };

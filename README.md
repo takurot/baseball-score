@@ -65,6 +65,13 @@ npm start
 npm test
 ```
 
+Firestore セキュリティルール（`firestore.rules`）のテストは、エミュレーターで実行します
+（Java 21 と `firebase-tools` が必要です。CI の `Firestore Rules Test` ジョブでも実行されます）。
+
+```
+npm run test:rules
+```
+
 ## 環境変数
 
 以下の環境変数を`.env`ファイルに設定する必要があります：
@@ -78,6 +85,21 @@ REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 REACT_APP_FIREBASE_APP_ID=your_app_id
 REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
 ```
+
+### 認証のセキュリティ設定（Firebase Console）
+
+パスワードリセットは、未登録のメールアドレスでも登録済みと同じ「送信しました」を表示し、
+アカウントの存在を外部から確認できないようにしています（アプリ側の対応）。
+サーバー側でも列挙を塞ぐため、管理者が Firebase Console で次を有効にしてください
+（**Console 操作は未実施**です）。
+
+1. Firebase Console → Authentication → Settings → User actions
+2. 「Email enumeration protection（メール列挙保護）」を有効にする
+3. 有効にすると、未登録のメールアドレスに対する一部の API が、存在しない場合でも成功扱いの応答になります。ログイン時の誤りは `auth/invalid-credential` で返るため、アプリ側でも同じ汎用メッセージ（「メールアドレスまたはパスワードが正しくありません」）に対応済みです
+
+※ 本Issueのアプリ側の対応だけでは、Identity Toolkit の応答（`EMAIL_NOT_FOUND`）をネットワークや REST API から直接確認される経路は塞げません。この設定が、その経路を塞ぐ唯一の手段です。
+
+新規登録時の `auth/email-already-in-use` の表示は、利用者の案内として必要なため対象外です。
 
 ## デプロイ方法
 
@@ -101,6 +123,23 @@ firebase deploy --project baseball-score-18c48
 
 # ステージング（baseball-score-staging）
 firebase deploy --project baseball-score-staging
+```
+
+### 公開試合のアクセス範囲と所有者メールアドレスの移行
+
+- 公開した試合（`isPublic == true`）は、**ID を知っている人だけが単一取得**できます。
+  一覧・クエリでの列挙は `firestore.rules` で拒否されます。
+- 試合・チームには所有者のメールアドレス（`userEmail`）を保存しません。
+  以前の保存で書き込まれた値は、試合を更新保存するか、公開設定を切り替えると削除されます。
+  残っているドキュメントは、次の手順でまとめて削除します（**本番への実行は管理者が行います**）。
+
+```
+npm i --no-save firebase-admin
+gcloud auth application-default login
+# 対象件数の確認のみ（既定。何も書き込みません）
+node scripts/remove-user-email.js --project=baseball-score-18c48
+# 削除を実行
+node scripts/remove-user-email.js --project=baseball-score-18c48 --apply
 ```
 
 ### 公開データとプライバシーポリシー

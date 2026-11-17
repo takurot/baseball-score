@@ -426,8 +426,13 @@ const TeamStatsList: React.FC = () => {
 
       {/* チーム成績タブ */}
       <TabPanel value={tabValue} index={0}>
-        <TableContainer component={Paper}>
-          <Table size={isMobile ? 'small' : 'medium'}>
+        <TableContainer
+          component={Paper}
+          role="region"
+          aria-label="チーム成績"
+          tabIndex={0}
+        >
+          <Table size={isMobile ? 'small' : 'medium'} aria-label="チーム成績">
             <TableHead>
               <TableRow>
                 <TableCell>チーム名</TableCell>
@@ -443,7 +448,12 @@ const TeamStatsList: React.FC = () => {
             <TableBody>
               {teamStats.map((stats) => (
                 <TableRow key={stats.teamId}>
-                  <TableCell component="th" scope="row">
+                  <TableCell
+                    component="th"
+                    scope="row"
+                    // 中のボタンのラベル（「…を開く」）ではなく、チーム名を行見出しの名前にする
+                    aria-label={stats.teamName}
+                  >
                     {teamTrendButton(stats)}
                   </TableCell>
                   <TableCell align="center">{stats.gameCount}</TableCell>
@@ -492,8 +502,13 @@ const TeamStatsList: React.FC = () => {
           </Box>
         ) : (
           // デスクトップ向け表示
-          <TableContainer component={Paper}>
-            <Table>
+          <TableContainer
+            component={Paper}
+            role="region"
+            aria-label="チーム打撃成績"
+            tabIndex={0}
+          >
+            <Table aria-label="チーム打撃成績">
               <TableHead>
                 <TableRow>
                   <TableCell>チーム名</TableCell>
@@ -508,7 +523,11 @@ const TeamStatsList: React.FC = () => {
               <TableBody>
                 {teamStats.map((stats) => (
                   <TableRow key={stats.teamId}>
-                    <TableCell component="th" scope="row">
+                    <TableCell
+                      component="th"
+                      scope="row"
+                      aria-label={stats.teamName}
+                    >
                       {teamTrendButton(stats)}
                     </TableCell>
                     <TableCell align="center">{stats.gameCount}</TableCell>
@@ -645,8 +664,16 @@ const TeamStatsList: React.FC = () => {
               </Box>
             ) : (
               // デスクトップ向け表示 - テーブル形式
-              <TableContainer component={Paper}>
-                <Table size="small">
+              <TableContainer
+                component={Paper}
+                role="region"
+                aria-label={`${selectedTeam.teamName}の選手成績`}
+                tabIndex={0}
+              >
+                <Table
+                  size="small"
+                  aria-label={`${selectedTeam.teamName}の選手成績`}
+                >
                   <TableHead>
                     <TableRow>
                       <TableCell width="60px">#</TableCell>
@@ -687,7 +714,12 @@ const TeamStatsList: React.FC = () => {
                           }}
                         >
                           <TableCell>{player.playerNumber}</TableCell>
-                          <TableCell sx={{ minWidth: '140px', width: '140px' }}>
+                          <TableCell
+                            component="th"
+                            scope="row"
+                            aria-label={player.playerName}
+                            sx={{ minWidth: '140px', width: '140px' }}
+                          >
                             <TrendButton
                               subject={playerTrendSubject(selectedTeam, player)}
                               disabled={trendDisabled}
