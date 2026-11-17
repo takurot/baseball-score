@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { initAppCheck } from './appCheck';
 
 // Google OAuth のリダイレクト URI は Google Cloud Console の認証情報（OAuth 2.0 クライアント）
 // に登録された URI（通常は https://<project-id>.firebaseapp.com/__/auth/handler）と厳格に一致する必要がある。
@@ -61,6 +62,8 @@ checkEnvVariables();
 
 // Firebaseの初期化
 const app = initializeApp(firebaseConfig);
+// App Check は Firestore を使う前に初期化する（site key 未設定なら何もしない）
+initAppCheck(app);
 const db = getFirestore(app);
 
 // ローカル開発環境の場合、Firestoreエミュレーターに接続

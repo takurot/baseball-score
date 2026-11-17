@@ -44,6 +44,10 @@ const TabPanel = (props: TabPanelProps) => {
   );
 };
 
+// 成功表示の判定（severity）が「送信しました」を含むかで決まる点に注意
+const PASSWORD_RESET_SENT_MESSAGE =
+  'パスワードリセットのリンクを送信しました。メールを確認してください';
+
 const SHARED_STORAGE_ERROR_MESSAGES: Record<string, string> = {
   'auth/web-storage-unsupported':
     'ブラウザのストレージ機能が無効になっています。プライベートブラウズを解除するかCookieを許可してください',
@@ -135,6 +139,9 @@ const Login: React.FC = () => {
               'メールアドレスまたはパスワードが正しくありません',
             'auth/wrong-password':
               'メールアドレスまたはパスワードが正しくありません',
+            // メール列挙保護を有効にすると、上の2つの代わりにこのコードが返る
+            'auth/invalid-credential':
+              'メールアドレスまたはパスワードが正しくありません',
             'auth/too-many-requests':
               'ログイン試行回数が多すぎます。しばらく時間をおいてから再度お試しください',
           },
@@ -198,18 +205,20 @@ const Login: React.FC = () => {
       setLoading(true);
       setError(null);
       await sendPasswordReset(email);
-      setError(
-        'パスワードリセットのリンクを送信しました。メールを確認してください'
-      );
+      setError(PASSWORD_RESET_SENT_MESSAGE);
     } catch (err: unknown) {
+      // 未登録のメールアドレスでも登録済みと同じ応答にし、アカウントの存在を
+      // 外部から確認できないようにする（ユーザー列挙の防止）
+      if ((err as { code?: string } | null)?.code === 'auth/user-not-found') {
+        setError(PASSWORD_RESET_SENT_MESSAGE);
+        return;
+      }
       console.error('Password reset failed:', err);
       setError(
         getAuthErrorMessage(
           err,
           {
             ...SHARED_STORAGE_ERROR_MESSAGES,
-            'auth/user-not-found':
-              'このメールアドレスに関連するアカウントが見つかりません',
             'auth/invalid-email': '有効なメールアドレスを入力してください',
           },
           'パスワードリセットに失敗しました。'

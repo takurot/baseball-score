@@ -11,6 +11,7 @@ import {
   deleteDoc,
   where,
   updateDoc,
+  deleteField,
 } from 'firebase/firestore';
 import { db } from './config';
 import { Game } from '../types';
@@ -37,7 +38,7 @@ const requireOwnedGame = async (gameId: string): Promise<Game> => {
 // （クローン・所有者情報付与・タイムスタンプ付与・サイズチェックをまとめる）
 const buildGameToSave = (
   game: Game,
-  user: { uid: string; email: string | null },
+  user: { uid: string },
   { resetId }: { resetId: boolean }
 ): Record<string, unknown> => {
   // 保存前にデータを整形（循環参照を避けるため、JSONに変換してから再度パースする）
@@ -47,10 +48,13 @@ const buildGameToSave = (
     delete gameClone.id;
   }
 
+  // 所有者のメールアドレスは保存しない（公開ドキュメントへの個人情報混入を防ぐ）。
+  // 旧データから読み込んだ値を持ち回らないよう、複製からも取り除く。
+  delete gameClone.userEmail;
+
   const gameToSave = {
     ...gameClone,
     userId: user.uid, // ユーザーIDを追加
-    userEmail: user.email, // ユーザーのメールアドレスを追加
     isPublic: game.isPublic ?? false, // 公開状態を追加
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -90,7 +94,8 @@ export const saveGame = async (game: Game): Promise<string> => {
       const updateData = { ...gameToSave };
       delete updateData.id;
       delete updateData.createdAt;
-      await updateDoc(docRef, updateData);
+      // 以前の保存で書き込まれた所有者メールアドレスを、更新のついでに削除する
+      await updateDoc(docRef, { ...updateData, userEmail: deleteField() });
       console.log('Game updated successfully with ID:', game.id);
       return game.id;
     } else {
@@ -247,6 +252,8 @@ export const updateGamePublicStatus = async (
     const docRef = doc(db, GAMES_COLLECTION, gameId);
     await updateDoc(docRef, {
       isPublic: isPublic,
+      // 公開すると誰でも取得できるため、旧データの所有者メールアドレスも同時に削除する
+      userEmail: deleteField(),
       updatedAt: serverTimestamp(),
     });
 

@@ -231,4 +231,76 @@ describe('ScoreCalculator', () => {
       expect(ScoreCalculator.determineWinner(4, 4)).toBe('tie');
     });
   });
+
+  describe('calculateBattingStats: 犠打と打席の内訳', () => {
+    const at = (id: string, result: AtBat['result']): AtBat => ({
+      id,
+      playerId: 'p',
+      result,
+      inning: 1,
+      isTop: true,
+      rbi: 0,
+      isOut: false,
+    });
+
+    test('犠打(SAC)を数え、打数には含めない', () => {
+      const stats = ScoreCalculator.calculateBattingStats([
+        at('1', 'SAC'),
+        at('2', 'SAC'),
+        at('3', 'SF'),
+        at('4', 'BB'),
+        at('5', 'HBP'),
+        at('6', 'IH'),
+        at('7', 'SO'),
+      ]);
+      expect(stats.sacrificeBunts).toBe(2);
+      expect(stats.sacrificeFlies).toBe(1);
+      expect(stats.walks).toBe(2);
+      expect(stats.atBats).toBe(2);
+    });
+
+    test('打席 = 打数 + 四死球 + 犠打 + 犠飛 が常に成り立つ', () => {
+      const results: AtBat['result'][] = [
+        'IH',
+        '2B',
+        '3B',
+        'HR',
+        'GO_SS',
+        'FO_LF',
+        'SO',
+        'E',
+        'DP',
+        'LO',
+        'BB',
+        'HBP',
+        'SAC',
+        'SF',
+      ];
+      const atBats = results.map((result, i) => at(String(i), result));
+      const stats = ScoreCalculator.calculateBattingStats(atBats);
+      expect(
+        stats.atBats + stats.walks + stats.sacrificeBunts + stats.sacrificeFlies
+      ).toBe(atBats.length);
+    });
+
+    test('丸め境界: 出塁率.273・長打率.455 でも OPS は未丸めの和から .727 になる', () => {
+      // 11打数3安打(三塁打1・単打2): 出塁率 3/11、長打率 5/11
+      const results: AtBat['result'][] = [
+        '3B',
+        'IH',
+        'IH',
+        ...(Array(8).fill('GO_SS') as AtBat['result'][]),
+      ];
+      const stats = ScoreCalculator.calculateBattingStats(
+        results.map((result, i) => at(String(i), result))
+      );
+      expect(stats.obp.toFixed(3)).toBe('0.273');
+      expect(stats.slg.toFixed(3)).toBe('0.455');
+      expect(stats.ops.toFixed(3)).toBe('0.727');
+      // 表示された2つの和は .728 で、OPS の .727 と .001 違う（誤りではない）
+      expect(
+        Number(stats.obp.toFixed(3)) + Number(stats.slg.toFixed(3))
+      ).toBeCloseTo(0.728, 5);
+    });
+  });
 });
