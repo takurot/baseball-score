@@ -273,3 +273,102 @@ describe('Login component - Google Sign In', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('Login component - password reset', () => {
+  const mockSendPasswordReset = jest.fn();
+  const SENT =
+    'パスワードリセットのリンクを送信しました。メールを確認してください';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedUseAuth.mockReturnValue({
+      currentUser: null,
+      isLoading: false,
+      signIn: jest.fn(),
+      loginWithEmailAndPassword: jest.fn(),
+      registerWithEmailAndPassword: jest.fn(),
+      sendPasswordReset: mockSendPasswordReset,
+    });
+  });
+
+  const requestReset = async (email: string) => {
+    const user = userEvent.setup();
+    render(<Login />);
+    await user.click(
+      screen.getByRole('button', { name: 'パスワードをお忘れですか？' })
+    );
+    await user.type(screen.getByLabelText('メールアドレス'), email);
+    await user.click(
+      screen.getByRole('button', { name: 'パスワードをリセット' })
+    );
+  };
+
+  test('送信に成功するとリンクを送信した旨を表示する', async () => {
+    mockSendPasswordReset.mockResolvedValueOnce(undefined);
+    await requestReset('known@example.com');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(SENT);
+    expect(mockSendPasswordReset).toHaveBeenCalledWith('known@example.com');
+  });
+
+  test('未登録のメールアドレスでも、登録済みと同じ送信完了メッセージを表示し存在を示さない', async () => {
+    mockSendPasswordReset.mockRejectedValueOnce({
+      code: 'auth/user-not-found',
+    });
+    await requestReset('unknown@example.com');
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(SENT);
+    expect(alert).not.toHaveTextContent('見つかりません');
+    expect(alert).not.toHaveTextContent('アカウント');
+  });
+
+  test('形式が不正なメールアドレスはその旨を表示する（存在の有無は漏れない）', async () => {
+    mockSendPasswordReset.mockRejectedValueOnce({ code: 'auth/invalid-email' });
+    await requestReset('not-an-email');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '有効なメールアドレスを入力してください'
+    );
+  });
+
+  test('ネットワークなどの失敗は送信完了と誤認させず、失敗として表示する', async () => {
+    mockSendPasswordReset.mockRejectedValueOnce({
+      code: 'auth/network-request-failed',
+    });
+    await requestReset('known@example.com');
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).not.toHaveTextContent('送信しました');
+  });
+});
+
+describe('Login component - email login with enumeration protection', () => {
+  test('メール列挙保護が有効なときの auth/invalid-credential も、同じ汎用メッセージで表示する', async () => {
+    const user = userEvent.setup();
+    const mockLogin = jest.fn().mockRejectedValueOnce({
+      code: 'auth/invalid-credential',
+    });
+    mockedUseAuth.mockReturnValue({
+      currentUser: null,
+      isLoading: false,
+      signIn: jest.fn(),
+      loginWithEmailAndPassword: mockLogin,
+      registerWithEmailAndPassword: jest.fn(),
+      sendPasswordReset: jest.fn(),
+    });
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    render(<Login />);
+
+    await user.type(
+      screen.getAllByLabelText('メールアドレス')[0],
+      'a@example.com'
+    );
+    await user.type(screen.getByLabelText('パスワード'), 'wrong-password');
+    await user.click(screen.getByRole('button', { name: 'ログイン' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'メールアドレスまたはパスワードが正しくありません'
+    );
+  });
+});
