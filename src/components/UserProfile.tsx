@@ -12,11 +12,13 @@ import {
   useTheme,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
+import PrivacyPolicyDialog from './PrivacyPolicyDialog';
 
 const UserProfile: React.FC = () => {
   const { currentUser, logOut } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [loading, setLoading] = useState(false);
+  const [policyOpen, setPolicyOpen] = useState(false);
   const open = Boolean(anchorEl);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -108,6 +110,14 @@ const UserProfile: React.FC = () => {
           </Typography>
         </Box>
         <Divider />
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            setPolicyOpen(true);
+          }}
+        >
+          プライバシーポリシー
+        </MenuItem>
         <MenuItem onClick={handleLogout} disabled={loading}>
           {loading ? (
             <>
@@ -119,6 +129,10 @@ const UserProfile: React.FC = () => {
           )}
         </MenuItem>
       </Menu>
+      <PrivacyPolicyDialog
+        open={policyOpen}
+        onClose={() => setPolicyOpen(false)}
+      />
     </Box>
   );
 };

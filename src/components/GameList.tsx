@@ -35,6 +35,7 @@ import {
   updateGamePublicStatus,
 } from '../firebase/gameService';
 import { Game } from '../types';
+import PrivacyPolicyDialog from './PrivacyPolicyDialog';
 import { getEffectiveGameType, getGameTypeLabel } from '../utils/gameType';
 
 interface GameListProps {
@@ -52,6 +53,9 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
   const [actionError, setActionError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [gameToDelete, setGameToDelete] = useState<string | null>(null);
+  // 公開ONにする前の確認ダイアログの対象（選手の個人情報が公開されるため）
+  const [gameToPublish, setGameToPublish] = useState<string | null>(null);
+  const [policyOpen, setPolicyOpen] = useState(false);
   const [shareUrlDialogOpen, setShareUrlDialogOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [updatingPublicStatus, setUpdatingPublicStatus] = useState<Set<string>>(
@@ -127,6 +131,19 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     event.stopPropagation();
+    if (updatingPublicStatus.has(gameId)) return;
+    if (nextPublicStatus) {
+      // 公開は、選手の個人情報が見られる旨を確認してから行う（非公開に戻すのは即時）
+      setGameToPublish(gameId);
+      return;
+    }
+    await applyPublicStatus(gameId, nextPublicStatus);
+  };
+
+  const applyPublicStatus = async (
+    gameId: string,
+    nextPublicStatus: boolean
+  ) => {
     try {
       setActionError(null);
       setUpdatingPublicStatus((prev) => new Set(prev).add(gameId));
@@ -217,7 +234,11 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
                           onChange={(event, checked) =>
                             handleTogglePublic(game.id, checked, event)
                           }
-                          disabled={updatingPublicStatus.has(game.id)}
+                          // disabled にするとフォーカスが失われる（確認ダイアログから戻った直後など）
+                          // ため、更新中は aria-disabled と二重送信の防止で扱う
+                          inputProps={{
+                            'aria-disabled': updatingPublicStatus.has(game.id),
+                          }}
                           color="primary"
                           size="small"
                           icon={<PublicOffIcon />}
@@ -335,18 +356,67 @@ const GameList: React.FC<GameListProps> = ({ onSelectGame, onGameDeleted }) => {
         </DialogActions>
       </Dialog>
 
+      {/* 公開前の確認ダイアログ */}
+      <Dialog
+        open={gameToPublish !== null}
+        onClose={() => setGameToPublish(null)}
+        aria-labelledby="publish-confirm-title"
+      >
+        <DialogTitle id="publish-confirm-title">
+          試合を公開する前の確認
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText component="div">
+            <Typography paragraph>
+              公開すると、この試合のURLを知っている人は誰でも、選手の氏名・背番号・打席記録などの個人情報を閲覧できます。
+            </Typography>
+            <Typography paragraph>
+              選手（特に未成年の選手）やその保護者の同意を得てから公開してください。公開した試合は、いつでも非公開に戻せます。
+            </Typography>
+          </DialogContentText>
+          <Button size="small" onClick={() => setPolicyOpen(true)}>
+            プライバシーポリシー
+          </Button>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setGameToPublish(null)}>キャンセル</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              const gameId = gameToPublish;
+              setGameToPublish(null);
+              if (gameId) void applyPublicStatus(gameId, true);
+            }}
+          >
+            公開する
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <PrivacyPolicyDialog
+        open={policyOpen}
+        onClose={() => setPolicyOpen(false)}
+      />
+
       {/* 共有URL表示ダイアログ */}
       <Dialog
         open={shareUrlDialogOpen}
         onClose={() => setShareUrlDialogOpen(false)}
         maxWidth="md"
         fullWidth
+        aria-labelledby="share-url-title"
       >
-        <DialogTitle>共有URL</DialogTitle>
+        <DialogTitle id="share-url-title">共有URL</DialogTitle>
         <DialogContent>
           <Typography paragraph>
             以下のURLを共有することで、この試合結果を他の人に共有できます。
           </Typography>
+          <Alert severity="warning" sx={{ mb: 1 }}>
+            URLを知っている人は誰でも、選手の氏名・背番号・打席記録を閲覧できます。共有する相手と範囲に注意してください。
+            <Button size="small" onClick={() => setPolicyOpen(true)}>
+              プライバシーポリシー
+            </Button>
+          </Alert>
 
           <TextField
             value={shareUrl}
