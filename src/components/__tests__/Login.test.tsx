@@ -372,3 +372,26 @@ describe('Login component - email login with enumeration protection', () => {
     );
   });
 });
+
+describe('Login component - privacy policy', () => {
+  test('ログイン前の画面からプライバシーポリシーを開ける', async () => {
+    const user = userEvent.setup();
+    mockedUseAuth.mockReturnValue({
+      currentUser: null,
+      isLoading: false,
+      signIn: jest.fn(),
+      loginWithEmailAndPassword: jest.fn(),
+      registerWithEmailAndPassword: jest.fn(),
+      sendPasswordReset: jest.fn(),
+    });
+    render(<Login />);
+
+    await user.click(
+      screen.getByRole('button', { name: 'プライバシーポリシー' })
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: 'プライバシーポリシー' })
+    ).toBeInTheDocument();
+  });
+});
