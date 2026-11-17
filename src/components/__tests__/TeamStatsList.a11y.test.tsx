@@ -99,6 +99,7 @@ describe('TeamStatsList - 表の名前と行見出し', () => {
         triples: 0,
         homeRuns: 0,
         walks: 2,
+        sacrificeBunts: 0,
         sacrificeFlies: 0,
         strikeouts: 1,
         rbis: 2,
