@@ -23,6 +23,8 @@ export interface TeamStats {
   draws: number;
   totalRuns: number;
   totalRunsAllowed: number;
+  // チームの打席数（打数+四死球+犠打+犠飛）。個人の打席数の合計と一致する
+  plateAppearances: number;
   battingStats: BattingStats;
   playerStats: PlayerBattingStats[]; // 選手ごとの打撃成績を追加
 }
@@ -251,6 +253,7 @@ const processTeamStats = (
 
   // 打撃成績の集計
   aggregateBattingStats(teamStats.battingStats, team.atBats);
+  teamStats.plateAppearances += team.atBats.length;
 
   // 選手ごとの打撃成績を集計
   aggregatePlayerBattingStats(teamStats, team, gameTypeFilter);
@@ -267,6 +270,7 @@ const createEmptyTeamStats = (teamId: string, teamName: string): TeamStats => {
     draws: 0,
     totalRuns: 0,
     totalRunsAllowed: 0,
+    plateAppearances: 0,
     battingStats: {
       atBats: 0,
       hits: 0,
@@ -275,6 +279,7 @@ const createEmptyTeamStats = (teamId: string, teamName: string): TeamStats => {
       triples: 0,
       homeRuns: 0,
       walks: 0,
+      sacrificeBunts: 0,
       sacrificeFlies: 0,
       strikeouts: 0,
       rbis: 0,
@@ -296,6 +301,7 @@ const BATTING_COUNT_KEYS = [
   'triples',
   'homeRuns',
   'walks',
+  'sacrificeBunts',
   'sacrificeFlies',
   'strikeouts',
   'rbis',
@@ -372,6 +378,7 @@ const createEmptyPlayerStats = (player: Player): PlayerBattingStats => {
     triples: 0,
     homeRuns: 0,
     walks: 0,
+    sacrificeBunts: 0,
     sacrificeFlies: 0,
     strikeouts: 0,
     rbis: 0,

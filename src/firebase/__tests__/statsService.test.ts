@@ -7,7 +7,7 @@ import {
   getTeamStatsSnapshot,
 } from '../statsService';
 import { getUserTeams } from '../teamService';
-import { Game, Team, TeamSetting } from '../../types';
+import { AtBat, Game, Team, TeamSetting } from '../../types';
 import { linkTeamRoster } from '../../services/TeamRoster';
 import { saveGame } from '../gameService';
 
@@ -612,4 +612,84 @@ describe('player identity and saved-game repair', () => {
       expect(await fetchTeamStats(filter)).toEqual([after]);
     }
   );
+});
+
+describe('plate appearance breakdown', () => {
+  const at = (
+    id: string,
+    playerId: string,
+    result: AtBat['result']
+  ): AtBat => ({
+    id,
+    playerId,
+    result,
+    inning: 1,
+    isTop: false,
+    rbi: 0,
+    isOut: false,
+  });
+  const teamWith = (atBats: AtBat[]): Team => ({
+    id: 'home',
+    name: 'チーム',
+    players: [
+      {
+        id: 'a',
+        name: 'A',
+        number: '1',
+        position: '',
+        isActive: true,
+        order: 1,
+      },
+      {
+        id: 'b',
+        name: 'B',
+        number: '2',
+        position: '',
+        isActive: true,
+        order: 2,
+      },
+    ],
+    atBats,
+  });
+  const game: Game = {
+    id: 'g1',
+    date: '2026-04-01',
+    gameType: 'official',
+    currentInning: 1,
+    homeTeam: teamWith([
+      at('1', 'a', 'IH'),
+      at('2', 'a', 'SAC'),
+      at('3', 'a', 'BB'),
+      at('4', 'b', 'SF'),
+      at('5', 'b', 'SAC'),
+      at('6', 'b', 'HBP'),
+      at('7', 'b', 'SO'),
+      at('8', 'ghost', 'SAC'),
+    ]),
+    awayTeam: { id: 'away', name: '相手', players: [], atBats: [] },
+  };
+
+  test('チームの打席数と犠打を集計し、チーム・各選手で 打席=打数+四死球+犠打+犠飛 が成り立つ', () => {
+    const [team] = aggregateTeamStats([game], ['home'], 'official');
+    expect(team.plateAppearances).toBe(8);
+    const b = team.battingStats;
+    expect(b.sacrificeBunts).toBe(3);
+    expect(b.sacrificeFlies).toBe(1);
+    expect(b.atBats + b.walks + b.sacrificeBunts + b.sacrificeFlies).toBe(
+      team.plateAppearances
+    );
+    for (const player of team.playerStats) {
+      expect(
+        player.atBats +
+          player.walks +
+          player.sacrificeBunts +
+          player.sacrificeFlies
+      ).toBe(player.plateAppearances);
+    }
+    // 名簿にない選手(ghost)も含め、個人の合計がチーム値と一致する
+    const sum = (key: 'plateAppearances' | 'sacrificeBunts') =>
+      team.playerStats.reduce((total, p) => total + p[key], 0);
+    expect(sum('plateAppearances')).toBe(team.plateAppearances);
+    expect(sum('sacrificeBunts')).toBe(b.sacrificeBunts);
+  });
 });
