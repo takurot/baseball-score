@@ -25,6 +25,7 @@ const allWins: TeamStats = {
   draws: 0,
   totalRuns: 8,
   totalRunsAllowed: 1,
+  plateAppearances: 20,
   battingStats: {
     atBats: 0,
     hits: 0,
@@ -33,6 +34,7 @@ const allWins: TeamStats = {
     triples: 0,
     homeRuns: 0,
     walks: 0,
+    sacrificeBunts: 0,
     sacrificeFlies: 0,
     strikeouts: 0,
     rbis: 0,
@@ -90,6 +92,7 @@ describe('TeamStatsList', () => {
           triples: 0,
           homeRuns: 0,
           walks: 0,
+          sacrificeBunts: 0,
           sacrificeFlies: 0,
           strikeouts: 0,
           rbis: 0,

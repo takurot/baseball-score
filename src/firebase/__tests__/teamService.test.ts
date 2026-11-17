@@ -1,4 +1,5 @@
 import {
+  addDoc,
   getDoc,
   updateDoc,
   runTransaction,
@@ -8,6 +9,7 @@ import {
 import { PlayerSetting, TeamSetting } from '../../types';
 import { getCurrentUser } from '../authService';
 import {
+  createTeam,
   updateTeam,
   addPlayerToTeam,
   removePlayerFromTeam,
@@ -84,6 +86,17 @@ beforeEach(() => {
     callback(mockTransaction)
   );
   mockTransaction.get.mockResolvedValue(ownTeamDoc());
+});
+
+describe('createTeam', () => {
+  it('does not store the owner email', async () => {
+    (addDoc as jest.Mock).mockResolvedValue({ id: 'new-team' });
+    await createTeam({ name: '新チーム', players: [] });
+    const payload = (addDoc as jest.Mock).mock.calls[0][1];
+    expect(payload).not.toHaveProperty('userEmail');
+    expect(payload.userId).toBe('user-1');
+    expect(JSON.stringify(payload)).not.toContain('me@example.com');
+  });
 });
 
 describe('updateTeam', () => {

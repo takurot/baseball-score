@@ -76,7 +76,26 @@ function applyProductionCspToHtml(html, productionCsp) {
     );
   }
 
-  return html.replace(CSP_META_PATTERN, `$1${productionCsp}$3`);
+  return html.replace(
+    CSP_META_PATTERN,
+    `$1${removeDirectivesIgnoredInMeta(productionCsp)}$3`
+  );
+}
+
+// meta タグ経由の CSP では無効（コンソールに警告が出る）なディレクティブ。
+// HTTP ヘッダーでのみ有効なので、meta 用の値からは取り除く。
+const META_IGNORED_DIRECTIVES = ['frame-ancestors', 'report-uri', 'sandbox'];
+
+function removeDirectivesIgnoredInMeta(csp) {
+  return csp
+    .split(';')
+    .map((directive) => directive.trim())
+    .filter(
+      (directive) =>
+        directive &&
+        !META_IGNORED_DIRECTIVES.includes(directive.split(/\s+/)[0])
+    )
+    .join('; ');
 }
 
 function main() {
