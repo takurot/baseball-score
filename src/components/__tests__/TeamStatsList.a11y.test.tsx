@@ -26,6 +26,7 @@ const mockTeamStats: TeamStats = {
   draws: 0,
   totalRuns: 10,
   totalRunsAllowed: 5,
+  plateAppearances: 20,
   battingStats: {
     atBats: 20,
     hits: 6,
@@ -34,6 +35,7 @@ const mockTeamStats: TeamStats = {
     triples: 0,
     homeRuns: 1,
     walks: 2,
+    sacrificeBunts: 0,
     sacrificeFlies: 0,
     strikeouts: 3,
     rbis: 5,

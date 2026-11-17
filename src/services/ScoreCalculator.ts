@@ -40,6 +40,7 @@ export interface BattingStats {
   triples: number;
   homeRuns: number;
   walks: number; // 四球と死球の合計
+  sacrificeBunts: number; // 犠打（打数に含めない）
   sacrificeFlies: number;
   strikeouts: number;
   rbis: number;
@@ -147,6 +148,7 @@ export class ScoreCalculator {
       triples: 0,
       homeRuns: 0,
       walks: 0,
+      sacrificeBunts: 0,
       sacrificeFlies: 0,
       strikeouts: 0,
       rbis: 0,
@@ -164,6 +166,8 @@ export class ScoreCalculator {
           stats.walks++;
         } else if (atBat.result === 'SF') {
           stats.sacrificeFlies++;
+        } else if (atBat.result === 'SAC') {
+          stats.sacrificeBunts++;
         }
         continue;
       }
