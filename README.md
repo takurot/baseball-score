@@ -125,6 +125,52 @@ firebase deploy --project baseball-score-18c48
 firebase deploy --project baseball-score-staging
 ```
 
+### 公開試合のアクセス範囲と所有者メールアドレスの移行
+
+- 公開した試合（`isPublic == true`）は、**ID を知っている人だけが単一取得**できます。
+  一覧・クエリでの列挙は `firestore.rules` で拒否されます。
+- 試合・チームには所有者のメールアドレス（`userEmail`）を保存しません。
+  以前の保存で書き込まれた値は、試合を更新保存するか、公開設定を切り替えると削除されます。
+  残っているドキュメントは、次の手順でまとめて削除します（**本番への実行は管理者が行います**）。
+
+```
+npm i --no-save firebase-admin
+gcloud auth application-default login
+# 対象件数の確認のみ（既定。何も書き込みません）
+node scripts/remove-user-email.js --project=baseball-score-18c48
+# 削除を実行
+node scripts/remove-user-email.js --project=baseball-score-18c48 --apply
+```
+
+### Firestore ルールの書き込み検証と App Check
+
+- `games` / `teams` の更新では、`userId` と `createdAt` は変更できません。`userEmail` は新しい値を設定できず、削除のみ可能です。
+- 新規作成では、`userId` が自分であること、許可されたキーのみであること（`userEmail` は不可）、主要フィールドの型（`date` が文字列、`isPublic` が真偽値、など）が検証されます。
+- 更新でも、変更・追加できるキーと主要フィールドの型を同じ基準で検証します（作成後の更新で検証を迂回できません）。
+  旧データが持つ現在の型にないフィールドは、触れない限りそのまま残せます。
+- ドキュメントのサイズ上限（1MB）は、ルールでは検証できません。クライアントのチェックに加えて、App Check で不正なクライアントからの書き込みを抑止します。
+
+App Check（reCAPTCHA v3）は、`REACT_APP_RECAPTCHA_SITE_KEY` を設定したときだけ有効になります（未設定なら初期化しません）。
+有効化は管理者が次の順で行います（**Console 操作と強制は未実施**です）。
+
+1. Firebase Console の App Check でウェブアプリを reCAPTCHA v3 で登録し、site key を取得する。
+2. `REACT_APP_RECAPTCHA_SITE_KEY` を設定してビルド・デプロイする。ローカル開発では Console でデバッグトークンを登録し、`REACT_APP_APPCHECK_DEBUG_TOKEN` に設定する（本番ビルドでは無視されます）。
+3. Console の App Check の指標で、トークン付きリクエストの割合を確認する。
+4. 問題がなければ Cloud Firestore の「強制」を有効にする。強制すると、トークンを送らない旧バージョンのクライアントは拒否されます。
+
+### セキュリティヘッダ（Firebase Hosting）
+
+`firebase.json` の `hosting.headers` で、次のヘッダを全レスポンスに付与します。
+
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains`（Firebase Hosting が既定で返す値より弱くならないよう `includeSubDomains` を付与。`preload` は付けていません）
+- `Permissions-Policy`: カメラ・マイク・位置情報・決済・USB・`interest-cohort` を無効化
+- `Content-Security-Policy`: `frame-ancestors 'self'`、`img-src` は許可オリジンを列挙、`connect-src` から Realtime Database（`*.firebaseio.com`）を削除
+- `style-src 'unsafe-inline'` は、MUI/Emotion がインラインスタイルを挿入するため残しています（受け入れたトレードオフ）。スクリプトは `'unsafe-inline'` / `'unsafe-eval'` を許可していません。
+
+CSP の値は `firebase.json` が唯一の情報源で、ビルド時に `build/index.html` の meta タグへ反映します
+（`frame-ancestors` など meta では無効なディレクティブは除きます）。
+ヘッダを変更した場合は、デプロイ後にログイン・試合一覧・成績画面でコンソールに CSP 違反が出ないことを確認してください。
+
 ### 公開データとプライバシーポリシー
 
 - 試合を「公開」にすると、URL を知っている人は誰でも、選手の氏名・背番号・球場・日付・全打席記録を閲覧できます。
