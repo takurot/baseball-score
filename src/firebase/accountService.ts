@@ -38,7 +38,7 @@ export type ReauthMethod = 'google' | 'password' | 'unknown';
 
 export const getReauthMethod = (user: User): ReauthMethod => {
   const providers = (user.providerData ?? []).map((info) => info.providerId);
-  if (providers.includes('google.com')) return 'google';
+  if (providers.includes(GoogleAuthProvider.PROVIDER_ID)) return 'google';
   if (providers.includes('password')) return 'password';
   return 'unknown';
 };

@@ -20,7 +20,7 @@ import {
 } from '../accountService';
 
 jest.mock('firebase/auth', () => ({
-  GoogleAuthProvider: jest.fn(),
+  GoogleAuthProvider: Object.assign(jest.fn(), { PROVIDER_ID: 'google.com' }),
   EmailAuthProvider: { credential: jest.fn() },
   deleteUser: jest.fn(),
   reauthenticateWithCredential: jest.fn(),
