@@ -102,6 +102,11 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
   try {
     await sendPasswordResetEmail(auth, email);
   } catch (error) {
+    // 未登録メールの場合だけコンソールに残さない（記録の有無でアカウントの存在が
+    // 分かってしまうため）。呼び出し元には再送出し、画面側で成功扱いにする。
+    if ((error as { code?: string } | null)?.code === 'auth/user-not-found') {
+      throw error;
+    }
     logAndRethrow('Password reset error:', error);
   }
 };

@@ -93,6 +93,7 @@ const zero = {
   triples: 0,
   homeRuns: 0,
   walks: 0,
+  sacrificeBunts: 0,
   sacrificeFlies: 0,
   strikeouts: 0,
   rbis: 0,
@@ -110,6 +111,7 @@ const teamStats: TeamStats = {
   draws: 4,
   totalRuns: 0,
   totalRunsAllowed: 0,
+  plateAppearances: 20,
   battingStats: { ...zero, atBats: 5, hits: 1, battingAvg: 0.2 },
   playerStats: [
     {
