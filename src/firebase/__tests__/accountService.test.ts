@@ -14,7 +14,6 @@ import {
 } from 'firebase/firestore';
 import { getCurrentUser } from '../authService';
 import {
-  AccountDeletionIncompleteError,
   ReauthRequiredError,
   deleteAccount,
   getReauthMethod,
