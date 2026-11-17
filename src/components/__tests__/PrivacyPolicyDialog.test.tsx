@@ -36,6 +36,21 @@ describe('PrivacyPolicyDialog', () => {
     expect(dialog).not.toHaveTextContent('一覧には表示されません');
   });
 
+  test('利用状況の計測（Google アナリティクス）で送る情報と送らない情報を説明する', () => {
+    render(<PrivacyPolicyDialog open onClose={jest.fn()} />);
+    const dialog = screen.getByRole('dialog', { name: 'プライバシーポリシー' });
+    expect(
+      screen.getByRole('heading', { name: '5. 利用状況の計測' })
+    ).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('Google アナリティクス');
+    expect(dialog).toHaveTextContent(
+      'チーム名・選手名・試合のタイトル・球場・大会名・メールアドレス・試合IDは送信しません'
+    );
+    expect(dialog).toHaveTextContent('クエリの部分を除いて送信します');
+    expect(dialog).toHaveTextContent('Cookie');
+    expect(dialog).toHaveTextContent('ブロック');
+  });
+
   test('閉じるボタンで onClose を呼ぶ', async () => {
     const onClose = jest.fn();
     render(<PrivacyPolicyDialog open onClose={onClose} />);
