@@ -216,7 +216,6 @@ const TeamList: React.FC<TeamListProps> = ({
         name: trimmedTeamName,
         players: defaultPlayers,
         userId: currentUser?.uid || '',
-        userEmail: currentUser?.email || '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

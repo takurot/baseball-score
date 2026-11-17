@@ -65,6 +65,13 @@ npm start
 npm test
 ```
 
+Firestore セキュリティルール（`firestore.rules`）のテストは、エミュレーターで実行します
+（Java 21 と `firebase-tools` が必要です。CI の `Firestore Rules Test` ジョブでも実行されます）。
+
+```
+npm run test:rules
+```
+
 ## 環境変数
 
 以下の環境変数を`.env`ファイルに設定する必要があります：
@@ -101,6 +108,23 @@ firebase deploy --project baseball-score-18c48
 
 # ステージング（baseball-score-staging）
 firebase deploy --project baseball-score-staging
+```
+
+### 公開試合のアクセス範囲と所有者メールアドレスの移行
+
+- 公開した試合（`isPublic == true`）は、**ID を知っている人だけが単一取得**できます。
+  一覧・クエリでの列挙は `firestore.rules` で拒否されます。
+- 試合・チームには所有者のメールアドレス（`userEmail`）を保存しません。
+  以前の保存で書き込まれた値は、試合を更新保存するか、公開設定を切り替えると削除されます。
+  残っているドキュメントは、次の手順でまとめて削除します（**本番への実行は管理者が行います**）。
+
+```
+npm i --no-save firebase-admin
+gcloud auth application-default login
+# 対象件数の確認のみ（既定。何も書き込みません）
+node scripts/remove-user-email.js --project=baseball-score-18c48
+# 削除を実行
+node scripts/remove-user-email.js --project=baseball-score-18c48 --apply
 ```
 
 ## ライセンス
