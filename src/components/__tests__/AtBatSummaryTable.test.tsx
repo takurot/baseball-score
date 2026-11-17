@@ -110,3 +110,49 @@ describe('AtBatSummaryTable', () => {
     errorSpy.mockRestore();
   });
 });
+
+describe('AtBatSummaryTable - アクセシビリティ', () => {
+  test('表に「◯◯の打席結果一覧」というアクセシブルな名前が付く', () => {
+    renderTable(true);
+    expect(
+      screen.getByRole('table', { name: '後攻チームの打席結果一覧' })
+    ).toBeInTheDocument();
+  });
+
+  test('選手名のセルは行見出しで、列見出しも取得できる', () => {
+    renderTable(true);
+    expect(
+      screen.getByRole('rowheader', { name: /選手1/ })
+    ).toBeInTheDocument();
+    for (const name of [
+      '打順',
+      '選手名',
+      '1回',
+      '打数',
+      '安打',
+      '打点',
+      '打率',
+      'OPS',
+    ]) {
+      expect(screen.getByRole('columnheader', { name })).toBeInTheDocument();
+    }
+  });
+
+  test('その他のアウトの行も、ラベルが行見出しになる', () => {
+    renderTable(true);
+    expect(
+      screen.getByRole('rowheader', { name: 'その他のアウト' })
+    ).toBeInTheDocument();
+  });
+
+  test('横スクロール領域はキーボードで到達でき、名前の付いた region として読まれる', () => {
+    renderTable(true);
+    const region = screen.getByRole('region', {
+      name: /後攻チームの打席結果一覧/,
+    });
+    expect(region).toHaveAttribute('tabindex', '0');
+    expect(region).toContainElement(
+      screen.getByRole('table', { name: '後攻チームの打席結果一覧' })
+    );
+  });
+});
