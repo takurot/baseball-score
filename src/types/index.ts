@@ -77,7 +77,7 @@ export interface Game {
   currentInning: number;
   isTop?: boolean; // true: 表, false: 裏
   userId?: string; // ユーザーID（オプショナル）
-  userEmail?: string; // ユーザーのメールアドレス（オプショナル）
+  userEmail?: string; // 旧データのみ。現在は保存しない（PII のため）
   venue?: string; // 球場・場所
   tournament?: string; // 大会名
   gameType?: GameType; // 試合区分（公式戦 / 練習試合 / ジュニア戦）
