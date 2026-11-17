@@ -83,6 +83,20 @@ describe('apply-production-csp', () => {
       expect(updated).not.toContain('unsafe-inline');
     });
 
+    it('drops directives that browsers ignore in a meta tag (frame-ancestors, report-uri, sandbox)', () => {
+      const updated = applyProductionCspToHtml(
+        html,
+        "default-src 'self'; frame-ancestors 'self'; script-src 'self'; report-uri /csp; sandbox allow-scripts; object-src 'none'"
+      );
+
+      expect(updated).toContain(
+        "content=\"default-src 'self'; script-src 'self'; object-src 'none'\""
+      );
+      expect(updated).not.toContain('frame-ancestors');
+      expect(updated).not.toContain('report-uri');
+      expect(updated).not.toContain('sandbox');
+    });
+
     it('leaves the rest of the document untouched', () => {
       const updated = applyProductionCspToHtml(html, "default-src 'self'");
 
