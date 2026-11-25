@@ -943,15 +943,16 @@ describe('game ledger and scope note', () => {
 
 // The stream is upper-cased, so a fill colour reads as RG; dots are the 0.6-wide circles.
 const dotsOn = (chart: string) => {
-  const ink = pdfColor(23, 59, 58).replace(/\./g, '\\.');
-  return Array.from(
-    chart.matchAll(
-      new RegExp(
-        `^(${ink}|1 1 1) RG\n${ink} RG\n0\\.6 W\n\\[\\] 0 D\nQ\n([\\d.]+) [\\d.]+ M`,
-        'gm'
-      )
+  const ink = pdfColor(23, 59, 58);
+  const white = '1 1 1';
+  const circles = chart.matchAll(
+    /^((?:[\d.]+ ){2}[\d.]+) RG\n((?:[\d.]+ ){2}[\d.]+) RG\n0\.6 W\n\[\] 0 D\nQ\n([\d.]+) [\d.]+ M/gm
+  );
+  return Array.from(circles)
+    .filter(
+      ([, fill, stroke]) => stroke === ink && (fill === ink || fill === white)
     )
-  ).map((m) => ({ filled: m[1] !== '1 1 1', x: Number(m[2]) }));
+    .map(([, fill, , x]) => ({ filled: fill === ink, x: Number(x) }));
 };
 
 test('marks each game under the chart as filled when it added plate appearances and hollow when the value is only carried forward', async () => {
