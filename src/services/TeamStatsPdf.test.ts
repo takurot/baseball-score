@@ -6,6 +6,7 @@ import {
   PDFDocument,
   PDFHexString,
   PDFName,
+  PDFNumber,
   PDFRawStream,
   decodePDFRawStream,
 } from 'pdf-lib';
@@ -87,6 +88,7 @@ beforeAll(async () => {
   doc.registerFontkit(fontkit);
   const embedded = await doc.embedFont(new Uint8Array(font), {
     subset: false,
+    features: { locl: false },
   });
   encode = (text) =>
     embedded.encodeText(text).toString().slice(1, -1).toUpperCase();
@@ -118,6 +120,17 @@ const isChartPage = (content: string) =>
   ['公式戦', '練習試合', 'ジュニア戦'].some((label) =>
     drawn(content, chartHeader(label))
   );
+
+test('opens the real PDF with a distinct report title before the team name and the summary', async () => {
+  const [front] = await pageContents(
+    await createTeamStatsPdf(sections(1), [], fontBytes(), new Date(), () => {})
+  );
+  const title = rowYs(front, 'チーム通算成績')[0];
+  const team = rowYs(front, '日本語チーム')[0];
+  const summary = rowYs(front, '区分別サマリー')[0];
+  expect(title).toBeGreaterThan(team);
+  expect(team).toBeGreaterThan(summary);
+});
 
 test('keeps landscape A4 table pages and adds one chart page per two figures', async () => {
   for (const count of [0, 1, 30, 31, 100]) {
@@ -163,7 +176,7 @@ test('places team then player charts after each section, in table order, with sh
   expect(
     contents.map(
       (c) =>
-        (drawn(c, '日本語チーム｜チーム通算成績') ? 'front' : undefined) ??
+        (drawn(c, 'チーム通算成績') ? 'front' : undefined) ??
         labels.find((l) => drawn(c, chartHeader(l))) ??
         (labels.some((l) => drawn(c, `日本語チーム｜${l}｜対象試合一覧`))
           ? 'ledger'
@@ -227,6 +240,11 @@ test('places team then player charts after each section, in table order, with sh
     expect(labelRows).toHaveLength(2);
     // the value sits on the legend row itself, not only on an axis tick
     expect(rowY(formatRate(finalRates[series.metric]))).toContain(labelRows[0]);
+    if (series.dash.length) {
+      // Both the plotted stroke and the legend sample for each figure use this dash.
+      const dashOperator = `[${series.dash.join(' ')}] 0 D`;
+      expect(official[0].split(dashOperator).length - 1).toBe(4);
+    }
   }
   expect(
     drawn(
@@ -406,6 +424,11 @@ const rowYs = (content: string, text: string): number[] =>
     .map((m) => Number(m[1]))
     .sort((a, b) => b - a);
 
+const pdfColor = (...channels: number[]) =>
+  channels.map((channel) => PDFNumber.of(channel / 255).toString()).join(' ');
+const tableHeaderFill = `${pdfColor(232, 246, 245)} RG`;
+const tableStripeFill = `${pdfColor(246, 248, 248)} RG`;
+
 describe('table layout', () => {
   const practiceTablePage = async (
     atBatCounts: number[],
@@ -460,10 +483,10 @@ describe('table layout', () => {
     ).toBe(true);
   });
 
-  test('shades header rows and alternate player rows in light grey that survives monochrome print', async () => {
+  test('shades heading rows and alternating player rows with distinct pale fills', async () => {
     const page = await practiceTablePage([1, 1, 1]);
-    expect(page).toContain('0.88 0.88 0.88 RG');
-    expect(page).toContain('0.93 0.93 0.93 RG');
+    expect(page).toContain(tableHeaderFill);
+    expect(page).toContain(tableStripeFill);
   });
 
   test('right-aligns numeric cells so digits of different widths share a right edge', async () => {
@@ -476,7 +499,7 @@ describe('table layout', () => {
   });
 
   test('draws a group divider only where qualified rows give way to unqualified ones', async () => {
-    const divider = '0.35 0.35 0.35 RG';
+    const divider = `${pdfColor(23, 59, 58)} RG\n1.1 W`;
     const page = await practiceTablePage([1, 10]);
     // exactly one divider, on the top edge of the first unqualified row (player 0, below player 1)
     expect(page.split(divider)).toHaveLength(2);
@@ -551,6 +574,56 @@ describe('table layout', () => {
     expect(lines[0] - rowYs(page, '選手2')[0]).toBeCloseTo(3 * 11 + 8);
   });
 
+  test.each([11, 12, 66])(
+    'keeps all %i roster rows in order across exact page boundaries',
+    async (count) => {
+      const team = roster(count);
+      const games = [
+        game(
+          'g1',
+          '2026-04-01',
+          'official',
+          team,
+          team.players.map((p) => ab(p.id, 'SO'))
+        ),
+      ];
+      const report = buildTeamReportStats(games, team);
+      const contents = await pageContents(
+        await createTeamStatsPdf(
+          report,
+          games,
+          fontBytes(),
+          new Date(),
+          () => {},
+          { ...DETAILED_PDF_OPTIONS, types: ['official'], charts: 'none' }
+        )
+      );
+      const tables = contents.filter((c) => drawn(c, '氏名'));
+      expect(tables).toHaveLength(count === 11 ? 1 : count === 12 ? 2 : 4);
+      expect(drawn(tables[0], 'チーム成績')).toBe(true);
+      for (const page of tables.slice(1)) {
+        expect(drawn(page, '個人成績（続き）')).toBe(true);
+        expect(drawn(page, 'チーム成績')).toBe(false);
+        expect(drawn(page, '備考')).toBe(true);
+        expect(drawn(page, '試合数')).toBe(true);
+      }
+      const rows = tables.map((c) =>
+        report[0].playerStats
+          .flatMap(({ playerName }) =>
+            rowYs(c, playerName).map((y) => ({ playerName, y }))
+          )
+          .sort((a, b) => b.y - a.y)
+      );
+      expect(rows[0]).toHaveLength(11);
+      expect(
+        rows.every((page) => page.length && page.every(({ y }) => y > 35))
+      ).toBe(true);
+      expect(rows.flat().map(({ playerName }) => playerName)).toEqual(
+        report[0].playerStats.map((p) => p.playerName)
+      );
+    }
+  );
+
   test('repeats the shaded heading row on continuation pages', async () => {
     const team = roster(30);
     const games = [
@@ -576,7 +649,7 @@ describe('table layout', () => {
     );
     expect(continued.length).toBeGreaterThan(0);
     for (const page of continued) {
-      expect(page).toContain('0.88 0.88 0.88 RG');
+      expect(page).toContain(tableHeaderFill);
       expect(drawn(page, '試合数')).toBe(true);
     }
   });
@@ -779,6 +852,67 @@ describe('game ledger and scope note', () => {
     expect(order).toEqual(expected);
   });
 
+  test('keeps the letters and digits of a game ID in the PDF Unicode map', async () => {
+    const id = 'demo-02';
+    const games = [game(id, '2026-05-01', 'official', team, [ab('0', 'SO')])];
+    const bytes = await createTeamStatsPdf(
+      buildTeamReportStats(games, team),
+      games,
+      fontBytes(),
+      new Date(),
+      () => {},
+      { ...DETAILED_PDF_OPTIONS, types: ['official'], charts: 'none' }
+    );
+    const contents = await pageContents(bytes);
+    const ledger = contents.findIndex((c) => drawn(c, '試合ID'));
+    const idGlyphs = Array.from(contents[ledger].matchAll(/<([\dA-F]+)> TJ/g))
+      .map((match) => match[1])
+      .find(
+        (glyphs) =>
+          glyphs.length === id.length * 4 && glyphs.startsWith(encode('demo-'))
+      )!;
+    expect(idGlyphs).toBeDefined();
+    const doc = await PDFDocument.load(bytes);
+    const fonts = doc
+      .getPage(ledger)
+      .node.Resources()!
+      .lookup(PDFName.of('Font'), PDFDict);
+    const fontDict = doc.context.lookup(fonts.entries()[0][1], PDFDict);
+    const cmap = fontDict.lookup(PDFName.of('ToUnicode')) as PDFRawStream;
+    const unicode = Buffer.from(decodePDFRawStream(cmap).decode()).toString(
+      'ascii'
+    );
+    Array.from(id).forEach((letter, i) => {
+      const utf16 = letter.charCodeAt(0).toString(16).padStart(4, '0');
+      expect(unicode).toMatch(
+        new RegExp(`<${idGlyphs.slice(i * 4, i * 4 + 4)}>\\s*<${utf16}>`, 'i')
+      );
+    });
+  });
+
+  test('wraps a long Japanese game ID as one complete row at the ledger boundary', async () => {
+    const idLine = '試'.repeat(40);
+    const id = idLine.repeat(2) + '末尾識別子';
+    const many = Array.from({ length: 24 }, (_, i) =>
+      game(
+        i === 23 ? id : `a${String(i).padStart(2, '0')}`,
+        '2026-05-01',
+        'official',
+        team,
+        [ab('0', 'SO')]
+      )
+    );
+    const pages = (await build(many)).filter((c) => drawn(c, '試合ID'));
+    expect(pages).toHaveLength(2);
+    expect(drawn(pages[1], `${ledgerHeader('公式戦')}｜続き`)).toBe(true);
+    const baselines = rowYs(pages[1], idLine);
+    expect(baselines).toHaveLength(2);
+    expect(baselines[0] - baselines[1]).toBe(11);
+    expect(rowYs(pages[1], '末尾識別子')[0]).toBe(baselines[1] - 11);
+    expect(rowYs(pages[1], '相手')).toEqual([baselines[0]]);
+    expect(rowYs(pages[0], idLine)).toEqual([]);
+  });
+
   test('scores an away game from our side, including run events', async () => {
     const base = game('away-game', '2026-06-01', 'official', team, [
       ab('0', 'SO'),
@@ -808,12 +942,17 @@ describe('game ledger and scope note', () => {
 });
 
 // The stream is upper-cased, so a fill colour reads as RG; dots are the 0.6-wide circles.
-const dotsOn = (chart: string) =>
-  Array.from(
+const dotsOn = (chart: string) => {
+  const ink = pdfColor(23, 59, 58).replace(/\./g, '\\.');
+  return Array.from(
     chart.matchAll(
-      /^(0\.2 0\.2 0\.2|1 1 1) RG\n0\.2 0\.2 0\.2 RG\n0\.6 W\n\[\] 0 D\nQ\n([\d.]+) [\d.]+ M/gm
+      new RegExp(
+        `^(${ink}|1 1 1) RG\n${ink} RG\n0\\.6 W\n\\[\\] 0 D\nQ\n([\\d.]+) [\\d.]+ M`,
+        'gm'
+      )
     )
   ).map((m) => ({ filled: m[1] !== '1 1 1', x: Number(m[2]) }));
+};
 
 test('marks each game under the chart as filled when it added plate appearances and hollow when the value is only carried forward', async () => {
   const team = roster(1);
@@ -1044,9 +1183,11 @@ describe('summary page and navigation', () => {
   const make = async (
     players: number,
     options: Partial<TeamStatsPdfOptions> = {},
-    source: (team: ReturnType<typeof roster>) => Game[] = gamesFor
+    source: (team: ReturnType<typeof roster>) => Game[] = gamesFor,
+    teamName?: string
   ) => {
     const team = marks(players);
+    if (teamName) team.name = teamName;
     const merged = { ...DETAILED_PDF_OPTIONS, ...options };
     // like the export dialog: tables, ledger and charts share the period-filtered games
     const games = [...filterGamesByPeriod(source(team), merged.period)];
@@ -1079,36 +1220,98 @@ describe('summary page and navigation', () => {
   const pageOf = (doc: PDFDocument, dest: PDFArray) =>
     doc.getPages().findIndex((page) => page.ref === dest.get(0));
   const frontLinks = (doc: PDFDocument) =>
-    (doc.getPage(0).node.Annots()?.asArray() ?? []).map((ref) => {
-      const link = doc.context.lookup(ref, PDFDict);
-      const rect = link.lookup(PDFName.of('Rect'), PDFArray).asArray().map(num);
-      return {
-        bottom: rect[1],
-        top: rect[3],
-        page: pageOf(doc, link.lookup(PDFName.of('Dest'), PDFArray)),
-      };
-    });
-  // The table-of-contents row for `label`: where it jumps and the number printed on that row.
+    doc.getPages().flatMap((page, i) =>
+      (page.node.Annots()?.asArray() ?? []).map((ref) => {
+        const link = doc.context.lookup(ref, PDFDict);
+        const rect = link
+          .lookup(PDFName.of('Rect'), PDFArray)
+          .asArray()
+          .map(num);
+        return {
+          source: i,
+          left: rect[0],
+          bottom: rect[1],
+          right: rect[2],
+          top: rect[3],
+          page: pageOf(doc, link.lookup(PDFName.of('Dest'), PDFArray)),
+        };
+      })
+    );
+  const pointsOf = (content: string, text: string) =>
+    Array.from(
+      content.matchAll(
+        new RegExp(
+          `1 0 0 1 ([\\d.]+) ([\\d.]+) TM\\s*<${encode(text)}> TJ`,
+          'g'
+        )
+      )
+    ).map((match) => ({ x: Number(match[1]), y: Number(match[2]) }));
   const entry = (
     { contents, doc }: Awaited<ReturnType<typeof make>>,
     label: string
   ) => {
-    const y = yOf(contents[0], label);
-    expect(y).toHaveLength(1);
-    const link = frontLinks(doc).find((l) => l.bottom <= y[0] && y[0] <= l.top);
+    const link = frontLinks(doc).find((link) =>
+      pointsOf(contents[link.source], label).some(
+        ({ x, y }) =>
+          link.left <= x && x <= link.right && link.bottom <= y && y <= link.top
+      )
+    );
     expect(link).toBeDefined();
     return {
       page: link!.page,
-      printed: yOf(contents[0], String(link!.page + 1)).some(
-        (row) => link!.bottom <= row && row <= link!.top
+      source: link!.source,
+      printed: pointsOf(contents[link!.source], String(link!.page + 1)).some(
+        ({ x, y }) =>
+          link!.left <= x &&
+          x <= link!.right &&
+          link!.bottom <= y &&
+          y <= link!.top
       ),
     };
   };
 
+  test('keeps links and printed destinations in sync after inserting an overview continuation', async () => {
+    const name = '青'.repeat(545) + '長い架空野球部';
+    const out = await make(3, {}, gamesFor, name);
+    expect(drawn(out.contents[0], '区分別サマリー')).toBe(true);
+    expect(drawn(out.contents[1], 'チーム通算成績｜概要（続き）')).toBe(true);
+    const links = frontLinks(out.doc);
+    expect(links).toHaveLength(11);
+    expect(
+      links.every(
+        ({ source, left, bottom, right, top, page }) =>
+          source === 1 &&
+          left >= 24 &&
+          bottom > 35 &&
+          right < 818 &&
+          top < 572 &&
+          page >= 2
+      )
+    ).toBe(true);
+    const table = entry(out, '公式戦　成績表');
+    expect(table).toMatchObject({ page: 2, source: 1, printed: true });
+    expect(drawn(out.contents[table.page], 'チーム成績')).toBe(true);
+    const ledger = entry(out, '公式戦　対象試合一覧');
+    expect(ledger.printed).toBe(true);
+    expect(drawn(out.contents[ledger.page], '試合ID')).toBe(true);
+    const chart = entry(out, '練習試合　推移グラフ（選手別）');
+    expect(chart.printed).toBe(true);
+    expect(
+      startsWith(out.contents[chart.page], '背番号0 選手0｜練習試合')
+    ).toBe(true);
+    const root = out.doc.catalog.lookup(PDFName.of('Outlines'), PDFDict);
+    const official = root.lookup(PDFName.of('First'), PDFDict);
+    expect(pageOf(out.doc, official.lookup(PDFName.of('Dest'), PDFArray))).toBe(
+      table.page
+    );
+    expect(drawn(out.contents[0], `1 / ${out.contents.length}`)).toBe(true);
+    expect(drawn(out.contents[1], `2 / ${out.contents.length}`)).toBe(true);
+  });
+
   test('opens with a per-type summary that keeps the three types apart', async () => {
     const out = await make(3);
     const front = out.contents[0];
-    expect(drawn(front, '日本語チーム｜チーム通算成績')).toBe(true);
+    expect(drawn(front, 'チーム通算成績')).toBe(true);
     expect(
       drawn(front, '対象期間: 全期間　発行日時: 2026-11-15 01:30 JST')
     ).toBe(true);
@@ -1116,7 +1319,7 @@ describe('summary page and navigation', () => {
     expect(drawn(front, '合計')).toBe(false);
     out.report.forEach((stats, i) => {
       const label = ['公式戦', '練習試合', 'ジュニア戦'][i];
-      const row = yOf(front, label);
+      const row = yOf(front, stats.gameCount ? label : `${label}（記録なし）`);
       expect(row).toHaveLength(1);
       const cells = stats.gameCount
         ? [
@@ -1237,7 +1440,7 @@ describe('summary page and navigation', () => {
       startsWith(out.contents[ledger], '日本語チーム｜練習試合｜対象試合一覧')
     ).toBe(true);
     // the official summary row shows dashes
-    const row = yOf(front, '公式戦')[0];
+    const row = yOf(front, '公式戦（記録なし）')[0];
     expect(yOf(front, '—')).toContain(row);
     expect(
       drawn(front, '対象期間: 2026-05-15以降　発行日時: 2026-11-15 01:30 JST')
@@ -1360,15 +1563,15 @@ test('marks a late first plate appearance and a one-game figure', async () => {
   ).toBe(true);
 });
 
-test('leaves out the dots, and says so, when the games would crowd them together', async () => {
+const denseChart = async (count: number) => {
   const team = roster(1);
-  const games = Array.from({ length: 170 }, (_, i) =>
+  const games = Array.from({ length: count }, (_, i) =>
     game(
       `g${String(i).padStart(3, '0')}`,
-      `${2024 + Math.floor(i / 56)}-${String(1 + Math.floor((i % 56) / 28)).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
+      '2026-12-31',
       'official',
       team,
-      [ab('0', 'SO')]
+      i % 2 === 0 ? [ab('0', 'SO')] : []
     )
   );
   const contents = await pageContents(
@@ -1377,18 +1580,47 @@ test('leaves out the dots, and says so, when the games would crowd them together
       games,
       fontBytes(),
       new Date(),
-      () => {}
+      () => {},
+      { ...DETAILED_PDF_OPTIONS, charts: 'team', types: ['official'] }
     )
   );
-  const chart = contents.find((c) => drawn(c, chartHeader('公式戦')))!;
-  expect(dotsOn(chart)).toHaveLength(0);
-  expect(drawn(chart, '打席')).toBe(false);
-  expect(
-    drawn(
-      chart,
-      '試合数が多い図では、点が重なるため下段の●/○を省略しています。'
-    )
-  ).toBe(true);
+  return contents.find((c) => drawn(c, chartHeader('公式戦')))!;
+};
+
+test.each([122, 123, 124, 125, 170])(
+  'preserves the PDF appearance marker density boundary at %i games',
+  async (count) => {
+    const chart = await denseChart(count);
+    const visible = count <= 124;
+    expect(dotsOn(chart).map(({ filled }) => filled)).toEqual(
+      visible ? Array.from({ length: count }, (_, i) => i % 2 === 0) : []
+    );
+    expect(drawn(chart, '打席')).toBe(visible);
+    expect(
+      drawn(
+        chart,
+        '試合数が多い図では、点が重なるため下段の●/○を省略しています。'
+      )
+    ).toBe(!visible);
+  }
+);
+
+test('keeps the final long date label inside the chart frame', async () => {
+  const chart = await denseChart(127);
+  const label = '12/31 (127)';
+  const previous = '12/31 (118)';
+  const labelX = (text: string) => {
+    const match = new RegExp(
+      `1 0 0 1 ([\\d.]+) [\\d.]+ TM\\s*<${encode(text)}> TJ`
+    ).exec(chart);
+    expect(match).not.toBeNull();
+    return Number(match![1]);
+  };
+  // The 793pt figure frame starts 24pt from the left edge.
+  expect(labelX(label) + measure(label)).toBeLessThanOrEqual(24 + 793);
+  expect(labelX(label) - labelX(previous) - measure(previous)).toBeGreaterThan(
+    2
+  );
 });
 
 describe('sacrifice bunts, flies and indicator definitions', () => {
