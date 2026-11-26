@@ -15,6 +15,19 @@ import {
   xPosition,
 } from './BattingTrendChart';
 
+import {
+  A4_LANDSCAPE,
+  BOTTOM,
+  LEFT,
+  PAPER,
+  WIDTH,
+  card,
+  drawFooter,
+  drawPageHeader,
+  headerLines as mastheadLines,
+  inkText,
+} from './TeamStatsPdfStyle';
+
 export interface TrendPdfContext {
   pdf: PDFDocument;
   font: PDFFont;
@@ -41,11 +54,6 @@ interface Figure {
   points: TrendPoint[];
 }
 
-const PAGE: [number, number] = [841.89, 595.28];
-const LEFT = 24;
-const WIDTH = PAGE[0] - LEFT * 2;
-const TOP = 565;
-const BOTTOM = 35;
 const FIGURE_GAP = 8;
 const PAD = 6;
 const CAPTION_LINE = 14;
@@ -57,14 +65,15 @@ const APPEARANCE_DOT = 2;
 // A dot is 2 x radius wide plus its border; keep a gap so neighbours stay apart.
 const MIN_DOT_SPACING = 6;
 const MIN_PLOT_HEIGHT = 100;
+// Keep the original plot width (747pt) and thus the 124-game dot limit.
 const PLOT_WIDTH = WIDTH - PAD * 2 - TICK_LABEL_WIDTH - 4;
 const showAppearanceDots = (gameCount: number): boolean =>
   PLOT_WIDTH / gameCount >= MIN_DOT_SPACING;
 const MESSAGE_HEIGHT = 40;
 const AXIS_LABEL_SLOT = 48;
-const INK = rgb(0.2, 0.2, 0.2);
-const GRID = rgb(0.85, 0.85, 0.85);
-const AXIS = rgb(0.6, 0.6, 0.6);
+const INK = PAPER.ink;
+const GRID = PAPER.rule;
+const AXIS = PAPER.divider;
 const WHITE = rgb(1, 1, 1);
 
 const toColor = (hex: string) =>
@@ -107,19 +116,19 @@ function drawFigure(
   height: number
 ) {
   const text = (value: string, x: number, y: number, size = 8) =>
-    page.drawText(value, { x, y, size, font, color: INK });
+    inkText(page, font, value, x, y, size);
 
+  card(page, LEFT, top, WIDTH, height, WHITE, PAPER.teal);
   page.drawRectangle({
-    x: LEFT,
-    y: top - height,
-    width: WIDTH,
-    height,
-    borderWidth: 0.5,
-    borderColor: AXIS,
+    x: LEFT + 7,
+    y: top - PAD - captionLines.length * CAPTION_LINE,
+    width: WIDTH - 14,
+    height: captionLines.length * CAPTION_LINE + 2,
+    color: PAPER.mist,
   });
   let y = top - PAD - 10;
   for (const line of captionLines) {
-    text(line, LEFT + PAD, y, 10);
+    text(line, LEFT + 12, y, 10);
     y -= CAPTION_LINE;
   }
 
@@ -128,13 +137,13 @@ function drawFigure(
     text(
       message,
       LEFT + WIDTH / 2 - font.widthOfTextAtSize(message, 10) / 2,
-      top - height / 2,
+      (y + top - height) / 2 - 3,
       10
     );
     return;
   }
 
-  let legendX = LEFT + PAD;
+  let legendX = LEFT + 12;
   const legendY = y + 3;
   for (const series of TREND_SERIES) {
     const color = toColor(series.color);
@@ -153,8 +162,7 @@ function drawFigure(
       borderWidth: 0.5,
       scale: 0.75,
     });
-    // Label and value are separate runs: a digit right after a Latin letter
-    // (e.g. "OPS 1.500") is drawn with a gap by the embedded font.
+    // Keep a measured, consistent gap between the label and its final value.
     const labelX = legendX + 26;
     text(series.label, labelX, legendY - 3);
     const valueX = labelX + font.widthOfTextAtSize(series.label, 8) + 4;
@@ -196,14 +204,24 @@ function drawFigure(
     color: AXIS,
   });
   const count = figure.points.length;
-  for (const index of axisLabelIndices(
+  // Fit labels from the right so clamping the last one cannot crowd its neighbor.
+  let labelRight = LEFT + WIDTH - PAD;
+  const dateLabels = axisLabelIndices(
     count,
     Math.floor(plotWidth / AXIS_LABEL_SLOT)
-  )) {
-    const label = axisLabel(figure.points[index].game);
-    const x = plotLeft + xPosition(index, count, plotWidth);
-    text(label, x - font.widthOfTextAtSize(label, 8) / 2, plotBottom - 11);
-  }
+  )
+    .reverse()
+    .map((index) => {
+      const label = axisLabel(figure.points[index].game);
+      const center = plotLeft + xPosition(index, count, plotWidth);
+      const width = font.widthOfTextAtSize(label, 8);
+      const x = Math.min(center - width / 2, labelRight - width);
+      labelRight = x - 4;
+      return { label, x };
+    });
+  dateLabels
+    .reverse()
+    .forEach(({ label, x }) => text(label, x, plotBottom - 11));
 
   // One dot per game: filled when it added plate appearances, hollow when the
   // value is only carried forward, so flat stretches are not read as repeated results.
@@ -287,7 +305,6 @@ export async function drawTrendPages(
   const omitted = trends.length - shown.length;
 
   const header: [string, number][] = [
-    [`${stats.teamName}｜${label}｜打撃成績の推移`, 12],
     [
       '打率・出塁率・長打率・OPSは、各試合までの打席を合計して計算した累積値です。縦軸は4指標共通で0から始まります。',
       8,
@@ -320,12 +337,16 @@ export async function drawTrendPages(
       '試合数が多い図では、点が重なるため下段の●/○を省略しています。',
       8,
     ]);
-  const headerLines = header.flatMap(([value, size]) =>
+  const masthead = mastheadLines(
+    ctx,
+    `${stats.teamName}｜${label}｜打撃成績の推移`
+  );
+  const notes = header.flatMap(([value, size]) =>
     wrap(value, WIDTH, size).map((line): [string, number] => [line, size])
   );
-  const headerHeight = headerLines.reduce((sum, [, size]) => sum + size + 4, 0);
-  const fullHeight = TOP - headerHeight - 4 - BOTTOM;
-  const halfHeight = (fullHeight - FIGURE_GAP) / 2;
+  let top = 0;
+  let fullHeight = 0;
+  let halfHeight = 0;
 
   let page: PDFPage | null = null;
   let freeSlots = 0;
@@ -335,12 +356,16 @@ export async function drawTrendPages(
       await yieldToBrowser();
       checkActive();
     }
-    page = pdf.addPage(PAGE);
-    let y = TOP;
-    for (const [line, size] of headerLines) {
-      page.drawText(line, { x: LEFT, y, size, font, color: INK });
+    page = pdf.addPage(A4_LANDSCAPE);
+    let y = drawPageHeader(page, font, masthead);
+    drawFooter(page, font, `${label}｜推移グラフ`);
+    for (const [line, size] of notes) {
+      inkText(page, font, line, LEFT, y - size, size);
       y -= size + 4;
     }
+    top = y - 4;
+    fullHeight = top - BOTTOM;
+    halfHeight = (fullHeight - FIGURE_GAP) / 2;
     freeSlots = 2;
     return page;
   };
@@ -353,21 +378,21 @@ export async function drawTrendPages(
       caption: trendCaption(subject, label, points),
       points,
     };
-    const captionLines = wrap(item.caption, WIDTH - PAD * 2, 10);
+    const captionLines = wrap(item.caption, WIDTH - 24, 10);
     const needed =
       PAD * 2 +
       captionLines.length * CAPTION_LINE +
       (item.points.some((point) => point.rates)
         ? LEGEND_ROW + MIN_PLOT_HEIGHT + X_LABEL_ROW + APPEARANCE_ROW
         : MESSAGE_HEIGHT);
+    if (!page) await startPage();
     if (needed > fullHeight) {
       throw new Error(
         'グラフの見出しがページに収まりません。チーム名・選手名の長さを確認してください'
       );
     }
-    const top = TOP - headerHeight - 4;
     if (needed > halfHeight) {
-      const whole = await startPage();
+      const whole: PDFPage = freeSlots === 2 ? page! : await startPage();
       drawFigure(font, whole, item, captionLines, top, fullHeight);
       locations.push({ name: subject.name, page: whole, isTeam });
       freeSlots = 0;
